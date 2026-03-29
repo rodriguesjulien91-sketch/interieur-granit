@@ -1,0 +1,4230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intérieur Granit — Espace Professionnel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══ VARIABLES ═══════════════════════════════════════════════════ */
+:root {
+  --stone: #1a1814;
+  --stone-mid: #3d3830;
+  --stone-light: #7a6f62;
+  --cream: #f5f0e8;
+  --cream-dark: #ede6d6;
+  --gold: #c9a84c;
+  --gold-light: #e8c97a;
+  --white: #fdfaf5;
+  --radius: 2px;
+  --success: #2d7a4f;
+  --warning: #b87333;
+  --info: #3a6ea5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--stone); min-height: 100vh; }
+
+/* ═══ SHARED ═══════════════════════════════════════════════════════ */
+.view { display: none; }
+.view.active { display: block; }
+.logo { font-family: 'Cormorant Garamond', serif; color: var(--cream); font-size: 1.6rem; font-weight: 300; letter-spacing: 0.08em; }
+.logo span { color: var(--gold); }
+label { font-size: 0.71rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--stone-light); font-weight: 500; }
+input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], input[type="date"], select, textarea {
+  background: var(--white); border: 1px solid var(--cream-dark); border-radius: var(--radius);
+  padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; color: var(--stone);
+  transition: border-color .2s, box-shadow .2s; outline: none; width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a6f62' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; }
+textarea { resize: vertical; min-height: 80px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field-hint { font-size: .73rem; color: var(--stone-light); font-style: italic; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid.full { grid-template-columns: 1fr; }
+.span-2 { grid-column: span 2; }
+.btn { padding: 12px 28px; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: .83rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: all .2s; border: none; }
+.btn-primary { background: var(--stone); color: var(--cream); }
+.btn-primary:hover { background: var(--gold); color: var(--stone); }
+.btn-secondary { background: transparent; color: var(--stone-light); border: 1px solid var(--cream-dark); }
+.btn-secondary:hover { border-color: var(--stone-light); color: var(--stone); }
+.btn-gold { background: var(--gold); color: var(--stone); }
+.btn-gold:hover { background: var(--gold-light); }
+.btn-sm { padding: 7px 16px; font-size: .75rem; }
+.btn-danger { background: transparent; color: #c0392b; border: 1px solid #e8c8c5; }
+.btn-danger:hover { background: #fdf0ee; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.fade-in { animation: fadeIn .3s ease; }
+
+/* STATUS TAGS */
+.tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: .71rem; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+.tag-nouveau { background: rgba(58,110,165,.12); color: #3a6ea5; }
+.tag-nouveau::before { background: #3a6ea5; }
+.tag-en_cours { background: rgba(184,115,51,.12); color: var(--warning); }
+.tag-en_cours::before { background: var(--warning); }
+.tag-devise { background: rgba(45,122,79,.12); color: var(--success); }
+.tag-devise::before { background: var(--success); }
+.tag-cloture { background: rgba(122,111,98,.12); color: var(--stone-light); }
+.tag-cloture::before { background: var(--stone-light); }
+.tag-commande { background: rgba(45,122,79,.2); color: #1a6640; }
+.tag-commande::before { background: #1a6640; }
+.tag-facture { background: rgba(201,168,76,.18); color: #8a6d1a; }
+.tag-facture::before { background: #c9a84c; }
+
+/* ═══ LOGIN VIEW ═══════════════════════════════════════════════════ */
+.login-bg { min-height: 100vh; background: var(--stone); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+.login-card { background: var(--cream); border-radius: 6px; padding: 48px 44px; width: 100%; max-width: 420px; }
+.login-logo { font-family: 'Cormorant Garamond', serif; color: var(--stone); font-size: 2rem; font-weight: 300; letter-spacing: .06em; margin-bottom: 6px; }
+.login-logo span { color: var(--gold); }
+.login-tagline { font-size: .8rem; color: var(--stone-light); letter-spacing: .08em; margin-bottom: 36px; text-transform: uppercase; }
+.login-card .field { margin-bottom: 16px; }
+.login-card .field label { display: block; margin-bottom: 5px; }
+.login-error { background: #fdf0ee; border: 1px solid #e8c8c5; color: #c0392b; border-radius: var(--radius); padding: 10px 14px; font-size: .83rem; margin-bottom: 16px; display: none; }
+.login-demo { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--cream-dark); font-size: .75rem; color: var(--stone-light); line-height: 1.7; }
+.login-demo strong { color: var(--stone); }
+
+/* ═══ SHARED HEADER (admin + pro) ════════════════════════════════ */
+.app-header { background: var(--stone); padding: 16px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 200; }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.user-chip { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 6px 14px; }
+.user-chip-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 600; color: var(--stone); flex-shrink: 0; }
+.user-chip-name { font-size: .8rem; color: var(--cream); }
+.btn-logout { background: transparent; border: 1px solid rgba(255,255,255,.15); color: var(--stone-light); padding: 7px 14px; border-radius: var(--radius); font-size: .75rem; font-family: 'DM Sans', sans-serif; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; transition: all .2s; }
+.btn-logout:hover { border-color: var(--gold); color: var(--gold); }
+.admin-badge { background: var(--gold); color: var(--stone); font-size: .65rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: .08em; }
+
+/* ═══ ADMIN VIEW ═══════════════════════════════════════════════════ */
+#view-admin { min-height: 100vh; }
+.admin-body { max-width: 1100px; margin: 0 auto; padding: 36px 32px 80px; }
+
+/* Stats */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+.stat-card { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 22px 24px; }
+.stat-card .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--stone-light); margin-bottom: 8px; }
+.stat-card .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 400; color: var(--stone); }
+.stat-card .stat-sub { font-size: .75rem; color: var(--stone-light); margin-top: 2px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--cream-dark); }
+.tab-btn { padding: 10px 24px; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .82rem; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--stone-light); transition: all .2s; margin-bottom: -1px; }
+.tab-btn.active { border-bottom-color: var(--gold); color: var(--stone); }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn .3s ease; }
+
+/* Section headers */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 300; }
+
+/* Tables */
+.data-table { width: 100%; border-collapse: collapse; background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; overflow: hidden; }
+.data-table th { background: var(--stone-mid); color: var(--cream); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; padding: 12px 16px; text-align: left; font-weight: 500; }
+.data-table td { padding: 13px 16px; font-size: .84rem; border-bottom: 1px solid var(--cream-dark); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--cream); cursor: pointer; }
+.data-table .company { font-weight: 500; }
+.data-table .secondary { color: var(--stone-light); font-size: .79rem; }
+.data-table .price { font-weight: 500; font-family: 'Cormorant Garamond', serif; font-size: 1rem; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--stone-light); font-size: .88rem; }
+
+/* TARIFS ÉDITABLES */
+.prix-section { margin-bottom: 28px; }
+.prix-section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 300; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--cream-dark); }
+.prix-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.prix-item { display: flex; align-items: center; justify-content: space-between; background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 10px 14px; gap: 12px; }
+.prix-item-label { font-size: .84rem; flex: 1; }
+.prix-item-sub { font-size: .72rem; color: var(--stone-light); }
+.prix-input { width: 90px; padding: 7px 10px; font-size: .84rem; text-align: right; flex-shrink: 0; }
+.prix-save-bar { position: sticky; bottom: 0; background: var(--cream); border-top: 1px solid var(--cream-dark); padding: 14px 0; display: flex; align-items: center; gap: 16px; margin-top: 24px; }
+.prix-saved-msg { font-size: .82rem; color: var(--success); display: none; }
+
+/* DEVIS DIRECTS */
+.direct-quote-card { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 16px 20px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; cursor: pointer; transition: border-color .2s; }
+.direct-quote-card:hover { border-color: var(--gold); }
+.direct-detail-panel { background: var(--white); border: 1px solid var(--gold); border-radius: 4px; padding: 26px 28px; margin-top: 4px; margin-bottom: 16px; display: none; animation: fadeIn .25s ease; }
+.direct-detail-panel.active { display: block; }
+.direct-detail-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 300; color: var(--stone); margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+.direct-detail-section { margin-bottom: 18px; }
+.direct-detail-section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.direct-detail-section-title::after { content: ''; flex: 1; height: 1px; background: rgba(201,168,76,.25); }
+.direct-detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--cream-dark); font-size: .83rem; }
+.direct-detail-row .dk { color: var(--stone-light); }
+.direct-detail-row .dv { color: var(--stone); font-weight: 500; }
+.direct-detail-total { margin-top: 14px; padding-top: 14px; border-top: 2px solid var(--cream-dark); display: flex; justify-content: flex-end; align-items: baseline; gap: 16px; }
+.direct-detail-ttc { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: var(--stone); }
+.direct-detail-ht { font-size: .8rem; color: var(--stone-light); }
+.dq-ref { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--stone-light); }
+.dq-client { font-weight: 500; margin: 3px 0; }
+.dq-meta { font-size: .78rem; color: var(--stone-light); }
+.dq-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--stone); text-align: right; }
+.dq-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+/* MODAL */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(26,24,20,.6); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-backdrop.active { display: flex; }
+.modal { background: var(--cream); border-radius: 6px; padding: 36px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; animation: fadeIn .2s ease; }
+.modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; margin-bottom: 24px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+
+/* QUOTE DETAIL PANEL */
+.detail-panel { background: var(--stone); color: var(--cream); border-radius: 4px; padding: 28px; margin-top: 20px; display: none; animation: fadeIn .3s ease; }
+.detail-panel.active { display: block; }
+.detail-panel h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 300; color: var(--gold); margin-bottom: 18px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.detail-section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.detail-section-title::after { content: ''; flex: 1; height: 1px; background: rgba(201,168,76,.2); }
+.detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.10); font-size: .83rem; }
+.detail-row .dk { color: rgba(255,255,255,.55); }
+.detail-row .dv { color: var(--cream); font-weight: 500; }
+/* Overrides pour panneaux sur fond clair (pro-quote-detail) */
+.pro-quote-detail .detail-row { border-bottom: 1px solid var(--cream-dark); }
+.pro-quote-detail .detail-row .dk { color: var(--stone-light); }
+.pro-quote-detail .detail-row .dv { color: var(--stone); font-weight: 600; }
+.pro-quote-detail .summary-row { border-bottom: 1px solid var(--cream-dark); }
+.pro-quote-detail .summary-row .key { color: var(--stone-mid); }
+.pro-quote-detail .summary-row .val { color: var(--stone); font-weight: 600; }
+.status-select { background: var(--stone-mid); border: 1px solid var(--stone-light); color: var(--cream); padding: 6px 12px; font-size: .8rem; border-radius: var(--radius); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.price-ttc { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: var(--gold); }
+.price-ht { font-size: .8rem; color: rgba(255,255,255,.50); }
+
+/* ═══ PRO VIEW ═══════════════════════════════════════════════════ */
+#view-pro { min-height: 100vh; }
+.pro-body { max-width: 900px; margin: 0 auto; padding: 36px 24px 80px; }
+.pro-welcome { margin-bottom: 32px; }
+.pro-welcome h1 { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; }
+.pro-welcome p { color: var(--stone-light); font-size: .85rem; margin-top: 4px; }
+.quote-card { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 18px 22px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; cursor: pointer; transition: border-color .2s; }
+.quote-card:hover { border-color: var(--gold); }
+.qc-ref { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--stone-light); }
+.qc-client { font-weight: 500; margin: 3px 0; }
+.qc-meta { font-size: .78rem; color: var(--stone-mid); }
+.qc-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--stone); text-align: right; }
+.qc-date { font-size: .73rem; color: var(--stone-light); text-align: right; margin-top: 4px; }
+.pro-actions { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.search-bar-wrapper { position: relative; flex: 1; min-width: 200px; }
+.search-bar-wrapper input { padding-left: 36px; background: var(--white); }
+.search-bar-wrapper::before { content: '🔍'; position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: .85rem; pointer-events: none; }
+.pro-quote-detail { background: var(--white); border: 1px solid var(--gold); border-radius: 4px; padding: 24px 26px; margin-bottom: 16px; display: none; animation: fadeIn .25s ease; }
+.pro-quote-detail.active { display: block; }
+.pro-detail-actions { display: flex; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--cream-dark); flex-wrap: wrap; }
+.btn-commande { background: var(--stone); color: var(--gold); border: 1px solid var(--stone); }
+.btn-commande:hover { background: var(--gold); color: var(--stone); }
+.qc-commander { margin-top: 10px; }
+/* Modale commande */
+.commande-section { margin-bottom: 20px; }
+.commande-section h4 { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 400; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--cream-dark); color: var(--stone); }
+.file-drop-zone { border: 2px dashed var(--cream-dark); border-radius: 4px; padding: 20px; text-align: center; cursor: pointer; transition: all .2s; background: var(--cream); }
+.file-drop-zone:hover { border-color: var(--gold); background: rgba(201,168,76,.04); }
+.file-drop-zone input[type="file"] { display: none; }
+.file-drop-label { font-size: .82rem; color: var(--stone-light); }
+.file-drop-label strong { color: var(--stone); }
+.file-selected { background: rgba(45,122,79,.06); border-color: #2d7a4f; }
+.file-selected .file-drop-label { color: #1a6640; }
+
+/* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
+#view-form { min-height: 100vh; }
+.progress-wrapper { background: var(--stone-mid); padding: 18px 40px; position: sticky; top: 64px; z-index: 100; }
+.steps-nav { display: flex; align-items: center; max-width: 700px; margin: 0 auto; }
+.step-item { display: flex; align-items: center; flex: 1; cursor: pointer; }
+.step-item:last-child { flex: 0; }
+.step-circle { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--stone-light); display: flex; align-items: center; justify-content: center; font-size: .71rem; font-weight: 500; color: var(--stone-light); transition: all .3s; flex-shrink: 0; background: var(--stone-mid); }
+.step-item.active .step-circle { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,.1); }
+.step-item.done .step-circle { border-color: var(--gold); background: var(--gold); color: var(--stone); }
+.step-label { font-size: .67rem; color: var(--stone-light); margin-left: 7px; white-space: nowrap; letter-spacing: .05em; text-transform: uppercase; }
+.step-item.active .step-label { color: var(--gold); }
+.step-item.done .step-label { color: var(--cream); }
+.step-line { flex: 1; height: 1px; background: var(--stone-light); margin: 0 8px; transition: background .3s; }
+.form-main { max-width: 720px; margin: 40px auto; padding: 0 24px 80px; }
+.step-panel { display: none; animation: fadeIn .35s ease; }
+.step-panel.active { display: block; }
+.step-title { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; margin-bottom: 5px; }
+.step-subtitle { font-size: .83rem; color: var(--stone-light); margin-bottom: 32px; }
+.section-block { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 24px 26px; margin-bottom: 16px; }
+.section-block > h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--cream-dark); letter-spacing: .03em; }
+.subsection-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--gold); font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.subsection-label::after { content: ''; flex: 1; height: 1px; background: rgba(201,168,76,.25); }
+.btn-row { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
+.btn-submit { background: var(--gold); color: var(--stone); padding: 14px 42px; font-size: .88rem; }
+.btn-submit:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 5px 18px rgba(201,168,76,.3); }
+.mat-price-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(201,168,76,.08); border: 1px solid rgba(201,168,76,.25); border-radius: 12px; padding: 3px 10px; font-size: .75rem; color: var(--gold); margin-top: 6px; }
+.plan-row { display: grid; gap: 10px; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--cream-dark); }
+.plan-row:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.plan-label { font-size: .74rem; color: var(--stone-light); text-align: center; font-weight: 500; }
+.plan-row input { padding: 9px 11px; font-size: .84rem; }
+.counter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.counter-item { display: flex; align-items: center; justify-content: space-between; background: var(--cream); border: 1px solid var(--cream-dark); border-radius: var(--radius); padding: 9px 13px; }
+.counter-info { display: flex; flex-direction: column; gap: 1px; }
+.counter-name { font-size: .79rem; }
+.counter-price { font-size: .69rem; color: var(--stone-light); }
+.counter-controls { display: flex; align-items: center; gap: 8px; }
+.counter-btn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--stone-light); background: none; cursor: pointer; font-size: .95rem; display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0; }
+.counter-btn:hover { border-color: var(--gold); color: var(--gold); }
+.counter-val { font-size: .88rem; font-weight: 500; min-width: 16px; text-align: center; }
+.radio-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.radio-card input[type="radio"] { display: none; }
+.radio-card label { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 13px 10px; border: 2px solid var(--cream-dark); border-radius: 4px; cursor: pointer; transition: all .2s; text-align: center; font-size: .79rem; text-transform: none; letter-spacing: 0; color: var(--stone); background: var(--white); gap: 5px; }
+.radio-card label .icon { font-size: 1.3rem; }
+.radio-card input:checked + label { border-color: var(--gold); background: rgba(201,168,76,.06); }
+.checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: .83rem; }
+.checkbox-row input { width: 16px; height: 16px; accent-color: var(--gold); flex-shrink: 0; }
+.btn-add-row { margin-top: 10px; background: none; border: 1px dashed var(--cream-dark); color: var(--stone-light); padding: 6px 16px; border-radius: 2px; cursor: pointer; font-size: .77rem; transition: all .2s; font-family: 'DM Sans', sans-serif; }
+.btn-add-row:hover { border-color: var(--gold); color: var(--gold); }
+.summary-card { background: var(--stone); color: var(--cream); border-radius: 4px; padding: 26px 28px; margin-bottom: 16px; }
+.summary-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 300; color: var(--gold); margin-bottom: 16px; letter-spacing: .05em; }
+.summary-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .83rem; }
+.summary-row:last-child { border-bottom: none; }
+.summary-row .key { color: var(--stone-light); }
+.summary-row .val { color: var(--cream); font-weight: 500; }
+.price-table { width: 100%; border-collapse: collapse; }
+.price-table td { padding: 7px 0; font-size: .83rem; color: var(--cream); }
+.price-table td:first-child { color: var(--stone-light); padding-right: 14px; }
+.price-table td:last-child { text-align: right; white-space: nowrap; font-weight: 500; }
+.price-table tr { border-bottom: 1px solid rgba(255,255,255,.06); }
+.price-table tr:last-child { border-bottom: none; }
+.price-table tr.group-header td { color: rgba(201,168,76,.7); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; padding-top: 14px; padding-bottom: 3px; border-bottom: none; font-weight: 400; }
+.price-table tr.total-ht td { font-size: .88rem; font-weight: 600; color: var(--cream); border-top: 1px solid var(--stone-light); padding-top: 12px; }
+.price-table tr.tva-row td { color: var(--stone-light); font-size: .8rem; }
+.price-table tr.total-ttc td { font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; color: var(--gold); border-top: 1px solid rgba(201,168,76,.3); padding-top: 10px; font-weight: 600; }
+.pro-info-banner { background: rgba(201,168,76,.08); border: 1px solid rgba(201,168,76,.25); border-radius: 4px; padding: 14px 18px; margin-bottom: 18px; display: flex; align-items: center; gap: 14px; font-size: .83rem; }
+.pro-info-banner strong { color: var(--stone); }
+.pro-info-banner span { color: var(--stone-light); }
+.success-screen { display: none; text-align: center; padding: 80px 40px; animation: fadeIn .5s ease; }
+.success-screen.active { display: block; }
+.success-icon { width: 68px; height: 68px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin: 0 auto 24px; }
+.success-screen h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 300; margin-bottom: 12px; }
+.success-screen p { color: var(--stone-light); font-size: .9rem; line-height: 1.7; max-width: 440px; margin: 0 auto; }
+
+/* ═══ RESPONSIVE ══════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .span-2 { grid-column: span 1; }
+  .counter-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .step-label { display: none; }
+  .admin-body, .pro-body { padding: 20px 16px 60px; }
+  .app-header { padding: 14px 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VUE LOGIN
+═══════════════════════════════════════════════════════════════ -->
+<div id="view-login" class="view active">
+  <div class="login-bg">
+    <div class="login-card fade-in">
+      <div class="login-logo">Intérieur <span>Granit</span></div>
+      <div class="login-tagline">Espace Professionnel</div>
+      <div id="login-error" class="login-error">Email ou mot de passe incorrect.</div>
+      <div class="field" style="margin-bottom:14px;">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="votre@email.com" autocomplete="email">
+      </div>
+      <div class="field" style="margin-bottom:22px;">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:14px;" onclick="doLogin()">Se connecter</button>
+      <div class="login-demo">
+        <strong>Espace réservé aux professionnels</strong><br>
+        Contactez Intérieur Granit pour obtenir vos identifiants.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VUE ADMIN
+═══════════════════════════════════════════════════════════════ -->
+<div id="view-admin" class="view">
+  <header class="app-header">
+    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="header-right">
+      <span class="admin-badge">Admin</span>
+      <button class="btn btn-sm btn-secondary" onclick="openSocieteModal()" style="font-size:.75rem;padding:6px 14px;">⚙ Ma société</button>
+      <div class="user-chip">
+        <div class="user-chip-avatar" id="admin-avatar">J</div>
+        <span class="user-chip-name" id="admin-name">Julien</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+      <div id="soc-saved-toast" style="position:fixed;bottom:24px;right:24px;background:var(--stone);color:var(--cream);padding:12px 20px;border-radius:6px;font-size:.83rem;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;">✓ Profil société enregistré</div>
+    </div>
+  </header>
+
+  <div class="admin-body">
+    <!-- Stats -->
+    <div class="stats-row" id="admin-stats">
+      <div class="stat-card"><div class="stat-label">Clients pro</div><div class="stat-val" id="stat-clients">0</div><div class="stat-sub">Comptes actifs</div></div>
+      <div class="stat-card"><div class="stat-label">Chiffrages</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">Total reçus</div></div>
+      <div class="stat-card"><div class="stat-label">En attente</div><div class="stat-val" id="stat-new">0</div><div class="stat-sub">Nouvelles demandes</div></div>
+      <div class="stat-card"><div class="stat-label">CA commandes</div><div class="stat-val" id="stat-ca">—</div><div class="stat-sub">Total HT (commandes)</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+      <div class="tabs" style="border-bottom:none;margin-bottom:0;flex:1;">
+        <button class="tab-btn active" onclick="switchTab('clients')">Clients professionnels</button>
+        <button class="tab-btn" onclick="switchTab('quotes')">Tous les chiffrages</button>
+        <button class="tab-btn" onclick="switchTab('direct')">Devis particuliers</button>
+        <button class="tab-btn" onclick="switchTab('coeff')">Coefficient de vente</button>
+      </div>
+      <button class="btn btn-sm btn-secondary" style="margin-bottom:1px;" onclick="renderAdminDashboard()" title="Rafraîchir les données">↺ Rafraîchir</button>
+    </div>
+    <div style="border-bottom:1px solid var(--cream-dark);margin-bottom:24px;"></div>
+
+    <!-- Tab : Clients -->
+    <div id="tab-clients" class="tab-content active">
+      <div class="section-header">
+        <h2 class="section-title">Comptes clients</h2>
+        <button class="btn btn-gold btn-sm" onclick="openNewClientModal()">+ Nouveau client</button>
+      </div>
+      <table class="data-table" id="clients-table">
+        <thead><tr>
+          <th>Société</th><th>Contact</th><th>Email</th><th>Téléphone</th><th>Chiffrages</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab : Quotes -->
+    <div id="tab-quotes" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Demandes de chiffrage</h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <select id="filter-status" onchange="renderQuotesTable()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="">Tous les statuts</option>
+            <option value="nouveau">Nouvelles</option>
+            <option value="en_cours">En cours</option>
+            <option value="devise">Devisées</option>
+            <option value="commande">Commandes</option>
+            <option value="cloture">Clôturées</option>
+            <option value="facture">Facturées</option>
+          </select>
+          <select id="filter-pro" onchange="renderQuotesTable()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="">Tous les clients</option>
+          </select>
+        </div>
+      </div>
+      <table class="data-table" id="quotes-table">
+        <thead><tr>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total TTC</th><th>Date</th><th>Statut</th>
+        </tr></thead>
+        <tbody id="quotes-tbody"></tbody>
+      </table>
+      <!-- Detail panel -->
+      <div id="quote-detail" class="detail-panel"></div>
+    </div>
+
+    <!-- Tab : Devis particuliers -->
+    <div id="tab-direct" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Devis vente directe particuliers</h2>
+        <button class="btn btn-gold btn-sm" onclick="startDirectQuote()">+ Nouveau devis particulier</button>
+      </div>
+      <div id="direct-quotes-list">
+        <div class="empty-state">Aucun devis particulier pour le moment.</div>
+      </div>
+    </div>
+
+    <!-- Tab : Tarifs de vente -->
+    <div id="tab-coeff" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Coefficient de vente — Particuliers</h2>
+      </div>
+      <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:28px;">
+        Les devis particuliers sont calculés à partir des prix cuisinistes, auxquels est appliqué ce coefficient de marge.<br>
+        <strong>1.00</strong> = même prix que les cuisinistes · <strong>1.30</strong> = +30% · <strong>1.50</strong> = +50%
+      </p>
+      <div style="max-width:420px;">
+        <div class="prix-section">
+          <div class="prix-section-title">Coefficient appliqué sur tous les postes</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+            <div style="flex:1;">
+              <label>Coefficient de vente</label>
+              <input type="number" id="coeff-direct-input" class="input-field" value="1.00" min="1.00" max="3.00" step="0.01"
+                     style="font-size:1.1rem;font-weight:600;text-align:center;"
+                     oninput="updateCoeffPreview()">
+            </div>
+            <div id="coeff-preview" style="font-size:.82rem;color:var(--stone-light);margin-top:18px;min-width:140px;">
+              Marge : 0%
+            </div>
+          </div>
+          <div style="margin-top:6px;">
+            <span class="field-hint">S'applique aux matériaux, options, chants et livraison</span>
+          </div>
+        </div>
+
+        <div class="prix-section" style="margin-top:20px;">
+          <div class="prix-section-title">Aperçu — Prix cuisiniste vs particulier</div>
+          <div id="coeff-apercu" style="margin-top:8px;font-size:.83rem;"></div>
+        </div>
+
+        <div style="margin-top:24px;display:flex;align-items:center;gap:14px;">
+          <button class="btn btn-gold" onclick="saveCoeffDirect()">Enregistrer le coefficient</button>
+          <span id="coeff-saved-msg" style="display:none;color:var(--success);font-size:.82rem;">✓ Coefficient enregistré</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VUE PRO (Mes chiffrages)
+═══════════════════════════════════════════════════════════════ -->
+<div id="view-pro" class="view">
+  <header class="app-header">
+    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="header-right">
+      <button class="btn btn-sm btn-secondary" onclick="openProProfilModal()" style="font-size:.75rem;padding:6px 14px;">✏️ Mon profil</button>
+      <div class="user-chip">
+        <div class="user-chip-avatar" id="pro-avatar">M</div>
+        <span class="user-chip-name" id="pro-name">Marc</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </header>
+  <div id="pro-profil-toast" style="position:fixed;bottom:24px;right:24px;background:var(--stone);color:var(--cream);padding:12px 20px;border-radius:6px;font-size:.83rem;opacity:0;transition:opacity .4s;z-index:9999;pointer-events:none;">✓ Profil mis à jour</div>
+
+  <div class="pro-body">
+    <div class="pro-welcome">
+      <h1 id="pro-welcome-title">Bonjour, Marc</h1>
+      <p id="pro-welcome-sub">Cuisines Espace — Retrouvez vos demandes de chiffrage ou créez-en une nouvelle.</p>
+    </div>
+    <div class="pro-actions">
+      <button class="btn btn-gold" onclick="startNewQuote()">+ Nouveau chiffrage</button>
+      <div class="search-bar-wrapper">
+        <input type="text" id="pro-search" placeholder="Rechercher un devis (client, ville, matière, réf…)" oninput="filterProQuotes()">
+      </div>
+    </div>
+    <div style="font-size:.8rem;color:var(--stone-light);margin-bottom:14px;" id="pro-count-label"></div>
+    <div id="pro-quotes-list"></div>
+    <div id="pro-quote-detail" class="pro-quote-detail"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VUE FORMULAIRE (multi-étapes)
+═══════════════════════════════════════════════════════════════ -->
+<div id="view-form" class="view">
+  <header class="app-header">
+    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="header-right">
+      <button class="btn btn-secondary btn-sm" id="form-back-btn" onclick="backFromForm()" style="border-color:rgba(255,255,255,.15);color:var(--stone-light);">← Mes chiffrages</button>
+      <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <div class="progress-wrapper">
+    <div class="steps-nav">
+      <div class="step-item active" data-step="1" onclick="goToStep(1)"><div class="step-circle">1</div><div class="step-label">Client</div></div>
+      <div class="step-line"></div>
+      <div class="step-item" data-step="2" onclick="goToStep(2)"><div class="step-circle">2</div><div class="step-label">Matériau</div></div>
+      <div class="step-line"></div>
+      <div class="step-item" data-step="3" onclick="goToStep(3)"><div class="step-circle">3</div><div class="step-label">Dimensions</div></div>
+      <div class="step-line"></div>
+      <div class="step-item" data-step="4" onclick="goToStep(4)"><div class="step-circle">4</div><div class="step-label">Options</div></div>
+      <div class="step-line"></div>
+      <div class="step-item" data-step="5" onclick="goToStep(5)"><div class="step-circle">5</div><div class="step-label">Devis</div></div>
+    </div>
+  </div>
+
+  <div class="form-main">
+
+    <!-- Bannière entreprise -->
+    <div class="pro-info-banner" id="pro-banner">
+      <div>🏢</div>
+      <div><strong id="banner-societe"></strong> — <span id="banner-contact"></span> · <span id="banner-email"></span></div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="success-screen" id="form-success">
+      <div class="success-icon" id="success-icon">✓</div>
+      <h2 id="success-title">Devis enregistré !</h2>
+      <p id="success-msg">Votre devis a été enregistré avec succès.</p>
+      <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;">
+        <button id="success-btn-new" class="btn btn-primary" onclick="startNewQuote()">Nouveau chiffrage</button>
+        <button id="success-btn-back" class="btn btn-secondary" onclick="backToPro()">Mes chiffrages</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 1 : CLIENT FINAL -->
+    <div class="step-panel active" id="step-1">
+      <h1 class="step-title">Votre client</h1>
+      <p class="step-subtitle">Informations sur le chantier et le client final</p>
+      <div class="section-block">
+        <div class="form-grid">
+          <div class="field">
+            <label>Civilité</label>
+            <select id="civilite"><option value="">—</option><option>M.</option><option>Mme</option><option>Société</option></select>
+          </div>
+          <div class="field"></div>
+          <div class="field">
+            <label>Nom du client *</label>
+            <input type="text" id="nom-client" placeholder="Martin">
+          </div>
+          <div class="field">
+            <label>Prénom du client</label>
+            <input type="text" id="prenom-client" placeholder="Sophie">
+          </div>
+          <div class="field">
+            <label>Téléphone client</label>
+            <input type="tel" id="tel-client" placeholder="06 XX XX XX XX">
+          </div>
+          <div class="field">
+            <label>Email client</label>
+            <input type="email" id="email-client" placeholder="client@email.com">
+          </div>
+          <div class="field span-2">
+            <label>Adresse de pose *</label>
+            <input type="text" id="adresse" placeholder="12 rue de la Paix">
+          </div>
+          <div class="field">
+            <label>Code postal *</label>
+            <input type="text" id="cp" placeholder="75015">
+          </div>
+          <div class="field">
+            <label>Ville *</label>
+            <input type="text" id="ville" placeholder="Paris">
+          </div>
+          <div class="field">
+            <label>Date souhaitée de pose</label>
+            <input type="date" id="date-pose">
+          </div>
+          <div class="field">
+            <label>Référence chantier</label>
+            <input type="text" id="ref-chantier" placeholder="ex : CHT-042">
+          </div>
+        </div>
+      </div>
+      <div class="btn-row"><div></div><button class="btn btn-primary" onclick="nextStep(1)">Continuer →</button></div>
+    </div>
+
+    <!-- ÉTAPE 2 : MATÉRIAU -->
+    <div class="step-panel" id="step-2">
+      <h1 class="step-title">Choix du matériau</h1>
+      <p class="step-subtitle">Sélectionnez le matériau, le coloris et la finition souhaités</p>
+      <div class="section-block">
+        <div class="form-grid full">
+          <div class="field">
+            <label>Matériau *</label>
+            <select id="materiau" onchange="updateColoris();">
+              <option value="">Sélectionnez un matériau...</option>
+              <optgroup label="── Gamme Courte Intérieur Granit ──">
+                <option value="gc-granit">Granit (Gamme Courte IG)</option>
+                <option value="gc-quartz">Quartz Unistone (Gamme Courte IG)</option>
+                <option value="gc-uniceramica">Uniceramica (Gamme Courte IG)</option>
+                <option value="gc-neolith">Neolith (Gamme Courte IG)</option>
+                <option value="gc-laminam">Laminam (Gamme Courte IG)</option>
+              </optgroup>
+              <optgroup label="── Catalogue complet ──">
+                <option value="granit">Granit</option>
+                <option value="quartz-silestone">Quartz Silestone</option>
+                <option value="quartz-unistone">Quartz Unistone</option>
+                <option value="dekton">Dekton</option>
+                <option value="ceramique-laminam">Laminam</option>
+                <option value="ceramique-neolith">Neolith</option>
+                <option value="ceramique-abkstone">ABK-Materia</option>
+                <option value="ceramique-xstone">Xtone Porcelanosa</option>
+                <option value="ceramique-uniceramica">Uniceramica</option>
+                <option value="marbre">Marbre</option>
+                <option value="pierre">Pierre calcaire</option>
+              </optgroup>
+            </select>
+            <div id="price-badge" style="display:none;" class="mat-price-badge"><span>💎</span><span id="price-badge-text"></span></div>
+          </div>
+          <div class="field">
+            <label>Coloris *</label>
+            <select id="coloris" onchange="onColorisChange();"><option value="">Sélectionnez d'abord un matériau...</option></select>
+          </div>
+          <div class="field">
+            <label>Finition *</label>
+            <select id="finition" onchange="onFinitionChange();">
+              <option value="">— Sélectionnez un coloris —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Épaisseur</label>
+            <select id="epaisseur" onchange="syncEpaisseur(); updatePriceBadge();">
+              <option value="">— Sélectionnez d'abord un matériau —</option>
+            </select>
+          </div>
+        </div>
+        <p class="field-hint" style="margin-top:14px;">Prix indicatifs HT — confirmés après étude du dossier et des coloris disponibles.</p>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(2)">← Retour</button>
+        <button class="btn btn-primary" onclick="nextStep(2)">Continuer →</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 3 : DIMENSIONS -->
+    <div class="step-panel" id="step-3">
+      <h1 class="step-title">Dimensions</h1>
+      <p class="step-subtitle">Saisissez toutes les dimensions en millimètres</p>
+      <div class="section-block">
+        <h3>Plans de travail</h3>
+        <div style="display:grid;grid-template-columns:36px 1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
+          <div></div>
+          <label style="text-align:center;">Longueur (mm)</label>
+          <label style="text-align:center;">Largeur (mm)</label>
+          <label style="text-align:center;">Épaisseur (mm)</label>
+        </div>
+        <div id="plans-container">
+          <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;">
+            <div class="plan-label">P1</div>
+            <input type="number" placeholder="2400" min="0" oninput="updateLiveSurface()">
+            <input type="number" placeholder="650" min="0" oninput="updateLiveSurface()">
+            <select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;"><option value="">—</option></select>
+          </div>
+          <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;">
+            <div class="plan-label">P2</div>
+            <input type="number" placeholder="1200" min="0" oninput="updateLiveSurface()">
+            <input type="number" placeholder="650" min="0" oninput="updateLiveSurface()">
+            <select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;"><option value="">—</option></select>
+          </div>
+          <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;">
+            <div class="plan-label">P3</div>
+            <input type="number" placeholder="" min="0" oninput="updateLiveSurface()">
+            <input type="number" placeholder="" min="0" oninput="updateLiveSurface()">
+            <select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;"><option value="">—</option></select>
+          </div>
+        </div>
+        <button class="btn-add-row" onclick="addPlan()">+ Ajouter un plan</button>
+        <div id="live-surface" style="display:none;margin-top:12px;font-size:.81rem;color:var(--stone-light);">
+          Surface plans : <strong id="live-surface-val" style="color:var(--stone);"></strong>
+        </div>
+      </div>
+      <div class="section-block">
+        <h3>Crédences</h3>
+        <div style="display:grid;grid-template-columns:36px 1fr 1fr;gap:10px;margin-bottom:8px;">
+          <div></div>
+          <label style="text-align:center;">Longueur (mm)</label>
+          <label style="text-align:center;">Hauteur (mm)</label>
+        </div>
+        <div id="credences-container">
+          <div class="plan-row" style="grid-template-columns:36px 1fr 1fr;">
+            <div class="plan-label">C1</div>
+            <input type="number" placeholder="1200" min="0" oninput="updateLiveSurface()">
+            <input type="number" placeholder="600" min="0" oninput="updateLiveSurface()">
+          </div>
+          <div class="plan-row" style="grid-template-columns:36px 1fr 1fr;">
+            <div class="plan-label">C2</div>
+            <input type="number" placeholder="" min="0" oninput="updateLiveSurface()">
+            <input type="number" placeholder="" min="0" oninput="updateLiveSurface()">
+          </div>
+        </div>
+        <button class="btn-add-row" onclick="addCredence()">+ Ajouter une crédence</button>
+      </div>
+      <div class="section-block">
+        <h3>Type de chant</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label>Type de chant</label>
+            <select id="chant">
+              <option value="">Sans chant particulier</option>
+              <option value="Droit chanfreiné">Droit chanfreiné</option>
+              <option value="Arrondi 1/4 de rond">Arrondi 1/4 de rond</option>
+              <option value="Arrondi 1/2 rond">Arrondi 1/2 rond</option>
+              <option value="Droit 4 à 10 cm coupe d'onglet">Droit 4–10 cm onglet</option>
+              <option value="Droit 4 à 10 cm rapporté">Droit 4–10 cm rapporté</option>
+              <option value="Droit 2 + 2 cm chanfreiné">Droit 2+2 cm chanfreiné</option>
+              <option value="Aile d'avion">Aile d'avion</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Longueur totale chant (mm)</label>
+            <input type="number" id="chant-longueur" placeholder="3600" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(3)">← Retour</button>
+        <button class="btn btn-primary" onclick="nextStep(3)">Continuer →</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 4 : OPTIONS -->
+    <div class="step-panel" id="step-4">
+      <h1 class="step-title">Options & évidements</h1>
+      <p class="step-subtitle">Découpes, perçages et conditions de pose</p>
+      <div class="section-block">
+        <h3>Évidements & perçages</h3>
+        <div class="counter-grid" id="counters">
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+        </div>
+      </div>
+      <div class="section-block">
+        <h3>Prestation & livraison</h3>
+        <div class="counter-grid">
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose & installation</span><span class="counter-price" data-key="pose-installation"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+        </div>
+      </div>
+      <div class="section-block">
+        <h3>Conditions de pose & TVA</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label>Le logement a-t-il plus de 2 ans ?</label>
+            <div class="radio-cards">
+              <div class="radio-card"><input type="radio" name="tva" id="tva-oui" value="10" checked><label for="tva-oui"><span class="icon">🏠</span>Oui — TVA 10%</label></div>
+              <div class="radio-card"><input type="radio" name="tva" id="tva-non" value="20"><label for="tva-non"><span class="icon">🏗️</span>Non — TVA 20%</label></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Accès & livraison</label>
+            <div class="radio-cards">
+              <div class="radio-card"><input type="radio" name="livraison" id="rdc" value="rdc" checked><label for="rdc"><span class="icon">🚪</span>Rez-de-chaussée<small id="lbl-rdc" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
+              <div class="radio-card"><input type="radio" name="livraison" id="etage" value="etage"><label for="etage"><span class="icon">🏢</span>Étage / Paris<small id="lbl-etage" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-block">
+        <h3>Commentaire & plan coté</h3>
+        <div class="form-grid full">
+          <div class="field">
+            <label>Commentaire</label>
+            <textarea id="commentaire" placeholder="Forme particulière, contrainte d'accès, précisions..."></textarea>
+          </div>
+          <div class="field">
+            <label>Plan coté (facultatif)</label>
+            <input type="file" id="plan-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:10px;">
+            <span class="field-hint">PDF, JPG, PNG — 10 Mo max</span>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(4)">← Retour</button>
+        <button class="btn btn-primary" onclick="nextStep(4)">Voir le devis →</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 5 : RÉCAPITULATIF -->
+    <div class="step-panel" id="step-5">
+      <h1 class="step-title">Récapitulatif</h1>
+      <p class="step-subtitle">Vérifiez le devis avant de finaliser</p>
+      <div class="summary-card" id="summary-chantier"></div>
+      <div class="summary-card" id="price-breakdown"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(5)">← Retour</button>
+        <button class="btn btn-gold btn-submit" onclick="submitQuote('valider')">✓ Valider le devis</button>
+      </div>
+    </div>
+
+  </div><!-- /form-main -->
+</div><!-- /view-form -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : NOUVEAU CLIENT (ADMIN)
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-new-client" class="modal-backdrop">
+  <div class="modal fade-in">
+    <h2>Nouveau client professionnel</h2>
+    <div class="form-grid">
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="new-societe" placeholder="Cuisines & Co"></div>
+      <div class="field"><label>Nom *</label><input type="text" id="new-nom" placeholder="Dupont"></div>
+      <div class="field"><label>Prénom</label><input type="text" id="new-prenom" placeholder="Jean"></div>
+      <div class="field"><label>Email *</label><input type="email" id="new-email" placeholder="jean@cuisines-co.fr"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="new-tel" placeholder="06 XX XX XX XX"></div>
+      <div class="field span-2">
+        <label>Mot de passe *</label>
+        <input type="text" id="new-password" placeholder="Mot de passe initial">
+        <span class="field-hint">Le cuisiniste pourra se connecter avec ces identifiants</span>
+      </div>
+    </div>
+    <div id="modal-error" style="color:#c0392b;font-size:.82rem;margin-top:12px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="createClient()">Créer le compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : ÉDITER UN CLIENT (ADMIN)
+═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : PROFIL CUISINISTE (PRO)
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-pro-profil" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:580px;">
+    <h2>✏️ Mon profil société</h2>
+    <p style="font-size:.8rem;color:var(--stone-light);margin-bottom:20px;">Ces informations apparaîtront sur vos bons de commande transmis à vos clients.</p>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Coordonnées société</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="pp-societe" placeholder="Cuisines & Co"></div>
+      <div class="field"><label>Prénom du contact</label><input type="text" id="pp-prenom" placeholder="Marc"></div>
+      <div class="field"><label>Nom du contact</label><input type="text" id="pp-nom" placeholder="Bernard"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="pp-tel" placeholder="06 12 34 56 78"></div>
+      <div class="field"><label>Email</label><input type="email" id="pp-email" placeholder="contact@cuisines-co.fr"></div>
+      <div class="field span-2"><label>Adresse</label><input type="text" id="pp-adresse" placeholder="15 rue du Commerce"></div>
+      <div class="field"><label>Code postal</label><input type="text" id="pp-cp" placeholder="69001"></div>
+      <div class="field"><label>Ville</label><input type="text" id="pp-ville" placeholder="Lyon"></div>
+    </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Mentions optionnelles (BC)</div>
+    <div class="form-grid">
+      <div class="field"><label>SIRET</label><input type="text" id="pp-siret" placeholder="12345678900012" maxlength="14"></div>
+      <div class="field"><label>Site web</label><input type="text" id="pp-web" placeholder="www.cuisines-co.fr"></div>
+    </div>
+
+    <div id="pp-error" style="color:#c0392b;font-size:.82rem;margin-top:12px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeProProfilModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="saveProProfilModal()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : PROFIL SOCIÉTÉ (ADMIN)
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-societe" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:680px;">
+    <h2>⚙ Profil société — Intérieur Granit</h2>
+    <p style="font-size:.8rem;color:var(--stone-light);margin-bottom:20px;">Ces informations apparaîtront sur vos devis et factures.</p>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Identité légale</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>Raison sociale *</label><input type="text" id="soc-raison" placeholder="Intérieur Granit"></div>
+      <div class="field"><label>Forme juridique</label><input type="text" id="soc-forme" placeholder="SARL, SAS, EI…"></div>
+      <div class="field"><label>Capital social</label><input type="text" id="soc-capital" placeholder="10 000 €"></div>
+      <div class="field"><label>Numéro SIRET (14 chiffres)</label><input type="text" id="soc-siret" placeholder="12345678900012" maxlength="14"></div>
+      <div class="field"><label>Code NAF / APE</label><input type="text" id="soc-naf" placeholder="4332A"></div>
+      <div class="field span-2"><label>N° TVA intracommunautaire</label><input type="text" id="soc-tva-intra" placeholder="FR00123456789"></div>
+    </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Coordonnées</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>Adresse</label><input type="text" id="soc-adresse" placeholder="12 rue de l'Artisan"></div>
+      <div class="field"><label>Code postal</label><input type="text" id="soc-cp" placeholder="75001"></div>
+      <div class="field"><label>Ville</label><input type="text" id="soc-ville" placeholder="Paris"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="soc-tel" placeholder="01 23 45 67 89"></div>
+      <div class="field"><label>Email</label><input type="email" id="soc-email" placeholder="contact@interieur-granit.fr"></div>
+      <div class="field"><label>Site web</label><input type="text" id="soc-web" placeholder="www.interieur-granit.fr"></div>
+    </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">RIB — Coordonnées bancaires</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>IBAN</label><input type="text" id="soc-iban" placeholder="FR76 1234 5678 9012 3456 7890 123" style="font-family:monospace;letter-spacing:.05em;"></div>
+      <div class="field"><label>BIC / SWIFT</label><input type="text" id="soc-bic" placeholder="BNPAFRPPXXX"></div>
+      <div class="field"><label>Banque</label><input type="text" id="soc-banque" placeholder="BNP Paribas"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSocieteModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="saveSocieteModal()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-edit-client" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:680px;">
+    <h2>Modifier le compte cuisiniste</h2>
+    <input type="hidden" id="edit-client-email-orig">
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Informations de contact</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>Nom de la société (commercial) *</label><input type="text" id="edit-societe" placeholder="Cuisines & Co"></div>
+      <div class="field"><label>Nom *</label><input type="text" id="edit-nom"></div>
+      <div class="field"><label>Prénom</label><input type="text" id="edit-prenom"></div>
+      <div class="field"><label>Email *</label><input type="email" id="edit-email"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="edit-tel"></div>
+      <div class="field span-2">
+        <label>Nouveau mot de passe</label>
+        <input type="text" id="edit-password" placeholder="Laisser vide pour ne pas modifier">
+        <span class="field-hint">Le mot de passe actuel est conservé si ce champ est vide</span>
+      </div>
+    </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Informations légales &amp; facturation</div>
+    <div class="form-grid">
+      <div class="field span-2"><label>Raison sociale (légale)</label><input type="text" id="edit-raison-sociale" placeholder="Cuisines &amp; Co SARL"></div>
+      <div class="field"><label>SIRET (14 chiffres)</label><input type="text" id="edit-siret" placeholder="12345678900012" maxlength="14"></div>
+      <div class="field"><label>N° TVA intracommunautaire</label><input type="text" id="edit-tva-intra" placeholder="FR00123456789"></div>
+      <div class="field span-2"><label>Adresse de facturation</label><input type="text" id="edit-adresse-fact" placeholder="12 rue du Commerce"></div>
+      <div class="field"><label>Code postal facturation</label><input type="text" id="edit-cp-fact" placeholder="69001"></div>
+      <div class="field"><label>Ville facturation</label><input type="text" id="edit-ville-fact" placeholder="Lyon"></div>
+      <div class="field span-2">
+        <label>Conditions de paiement</label>
+        <select id="edit-conditions-paiement" style="width:100%;">
+          <option value="">— Choisir —</option>
+          <option value="Comptant à réception de facture">Comptant à réception de facture</option>
+          <option value="15 jours net">15 jours net</option>
+          <option value="30 jours net">30 jours net</option>
+          <option value="30 jours fin de mois">30 jours fin de mois</option>
+          <option value="45 jours fin de mois">45 jours fin de mois</option>
+          <option value="60 jours net">60 jours net</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="modal-edit-error" style="color:#c0392b;font-size:.82rem;margin-top:12px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="saveEditClient()">Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : PASSAGE EN COMMANDE
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-commande" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:580px;">
+    <h2>Passer en commande</h2>
+    <input type="hidden" id="commande-quote-id">
+    <div id="commande-quote-recap" style="background:var(--stone);color:var(--cream);border-radius:4px;padding:14px 18px;margin-bottom:24px;font-size:.84rem;"></div>
+
+    <div class="commande-section">
+      <h4>📅 Date d'installation souhaitée *</h4>
+      <div class="field">
+        <input type="date" id="commande-date-install">
+        <span class="field-hint">Date à laquelle vous souhaitez que la pose soit réalisée</span>
+      </div>
+    </div>
+
+    <div class="commande-section">
+      <h4>📐 Plan de la cuisine</h4>
+      <div class="file-drop-zone" id="drop-plan" onclick="document.getElementById('file-plan').click()">
+        <input type="file" id="file-plan" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this,'drop-plan','label-plan')">
+        <div class="file-drop-label">
+          <strong id="label-plan">Cliquez pour ajouter le plan coté</strong><br>
+          PDF, JPG, PNG — 20 Mo max
+        </div>
+      </div>
+    </div>
+
+    <div class="commande-section">
+      <h4>✍️ Devis signé <span style="font-size:.75rem;font-weight:300;color:var(--stone-light);">(optionnel — à venir)</span></h4>
+      <div class="file-drop-zone" id="drop-devis" onclick="document.getElementById('file-devis').click()">
+        <input type="file" id="file-devis" accept=".pdf" onchange="handleFileSelect(this,'drop-devis','label-devis')">
+        <div class="file-drop-label">
+          <strong id="label-devis">Cliquez pour joindre le devis signé</strong><br>
+          PDF uniquement
+        </div>
+      </div>
+    </div>
+
+    <div class="commande-section">
+      <h4>💬 Notes pour Intérieur Granit</h4>
+      <div class="field">
+        <textarea id="commande-notes" placeholder="Contraintes d'accès, précisions de pose, informations complémentaires…" style="min-height:70px;"></textarea>
+      </div>
+    </div>
+
+    <div id="modal-commande-error" style="color:#c0392b;font-size:.82rem;margin-top:8px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCommandeModal()">Annuler</button>
+      <button class="btn btn-commande" onclick="confirmCommande()">🛒 Confirmer la commande</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════════ -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIGURATION SUPABASE — À REMPLIR AVEC VOS IDENTIFIANTS
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://cipctjlqehmcdxkxjcre.supabase.co';  // Ex: https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpcGN0amxxZWhtY2R4a3hqY3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MDQ3NDcsImV4cCI6MjA5MDM4MDc0N30.Bi5Us_YaJzf95FcvkdK0nLPvqAWX569YYJ229vuhgHU
+'; // Clé anon/public
+
+// Initialisation Supabase (null si non configuré)
+let supabase = null;
+if (SUPABASE_URL !== 'VOTRE_URL_SUPABASE' && SUPABASE_ANON_KEY !== 'VOTRE_CLE_ANON') {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GRILLE TARIFAIRE — modifier ici pour mettre à jour les prix
+// ═══════════════════════════════════════════════════════════════
+const PRIX = {
+  // Prix d'achat cuisinistes — source : Tarif_vente_Tranches_Int_Granit_2026 avec marge 2.xlsx
+  // Clés épaisseur = épaisseur en mm (chaîne), valeur = prix achat €/m²
+  materiaux: {
+    'granit':                { label: 'Granit',                epaisseurs: { '20': 293, '30': 360 } },
+    'quartz-silestone':      { label: 'Quartz Silestone',      epaisseurs: { '12': 281, '20': 327, '30': 446 } },
+    'quartz-unistone':       { label: 'Quartz Unistone',       epaisseurs: { '12': 312, '20': 312, '30': 394 } },
+    'dekton':                { label: 'Dekton',                epaisseurs: { '8':  241, '12': 341, '20': 396 } },
+    'ceramique-laminam':     { label: 'Laminam',               epaisseurs: { '5':  165, '12': 286, '20': 374 } },
+    'ceramique-neolith':     { label: 'Neolith',               epaisseurs: { '6':  273, '12': 273, '20': 345 } },
+    'ceramique-abkstone':    { label: 'ABK-Materia',           epaisseurs: { '6':  186, '12': 322, '20': 433 } },
+    'ceramique-xstone':      { label: 'Xtone Porcelanosa',     epaisseurs: { '12': 306, '20': 478 } },
+    'ceramique-uniceramica': { label: 'Uniceramica',           epaisseurs: { '6':  270, '12': 270, '20': 428 } },
+    'marbre':                { label: 'Marbre',                epaisseurs: { '20': 420 } },
+    'pierre':                { label: 'Pierre',                epaisseurs: { '20': 205 } },
+    // ── Gamme Courte Intérieur Granit (PV Int. Granit = tarif IG aux cuisinistes) ─
+    'gc-granit':      { label: 'Granit — Gamme Courte IG',          epaisseurs: { '20': 293, '30': 360 } },
+    'gc-quartz':      { label: 'Quartz Unistone — Gamme Courte IG', epaisseurs: { '12': 315, '20': 315, '30': 398 } },
+    'gc-uniceramica': { label: 'Uniceramica — Gamme Courte IG',     epaisseurs: { '12': 315, '20': 495 } },
+    'gc-neolith':     { label: 'Neolith — Gamme Courte IG',         epaisseurs: { '12': 375, '20': 525 } },
+    'gc-laminam':     { label: 'Laminam — Gamme Courte IG',         epaisseurs: { '20': 335 } },
+  },
+  credences: { facteur: 1.0 },
+  options: {
+    'plaque-cuisson':    { label: 'Découpe plaque de cuisson',      prix: 105 },
+    'evier-encastre':    { label: 'Évier encastré sur plan',        prix: 105 },
+    'evier-sous-plan':   { label: 'Bac évier collé sous plan',      prix: 188 },
+    'percage-mitigeur':  { label: 'Perçage mitigeur / bonde',       prix:  24 },
+    'percage-bar':       { label: 'Perçage bar / snack',            prix:  35 },
+    'prise-plan':        { label: 'Prise électrique sur plan',      prix:  53 },
+    'prise-credence':    { label: 'Prise électrique crédence',      prix:  27 },
+    'poubelle':          { label: 'Poubelle encastrée',             prix:  75 },
+    'prise-de-cote':     { label: 'Prise de côte (déplacement)',    prix: 180 },
+    'pose-installation': { label: 'Pose & installation',            prix: 510 },
+  },
+  chants: {
+    'Droit chanfreiné':                  30,
+    'Arrondi 1/4 de rond':               40,
+    'Arrondi 1/2 rond':                  50,
+    "Droit 4 à 10 cm coupe d'onglet":   65,
+    'Droit 4 à 10 cm rapporté':          75,
+    'Droit 2 + 2 cm chanfreiné':         60,
+    "Aile d'avion":                      85,
+  },
+  pose: { rdc: 220, etage: 420 }
+};
+
+const COLORIS_DATA = {
+  'ceramique-abkstone': {
+    'ANIMA BEIGE': [{"f": "NAT", "e": {"12": 346.5, "20": 457.88}}],
+    'ANIMA GRIGIO': [{"f": "NAT", "e": {"12": 346.5, "20": 457.88}}],
+    'ANTIQUE WHITE': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'BELJIAN BLUE': [{"f": "NAT", "e": {"12": 346.5}}],
+    'BIANCO VAGLI': [{"f": "SOFT - LUX", "e": {"12": 482.62, "20": 742.5}}],
+    'BLACK': [{"f": "SOFT", "e": {"6": 210.38, "12": 383.63, "20": 519.75}}],
+    'BLACK TAURUS': [{"f": "SOFT - LUX", "e": {"6": 198.0, "12": 408.38}}],
+    'BLANC DU BLANC': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38}}],
+    'BLEU DE SAVOIE': [{"f": "NAT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'BRECCIA IMPERIALE': [{"f": "SOFT - LUX", "e": {"12": 408.38}}],
+    'CALACATTA EMERALD': [{"f": "SOFT - LUX", "e": {"12": 408.38}}],
+    'CALACATTA EXTRA': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'CALACATTA GRIS': [{"f": "SOFT - LUX", "e": {"12": 408.38, "20": 569.25}}],
+    'CALACATTA MAGNIFICO': [{"f": "SOFT - LUX", "e": {"20": 742.5}}],
+    'CEPPO DI GRE': [{"f": "NAT", "e": {"6": 185.63, "12": 346.5, "20": 457.88}}],
+    'CLASSIC MARQUINA': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'CORCHIA GOLD': [{"f": "SOFT - LUX", "e": {"12": 408.38, "20": 569.25}}],
+    'CRISTALLO AMBER': [{"f": "SOFT - LUX", "e": {"12": 408.38}}],
+    'DARK STONE': [{"f": "NAT", "e": {"12": 321.75}}],
+    'EMERALD GREEN': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38}}],
+    'FOUR SEASONS HONEY': [{"f": "NAT", "e": {"12": 321.75}}],
+    'GREY GRAFITE': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'GREY SOAPSTONE': [{"f": "NAT", "e": {"12": 346.5}}],
+    'GREYLAC PLATINUM': [{"f": "SOFT 3D - LUX", "e": {"12": 408.38}}],
+    'HYPER SILVER': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75}}],
+    'HYPER WHITE': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75, "20": 433.12}}],
+    'INVISIBLE SELECT': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 482.62}}],
+    'LASA SAPPHIRE': [{"f": "SOFT 3D - LUX", "e": {"12": 408.38}}],
+    'MONTBLANC': [{"f": "SOFT 3D - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'NOIR LAURENT': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 482.62}}],
+    'NORDIK STONE BLACK': [{"f": "NAT", "e": {"6": 185.63, "12": 346.5, "20": 457.88}}],
+    'NORDIK WOOD GOLD': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75, "20": 433.12}}],
+    'PULPIS IVORY': [{"f": "NAT - LUX", "e": {"12": 408.38}}],
+    'QUARZITE LUNA': [{"f": "SOFT 3D - LUX", "e": {"12": 408.38, "20": 519.75}}],
+    'RE TOUR FOG': [{"f": "NAT", "e": {"12": 346.5, "20": 457.88}}],
+    'REBEL BRONZE': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75}}],
+    'REBEL NIGHT': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75}}],
+    'REBEL SILVER': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75}}],
+    'RESIN SMOKE': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75, "20": 433.12}}],
+    'RESIN WHITE': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75, "20": 433.12}}],
+    'ROCKY DESERT': [{"f": "NAT", "e": {"12": 346.5, "20": 457.88}}],
+    'STATUARIO SELECT': [{"f": "SOFT - LUX", "e": {"12": 482.62, "20": 742.5}}],
+    'STATUARIO SUPERIOR': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38, "20": 569.25}}],
+    'STILL NO W SAND': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75, "20": 433.12}}],
+    'SUPER WHITE': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 408.38}}],
+    'TRAVERTINO NOVANA BONE': [{"f": "NAT", "e": {"12": 321.75}}],
+    'TRAVERTINO NOVANA HONEY': [{"f": "NAT", "e": {"6": 185.63, "12": 321.75}}],
+    'WHITE': [{"f": "SOFT - LUX", "e": {"6": 222.75, "12": 433.12, "20": 618.75}}],
+  },
+  'ceramique-laminam': {
+    'ARDESIA BIANCO A SPACCO': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'ARDESIA NERA A SPACCO': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'BIANCO': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'BIANCO ASSOLUTO': [{"f": "MATE", "e": {"5": 233.88, "12": 381.15, "20": 483.25}}],
+    'BIANCO ASSOLUTO LUCIDATO': [{"f": "POLI", "e": {"5": 251.21, "12": 432.21}}],
+    'BIANCO LASA': [{"f": "MATE", "e": {"12": 319.9, "20": 408.38}}],
+    'BIANCO LASA LUCIDATO': [{"f": "MATE", "e": {"12": 381.15}}],
+    'BLU LUCIDATO': [{"f": "POLI", "e": {"12": 670.43}}],
+    'BRUNO': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'CALACATTA BLACK BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'CALACATTA BLACK LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21}}],
+    'CALACATTA MEDICEO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21, "20": 537.7}}],
+    'CALACATTA MICHELANGELO BOOK MATCH': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'CALACATTA MICHELANGELO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21, "20": 537.7}}],
+    'CALACATTA MICHELANGELO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'CALACATTA ORO VENATO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"5": 251.21, "12": 432.21}}],
+    'CALACATTA ORO VENATO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'CALACATTA PURO LUCIDATO': [{"f": "POLI", "e": {"12": 381.15}}],
+    'CALACATTA PURO NATURALE': [{"f": "MATE", "e": {"12": 353.93}}],
+    'CRISTRALLO GOLD CARESS BOOK MATCH': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'CRISTRALLO GOLD LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21}}],
+    'DIAMOND CREAM': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'DIAMOND CREAM LUCIDATO': [{"f": "POLI", "e": {"5": 233.88, "12": 381.15, "20": 483.25}}],
+    'FUSION WHITE': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'GRAFITE': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'MARBLE GOLD': [{"f": "MATE", "e": {"12": 319.9, "20": 408.38}}],
+    'NERO': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'NERO ASSOLUTO': [{"f": "MATE", "e": {"5": 233.88, "12": 381.15, "20": 483.25}}],
+    'NERO GRECO': [{"f": "MATE", "e": {"5": 207.9, "12": 353.93, "20": 449.21}}],
+    'NERO GRECO LUCIDATO': [{"f": "POLI", "e": {"5": 251.21, "12": 432.21}}],
+    'NERO MARQUINA EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'NOIR DESIR': [{"f": "MATE", "e": {"5": 207.9, "12": 353.93, "20": 449.21}}],
+    'NOIR DESIR LUCIDATO': [{"f": "POLI", "e": {"5": 251.21, "12": 432.21, "20": 537.7}}],
+    'PATAGONIA CARESS BOOK MATCH': [{"f": "MATE", "e": {"20": 449.21}}],
+    'PATAGONIA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"20": 483.25}}],
+    'PIETRA DI CARDOSO NERO NATURALE': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'PIETRA DI SAVOIE ANTHRACITE BOCCIARDATA': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'PIETRA DI SAVOIE GRIGIA BOCCIARDATA': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'PIETRA DI SAVOIE PERLA BOCCIARDATA': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9, "20": 408.38}}],
+    'PIETRA GREY': [{"f": "MATE", "e": {"5": 207.9, "12": 353.93, "20": 449.21}}],
+    'PIETRA PIASENTINA GRIGIO': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'PIETRA PIASENTINA TAUPE': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'PIOMBO': [{"f": "MATE", "e": {"5": 164.58, "12": 285.86, "20": 374.35}}],
+    'PORFIDO MARRONE NATURALE': [{"f": "MATE", "e": {"12": 381.15, "20": 483.25}}],
+    'ROCCIA': [{"f": "MATE", "e": {"5": 164.58, "12": 285.86, "20": 374.35}}],
+    'SABBIA': [{"f": "MATE", "e": {"12": 319.9}}],
+    'SAHARA NOIR EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'SALE': [{"f": "MATE", "e": {"5": 164.58, "12": 285.86, "20": 374.35}}],
+    'STATUARIO ALTISSIMA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21, "20": 537.7}}],
+    'STATUARIO ALTISSIMO BOOK MATCH': [{"f": "MATE", "e": {"12": 353.93, "20": 449.21}}],
+    'TALCO': [{"f": "MATE", "e": {"5": 181.91, "12": 319.9}}],
+    'TERRA': [{"f": "MATE", "e": {"5": 164.58, "12": 285.86, "20": 374.35}}],
+    'TERRA DI MATERA NATURALE': [{"f": "MATE", "e": {"12": 381.15}}],
+    'VERDE ALPI BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 353.93}}],
+    'VERDE ALPI LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 432.21}}],
+    'VERDERAME': [{"f": "MATE", "e": {"12": 319.9}}],
+  },
+  'ceramique-neolith': {
+    'ABU DHABI': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "POLI", "e": {"6": 510.0, "12": 510.0}}],
+    'AMAZONICO': [{"f": "SLATE", "e": {"6": 397.5, "12": 397.5}}],
+    'ARABESQUE': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0}}],
+    'ARENA': [{"f": "SATIN", "e": {"6": 300.0, "12": 300.0}}],
+    'ARTIC WHITE': [{"f": "SILK", "e": {"6": 397.5, "12": 397.5, "20": 480.0}}],
+    'ARTISAN': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'ASPEN GREY': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0}}],
+    'BARRO': [{"f": "SATIN", "e": {"6": 273.0, "12": 273.0, "20": 345.0}}],
+    'BASALT BLACK': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'BASALT GREY': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0}}],
+    'BETON': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'BLACK OBSESSION': [{"f": "SILK", "e": {"6": 397.5, "12": 397.5, "20": 480.0}}],
+    'CALACATTA': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"12": 510.0, "20": 622.5}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'CALACATTA GOLD': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0}}, {"f": "ULTRASOFT", "e": {"12": 510.0}}, {"f": "POLISHED", "e": {"12": 510.0}}],
+    'CALACATTA LUXE': [{"f": "ULTRASOFT", "e": {"6": 510.0, "12": 510.0}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0}}],
+    'CALACATTA ROMA': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'CALACATTA ROYALE': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"6": 510.0, "12": 510.0}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'CALATORAO': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'CALISTA': [{"f": "ULTRASOFT", "e": {"6": 450.0, "12": 450.0}}, {"f": "POLISHED", "e": {"6": 450.0, "12": 450.0}}],
+    'CAPADOCCIA SUNSET': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'CEMENT': [{"f": "SATIN", "e": {"6": 273.0, "12": 273.0}}],
+    'COLORADO DUNES': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}, {"f": "POLISHED", "e": {"12": 510.0, "20": 622.5}}],
+    'ESTATUARIO': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"12": 510.0}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'EVEREST SUNRISE': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'HIMALAYA CRISTAL': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}, {"f": "ULTRASOFT", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}, {"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'IGNEA': [{"f": "RIVERWASHED", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'IRON COPPER': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0}}],
+    'IRON CORTEN': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'IRON FROST': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0}}],
+    'IRON GREY': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'JUST WHITE': [{"f": "SILK", "e": {"6": 273.0, "12": 273.0, "20": 345.0}}],
+    'KRATER': [{"f": "RIVERWASHED", "e": {"6": 300.0, "12": 300.0}}],
+    'LA BOHEME': [{"f": "SATIN", "e": {"12": 360.0}}],
+    'LAYLA': [{"f": "SLATE", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}, {"f": "POLISHED", "e": {"6": 360.0, "12": 360.0}}],
+    'LUX': [{"f": "POLISHED", "e": {"6": 510.0, "12": 510.0, "20": 622.5}}],
+    'METROPOLITAN': [{"f": "STEEL TOUCH", "e": {"6": 397.5, "12": 397.5, "20": 480.0}}],
+    'MONT BLANC': [{"f": "SILK", "e": {"6": 420.0, "12": 420.0, "20": 525.0}}],
+    'NERO': [{"f": "SATIN", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'NERO ZIMBABWE': [{"f": "RIVERWASH", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'NEW YORK - NEW YORK': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'NIAGARA': [{"f": "SILK", "e": {"6": 397.5, "12": 397.5}}, {"f": "POLISHED", "e": {"6": 450.0, "12": 450.0}}],
+    'PIETRA DI LUNA': [{"f": "SILK", "e": {"6": 273.0, "12": 273.0, "20": 345.0}}],
+    'PIETRA DI OSSO': [{"f": "SILK", "e": {"6": 273.0, "12": 273.0, "20": 345.0}}],
+    'PIETRA DI PLOMBO': [{"f": "SILK", "e": {"6": 273.0, "12": 273.0, "20": 345.0}}],
+    'PIETRA GREY': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0}}],
+    'PULPIS': [{"f": "SILK", "e": {"6": 360.0, "12": 360.0}}],
+    'RAPOLANO': [{"f": "NATURAL TOUCH", "e": {"6": 360.0, "12": 360.0, "20": 450.0}}],
+    'RETROSTONE': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'SAN SIMONE': [{"f": "SILK", "e": {"12": 420.0, "20": 525.0}}],
+    'SHILIN': [{"f": "SLATE", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'STRATA ARGENTUM': [{"f": "RIVERWASH", "e": {"6": 397.5, "12": 397.5}}],
+    'SUMMER DALA': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0}}],
+    'TERRAZO CEPPO': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0}}],
+    'WHITESANDS': [{"f": "NATURAL TOUCH", "e": {"12": 420.0, "20": 525.0}}],
+    'WULONG': [{"f": "SLATE", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+    'ZAHA STONE': [{"f": "SILK", "e": {"6": 300.0, "12": 300.0, "20": 360.0}}],
+  },
+  'ceramique-uniceramica': {
+    'ARABESCATO CALACATTA': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'ARABESCATO OROBICO': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'ARABESCATO VAGLI': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'ARDESIA AUTUMN': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'ARDESIA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'BASALTO GRIGIO': [{"f": "BOCCIARDATA", "e": {"12": 270.0, "20": 427.5}}],
+    'BASALTO NERO': [{"f": "BOCCIARDATA", "e": {"12": 270.0, "20": 427.5}}],
+    'BIANCO ASSOLUTO': [{"f": "SOFT TOUCH", "e": {"12": 270.0, "20": 427.5}}],
+    'BRECCIA AURORA': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'BRECCIA TAUPE': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'CALACATTA ORO': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'CALACATTA ROYAL': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'CALIZA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'CALIZA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'CAPRIA': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'CEPPO DI GRE': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'CRYSTALLO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'FIOR DI BOSCO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'JADE GREEN': [{"f": "NATURALE", "e": {"12": 270.0}}, {"f": "LUCIDATO", "e": {"12": 375.0}}],
+    'JET BLACK': [{"f": "SOFT TOUCH", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'JURA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'LINCOLN DORATO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'MARMO ANTICO': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'NERO ASSOLUTO': [{"f": "BOCCIARDATA", "e": {"12": 270.0, "20": 427.5}}],
+    'PATAGONIA': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'PERLA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 270.0, "20": 427.5}}],
+    'PORTORO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'SAHARA GREY': [{"f": "NATURALE", "e": {"12": 270.0}}],
+    'SAHARA NOIR': [{"f": "NATURALE", "e": {"12": 270.0}}],
+    'SINAI PEARL': [{"f": "NATURALE", "e": {"6": 270.0, "12": 270.0, "20": 427.5}}],
+    'STATUARIO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}, {"f": "LUCIDATO", "e": {"12": 420.0, "20": 585.0}}],
+    'TRAVERTINO ARGENTO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'TRAVERTINO BIANCO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'TRAVERTINO CLASSICO': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'TRAVERTINO LIGHT': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+    'TRAVERTINO NAVONA': [{"f": "NATURALE", "e": {"12": 270.0, "20": 427.5}}],
+  },
+  'ceramique-xstone': {
+    'AGED CLAY': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'AGED DARK': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'ALPI VERDE': [{"f": "POLISHED", "e": {"12": 494.55}}],
+    'ALPINUS WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 494.55}}],
+    'ARGOS BLACK NATURE': [{"f": "NATURE", "e": {"12": 432.86}}],
+    'ARGOS BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 494.55}}],
+    'ARIA WHITE NATURE': [{"f": "NATURE", "e": {"12": 417.48, "20": 478.3}}],
+    'ARIA WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 479.49, "20": 590.81}}],
+    'ARS BEIGE NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'ARS BEIGE POLISH': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'ASTANA GREY NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'ASTANA GREY POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'BIANCO LASA': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'BLUE ROMA': [{"f": "SILK - POLISHED", "e": {"12": 494.55}}],
+    'BOTEGA CALIZA': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'BOTTEGA ACERO': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'BOTTEGA ANTHACITA': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'CALACATTA ANTICO NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'CALACATTA ANTICO POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'CALACATTA GOLD NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'CALACATTA GOLD POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'CALACATTA GREEN': [{"f": "SILK - POLISHED", "e": {"12": 494.55}}],
+    'CALATORAO': [{"f": "NATURE", "e": {"12": 432.86}}],
+    'EWOOD CAMEL': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'FIORI DI BOSCO NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'FIORI DI BOSCO POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'GLEM WHITE NATURE': [{"f": "NATURE", "e": {"12": 417.48, "20": 478.3}}],
+    'GLEM WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 479.49, "20": 590.81}}],
+    'INVISIBLE WHITE NATURE': [{"f": "NATURE", "e": {"12": 432.86}}],
+    'INVISIBLE WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 494.55}}],
+    'LIEM BLACK NATURE': [{"f": "NATURE", "e": {"12": 432.86}}],
+    'LIEM BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 494.55}}],
+    'LIEM DARK NATURE': [{"f": "NATURE", "e": {"12": 417.48, "20": 478.3}}],
+    'LIEM DARK POLISHED': [{"f": "POLISHED", "e": {"12": 479.49, "20": 590.81}}],
+    'LIEM GREY NATURE': [{"f": "NATURE", "e": {"12": 417.48}}],
+    'LIEM GREY POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'MONTREAL WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 417.48}}],
+    'MOON WHITE NATURE': [{"f": "NATURE", "e": {"12": 417.48, "20": 478.3}}],
+    'MOON WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 479.49}}],
+    'NEDA': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'OROBICO DARK NATURE': [{"f": "NATURE", "e": {"12": 432.86}}],
+    'OROBICO DARK POLISHED': [{"f": "POLISHED", "e": {"12": 494.55}}],
+    'OXIDE BROWN': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'PAONAZZO': [{"f": "SILK - POLISHED", "e": {"12": 494.55}}],
+    'PIETRA SICILIA': [{"f": "TEXTURE", "e": {"12": 383.48}}],
+    'SOLO BLACK': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'SOLO DOVE': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'SOLO WARM': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'SOLO WHITE': [{"f": "NATURE", "e": {"12": 306.48}}],
+    'TAJ MAHAL': [{"f": "SILK - POLISHED", "e": {"12": 494.55}}],
+    'TERRE GREIGE': [{"f": "NATURE", "e": {"12": 383.48}}],
+    'TERRE NERO': [{"f": "TEXTURE", "e": {"12": 383.48}}],
+    'TURA': [{"f": "TEXTURE", "e": {"12": 417.48}}],
+  },
+  'dekton': {
+    'AERIS': [{"f": "MATE", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'ALBARIUM 22': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'ARGA': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'ARGENTIUM': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'AURA 22': [{"f": "MATE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'AWAKE': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'BERGEN': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'BROMO': [{"f": "MATE TEXTUREE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'DANAE': [{"f": "MATE", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'DAZE': [{"f": "VELVET", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'DOMOOS': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'DUNNA': [{"f": "POLI", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'ENTZO': [{"f": "MATE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'ETER': [{"f": "MATE", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'FOSSIL': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'GK07 CEPPO': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'HALO': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'HELENA 22': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'KAIROS 22': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'KELYA': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'KEON': [{"f": "MATE", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'KHALO': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'KIRA': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'KOVIK': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'KRETA': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'KURO': [{"f": "MATE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'LAGUNA': [{"f": "VELVET", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'LAOS': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'LAURENT': [{"f": "MATE TEXTUREE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'LIMBO': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'LUCID': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'LUNAR 22': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'MALIBU': [{"f": "POLI", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'MARINA': [{"f": "VELVET", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'MICRON': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'MOONE': [{"f": "MATE", "e": {"8": 240.57, "12": 340.81, "20": 396.49}}],
+    'MORPHEUS': [{"f": "VELVET", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'NACRE': [{"f": "VELVET TEXTUREE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'NATURA 22': [{"f": "POLI", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'NEURAL': [{"f": "VELVET TEXTUREE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'NILIUM 22': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'OPERA': [{"f": "VELVET", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'REM': [{"f": "VELVET TEXTUREE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'REVERIE': [{"f": "VELVET", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'SALINA': [{"f": "POLI", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'SASEA': [{"f": "MATE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'SIRIUS': [{"f": "MATE TEXTUREE", "e": {"8": 298.49, "12": 427.68, "20": 496.74}}],
+    'SOKE': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'SOMNIA': [{"f": "MATE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'TAGA': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'TK05 SABBIA': [{"f": "MATE TEXTUREE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'TK06 MARMARIO': [{"f": "MATE TEXTUREE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'TRANCE': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'TRILIUM': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'UMBER': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'UYUNI': [{"f": "MATE", "e": {"8": 400.95, "12": 579.15, "20": 679.38}}],
+    'VIGIL': [{"f": "POLI", "e": {"8": 481.14, "12": 692.75, "20": 813.03}}],
+    'VK01 NEBBIA': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'VK02 AVARIO': [{"f": "MATE TEXTUREE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'VK03 GRIGIO': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'VK04 GRAFITE': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+    'ZENITH': [{"f": "MATE", "e": {"8": 345.26, "12": 498.96, "20": 588.06}}],
+  },
+  'granit': {
+    'ABSOLUTE BLACK (NOIR FIN INDE)': [{"f": "CUIR", "e": {"20": 418.5, "30": 540.0}}, {"f": "POLI", "e": {"20": 405.0, "30": 526.5}}],
+    'ANDROMEDA': [{"f": "POLI", "e": {"20": 351.0, "30": 432.0}}],
+    'ANTHRACITE ELEGANT': [{"f": "CUIR", "e": {"20": 391.5, "30": 513.0}}, {"f": "POLI", "e": {"20": 378.0, "30": 499.5}}],
+    'ASPEN WHITE (BIANCO ANTICO)': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'AZUL ARAN': [{"f": "POLI", "e": {"20": 540.0, "30": 729.0}}],
+    'BALMORAL GE': [{"f": "POLI", "e": {"20": 229.5, "30": 297.0}}],
+    'BALTIC BRUN': [{"f": "POLI", "e": {"20": 216.0, "30": 256.5}}],
+    'BIANCO PIRACEMA': [{"f": "POLI", "e": {"20": 283.5, "30": 378.0}}],
+    'BIANCO VICTORIA/ PITAYA': [{"f": "POLI", "e": {"20": 405.0, "30": 526.5}}],
+    'BLACK FUSION GOLD/BLACK TAURUS': [{"f": "POLI", "e": {"20": 540.0, "30": 715.5}}, {"f": "CUIR", "e": {"20": 553.5, "30": 729.0}}],
+    'BLACK ICE': [{"f": "CUIR", "e": {"20": 324.0, "30": 432.0}}],
+    'BLACK R': [{"f": "CUIR", "e": {"20": 202.5, "30": 0.0}}],
+    'BLACK SILK': [{"f": "CUIR", "e": {"20": 337.5, "30": 445.5}}, {"f": "POLI", "e": {"20": 324.0, "30": 432.0}}],
+    'BLANC BERROCAL': [{"f": "POLI", "e": {"20": 175.5, "30": 202.5}}],
+    'BLANC CRISTAL': [{"f": "POLI", "e": {"20": 202.5, "30": 256.5}}],
+    'BLUE NIGHT': [{"f": "POLI", "e": {"20": 243.0, "30": 283.5}}],
+    'BROWN ANTIQUE': [{"f": "POLI", "e": {"20": 351.0, "30": 432.0}}, {"f": "CARESSE", "e": {"20": 378.0, "30": 459.0}}, {"f": "CUIR", "e": {"20": 364.5, "30": 445.5}}],
+    'BROWN SILK': [{"f": "POLI", "e": {"20": 378.0, "30": 459.0}}, {"f": "CUIR", "e": {"20": 391.5, "30": 472.5}}],
+    'CAFE IMPERIAL': [{"f": "POLI", "e": {"20": 337.5, "30": 472.5}}, {"f": "CUIR", "e": {"20": 351.0, "30": 486.0}}],
+    'CHEYENNE': [{"f": "CUIR", "e": {"20": 324.0, "30": 405.0}}, {"f": "POLI", "e": {"20": 310.5, "30": 391.5}}],
+    'COLONIAL GOLD': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'COLONIAL WHITE': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'COSMIC BLACK': [{"f": "POLI", "e": {"20": 364.5, "30": 459.0}}, {"f": "CUIR", "e": {"20": 378.0, "30": 472.5}}],
+    'COSMIC BLACK GOLD': [{"f": "POLI", "e": {"20": 364.5, "30": 459.0}}, {"f": "CUIR", "e": {"20": 378.0, "30": 472.5}}],
+    'FLASH BLUE': [{"f": "CROCO", "e": {"20": 229.5, "30": 270.0}}],
+    'GALAXY BLACK': [{"f": "POLI", "e": {"20": 324.0, "30": 405.0}}],
+    'GIALLO VENEZIANO': [{"f": "POLI", "e": {"20": 270.0, "30": 337.5}}],
+    'HIMALAYA BLUE': [{"f": "POLI", "e": {"20": 283.5, "30": 351.0}}],
+    'INDIAN JUPARANA': [{"f": "POLI", "e": {"20": 283.5, "30": 351.0}}],
+    'IVORY CREAM': [{"f": "POLI", "e": {"20": 310.5, "30": 378.0}}],
+    'JUPARANA COLOMBO': [{"f": "POLI", "e": {"20": 283.5, "30": 351.0}}],
+    'JUPARANA FLORENZA': [{"f": "POLI", "e": {"20": 229.5, "30": 297.0}}],
+    'KASHMIR GOLD': [{"f": "POLI", "e": {"20": 256.5, "30": 324.0}}],
+    'KASHMIR WHITE BRAZIL': [{"f": "POLI", "e": {"20": 256.5, "30": 324.0}}],
+    'KASHMIR WHITE INDE': [{"f": "POLI", "e": {"20": 256.5, "30": 324.0}}],
+    'KINAWA RAISSA': [{"f": "POLI", "e": {"20": 270.0, "30": 337.5}}],
+    'KUROKA CLASSIC': [{"f": "POLI", "e": {"20": 432.0, "30": 567.0}}, {"f": "CUIR", "e": {"20": 445.5, "30": 580.5}}],
+    'KUROKA EXTRA': [{"f": "POLI", "e": {"20": 486.0, "30": 648.0}}, {"f": "CUIR", "e": {"20": 499.5, "30": 661.5}}],
+    'LABRADOR BLEU HQ': [{"f": "POLI", "e": {"20": 351.0, "30": 472.5}}],
+    'LABRADOR BROWN': [{"f": "POLI", "e": {"20": 432.0, "30": 553.5}}],
+    'LABRADOR VERT': [{"f": "POLI", "e": {"20": 324.0, "30": 418.5}}],
+    'LEMON ICE': [{"f": "POLI", "e": {"20": 310.5, "30": 378.0}}],
+    'MADURA GOLD': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'MARINACE BLACK': [{"f": "POLI", "e": {"20": 351.0, "30": 418.5}}],
+    'MARINACE ROUGE': [{"f": "POLI", "e": {"20": 405.0, "30": 513.0}}],
+    'MULTICOLOR RED': [{"f": "POLI", "e": {"20": 270.0, "30": 310.5}}],
+    'MYSTIC GREY': [{"f": "CUIR", "e": {"20": 324.0, "30": 418.5}}],
+    'NERO RUSTENBURG MD': [{"f": "POLI", "e": {"20": 202.5, "30": 270.0}}],
+    'NEW LILLET': [{"f": "POLI", "e": {"20": 229.5, "30": 283.5}}],
+    'NOIR ANGOLA': [{"f": "CUIR", "e": {"20": 202.5, "30": 270.0}}],
+    'NOIR SAN GABRIEL': [{"f": "CUIR", "e": {"20": 175.5, "30": 243.0}}],
+    'PARADISO': [{"f": "POLI", "e": {"20": 283.5, "30": 351.0}}],
+    'ROSA BELLA': [{"f": "POLI", "e": {"20": 243.0, "30": 310.5}}],
+    'ROSE CLARTE': [{"f": "POLI", "e": {"20": 297.0, "30": 337.5}}],
+    'ROSE DALVA': [{"f": "POLI", "e": {"20": 351.0, "30": 432.0}}],
+    'ROSE PORRINO': [{"f": "POLI", "e": {"20": 108.0, "30": 135.0}}],
+    'SHIVAKASHI': [{"f": "POLI", "e": {"20": 310.5, "30": 391.5}}],
+    'STARGATE': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'STEEL GREY': [{"f": "CROCO", "e": {"20": 229.5, "30": 270.0}}, {"f": "CUIR", "e": {"20": 229.5, "30": 270.0}}],
+    'TAN BROWN': [{"f": "CROCO", "e": {"20": 243.0, "30": 283.5}}, {"f": "POLI", "e": {"20": 229.5, "30": 270.0}}],
+    'TARN FIN GRAIN (MOYEN)': [{"f": "POLI", "e": {"20": 162.0, "30": 175.5}}],
+    'TARN GROS GRAIN (ST SALVY)': [{"f": "CUIR", "e": {"20": 175.5, "30": 189.0}}, {"f": "POLI", "e": {"20": 162.0, "30": 175.5}}],
+    'TROPICAL ABRICOT': [{"f": "POLI", "e": {"20": 256.5, "30": 324.0}}],
+    'TROPICAL FASHION': [{"f": "POLI", "e": {"20": 418.5, "30": 0.0}}],
+    'VERT OLIVE': [{"f": "POLI", "e": {"20": 243.0, "30": 337.5}}],
+    'VERT TROPICAL': [{"f": "POLI", "e": {"20": 310.5, "30": 405.0}}],
+    'VIA LACTEA': [{"f": "POLI", "e": {"20": 297.0, "30": 378.0}}],
+    'VISAG BLUE': [{"f": "POLI", "e": {"20": 270.0, "30": 310.5}}],
+    'VOLGA BLUE': [{"f": "POLI", "e": {"20": 351.0, "30": 472.5}}],
+    'WISKONT WHITE': [{"f": "POLI", "e": {"20": 256.5, "30": 310.5}}],
+    'ZIMBABWE CLASSIQUE': [{"f": "VIEILLI", "e": {"20": 397.5, "30": 480.0}}, {"f": "CUIR", "e": {"20": 292.5, "30": 367.5}}, {"f": "ADOUCI/POLI", "e": {"20": 375.0, "30": 450.0}}],
+    'ZIMBABWE EXTRA (MEMORIAL)': [{"f": "WOOD", "e": {"20": 435.0, "30": 525.0}}, {"f": "TRANCHE", "e": {"20": 435.0, "30": 525.0}}],
+  },
+  'marbre': {
+    'CARRARE C': [{"f": "ADOUCI", "e": {"20": 243.0, "30": 324.0}}, {"f": "POLI", "e": {"20": 243.0, "30": 324.0}}],
+    'CARRARE EXTRA': [{"f": "ADOUCI", "e": {"20": 310.5, "30": 405.0}}, {"f": "POLI", "e": {"20": 310.5, "30": 405.0}}],
+    'CREMA MARFIL': [{"f": "POLI", "e": {"20": 270.0, "30": 364.5}}],
+    'GLACIERS': [{"f": "POLI", "e": {"20": 499.5}}],
+    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'STRIATO OLIMPICO': [{"f": "POLI", "e": {"20": 270.0, "30": 351.0}}],
+    'VERDE GUATEMALA': [{"f": "POLI", "e": {"20": 202.5, "30": 270.0}}],
+  },
+  'pierre': {
+    'ATLANTIC BEIGE': [{"f": "ADOUCIE", "e": {"20": 162.0, "30": 189.0}}],
+    'ATLANTIC GRIGIO': [{"f": "ADOUCI", "e": {"20": 162.0, "30": 189.0}}],
+    'AZUL GRIGIO LAGOS BLUE': [{"f": "ADOUCI", "e": {"20": 162.0, "30": 189.0}}],
+    'GRIGO OCEANO': [{"f": "ADOUCI", "e": {"20": 243.0, "30": 297.0}}],
+    'JURA BEIGE': [{"f": "ADOUCI", "e": {"20": 189.0, "30": 243.0}}],
+    'JURA GRIS': [{"f": "ADOUCI", "e": {"20": 189.0, "30": 243.0}}],
+    'PIERRE BLEU BELGE': [{"f": "CUIR", "e": {"20": 297.0, "30": 337.5}}],
+    'PIERRE DE FONTENAY': [{"f": "FLAMME/VIEILLI", "e": {"20": 202.5, "30": 270.0}}, {"f": "POLI", "e": {"20": 202.5, "30": 270.0}}],
+    'PIETRA GRIGIO': [{"f": "ADOUCI", "e": {"20": 216.0, "30": 256.5}}, {"f": "FLAMMEE", "e": {"20": 216.0, "30": 256.5}}, {"f": "POLI", "e": {"20": 216.0, "30": 256.5}}],
+    'PORTO BEIGE': [{"f": "ADOUCIE", "e": {"20": 162.0, "30": 189.0}}],
+    'THALA BEIGE': [{"f": "ADOUCI", "e": {"20": 189.0, "30": 256.5}}],
+    'TRIESTA BEIGE': [{"f": "ADOUCI", "e": {"20": 189.0, "30": 256.5}}],
+  },
+  'quartz-silestone': {
+    'ARDEN BLUE': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'ARIEL': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'BLANCO MAPLE 14': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'BLANCO NORTE 14': [{"f": "POLI - SUEDE", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'BLANCO STELLAR 13': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'BLANCO ZEUS': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'BOHEMIAN FLAME': [{"f": "POLI - SUEDE", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'BRASH RELISH': [{"f": "SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'CALYPSO': [{"f": "POLI - SUEDE", "e": {"12": 474.46, "20": 634.83, "30": 891.0}}],
+    'CAMDEN': [{"f": "SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'CEMENTO SPA': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'CHARCOAL SOAPSTONE': [{"f": "POLI - SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'CINCEL GREY': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'CINDER CRAZE': [{"f": "SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'CONCRETE PULSE': [{"f": "SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'CORAL CLAY COLOUR': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'CORKTOWN': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'DESERT SILVER': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'ECLECTIC PEARL': [{"f": "POLI - SUEDE", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'ET. CALACATTA GOLD': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'ET. MARQUINA': [{"f": "POLI - SUEDE", "e": {"12": 474.46, "20": 634.83, "30": 891.0}}],
+    'ET. NOIR': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'ET. SERENA': [{"f": "POLI - SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'ET. STATUARIO': [{"f": "POLI - SUEDE", "e": {"12": 474.46, "20": 634.83, "30": 891.0}}],
+    'ETHEREAL DUSK': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'ETHEREAL GLOW': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'ETHEREAL HAZE': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'ETHEREAL NOCTIS': [{"f": "POLI - SUEDE", "e": {"12": 574.69, "20": 768.48, "30": 1080.33}}],
+    'FARO WHITE': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'GRIS EXPO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'ICONIC WHITE': [{"f": "POLI - SUEDE", "e": {"12": 474.46, "20": 634.83, "30": 891.0}}],
+    'KENSHO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'LAGOON': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'LIME DELIGHT': [{"f": "SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'MARENGO': [{"f": "POLI - SUEDE", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'MIAMI VENA': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'MIAMI WHITE 17': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'NEGRO STELLAR': [{"f": "POLI", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'NEGRO TEBAS 18': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'NOKA': [{"f": "POLI - SUEDE", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'NOLITA 23': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'PARISIEN BLEU': [{"f": "POLI", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'POBLENOU': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'ROMANTIC ASH': [{"f": "POLI - SUEDE", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'ROUGUI': [{"f": "POLI - SUEDE", "e": {"12": 280.66, "20": 327.44, "30": 445.5}}],
+    'ROYAL REEF': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'SEAPORT': [{"f": "SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'SNOWY IBIZA': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+    'VERSAILLES IVORY': [{"f": "POLI", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'VICTORIAN SILVER': [{"f": "POLI", "e": {"12": 648.2, "20": 864.27, "30": 1216.21}}],
+    'WHITE ARABESQUE': [{"f": "POLI - SUEDE", "e": {"12": 432.14, "20": 576.92, "30": 810.81}}],
+    'WHITE STORM 14': [{"f": "POLI - SUEDE", "e": {"12": 322.98, "20": 376.45, "30": 512.33}}],
+    'YUKON': [{"f": "POLI - SUEDE", "e": {"12": 354.17, "20": 412.08, "30": 561.33}}],
+  },
+  'quartz-unistone': {
+    'ALASKA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 435.0, "30": 525.0}}],
+    'ARABESCATO VAGLI': [{"f": "POLI/VELLUTO", "e": {"20": 435.0, "30": 525.0}}],
+    'ARABESCATO VIOLA': [{"f": "POLI/VELLUTO", "e": {"12": 435.0, "20": 435.0, "30": 525.0}}],
+    'BELGIAN BLUE': [{"f": "POLI/VELLUTO", "e": {"12": 360.0, "20": 360.0, "30": 450.0}}],
+    'BIANCO CRISTAL': [{"f": "POLI/VELLUTO", "e": {"20": 312.0, "30": 393.75}}],
+    'BIANCO EXTRA': [{"f": "POLI/VELLUTO", "e": {"20": 312.0, "30": 393.75}}],
+    'BIANCO EXTREME': [{"f": "POLI/VELLUTO", "e": {"12": 435.0, "20": 435.0, "30": 525.0}}],
+    'BLACK CRYSTAL': [{"f": "POLI", "e": {"20": 360.0, "30": 450.0}}],
+    'BOTTICINO GREY': [{"f": "VELLUTO", "e": {"20": 435.0, "30": 525.0}}],
+    'CALACATTA VAGLI ORO': [{"f": "POLI/VELLUTO", "e": {"20": 562.5, "30": 705.0}}],
+    'CALACATTA VICENTE': [{"f": "POLI/VELLUTO", "e": {"12": 562.5, "20": 562.5, "30": 705.0}}],
+    'CARRARA VENATINO': [{"f": "POLI/VELLUTO", "e": {"12": 562.5, "20": 562.5, "30": 705.0}}],
+    'CEMENTO': [{"f": "POLI/VELLUTO", "e": {"12": 312.0, "20": 312.0, "30": 393.75}}],
+    'CENDRE': [{"f": "POLI/VELLUTO", "e": {"12": 360.0, "20": 360.0, "30": 450.0}}],
+    'CEPPO': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'CONCRETO': [{"f": "ADOUCI", "e": {"12": 405.0, "20": 405.0, "30": 465.0}}],
+    'CRYSTALLO BEIGE': [{"f": "POLI/VELLUTO", "e": {"20": 562.5, "30": 705.0}}],
+    'DIAMANT': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'EMANATO': [{"f": "POLI/VELLUTO", "e": {"20": 562.5, "30": 705.0}}],
+    'ERAMOSA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'GREY SAVOYE': [{"f": "POLI/VELLUTO", "e": {"20": 405.0, "30": 465.0}}],
+    'GRIGIO PALOMA': [{"f": "ADOUCI", "e": {"20": 312.0, "30": 393.75}}],
+    'JAVA BLACK': [{"f": "POLI", "e": {"20": 435.0, "30": 525.0}}],
+    'JURA GREY': [{"f": "POLI/VELLUTO", "e": {"12": 360.0, "20": 360.0, "30": 450.0}}],
+    'NAXOS': [{"f": "ADOUCI", "e": {"20": 405.0, "30": 465.0}}],
+    'NERO ASSOLUTO': [{"f": "POLI", "e": {"20": 435.0, "30": 525.0}}],
+    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 510.0, "30": 630.0}}],
+    'OLYMPUS WHITE': [{"f": "ADOUCI", "e": {"20": 405.0, "30": 465.0}}],
+    'POLARIS': [{"f": "POLI/VELLUTO", "e": {"20": 360.0, "30": 450.0}}],
+    'SINAI PEARL': [{"f": "ADOUCI", "e": {"12": 405.0, "20": 405.0, "30": 465.0}}],
+    'STATUARIO': [{"f": "POLI/VELLUTO", "e": {"12": 562.5, "20": 562.5, "30": 705.0}}],
+    'TARTUFO': [{"f": "ADOUCI", "e": {"20": 405.0, "30": 465.0}}],
+    'TERRENO': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'THUNDER BLUE': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'TRAONIX': [{"f": "POLI/VELLUTO", "e": {"12": 562.5, "20": 562.5, "30": 705.0}}],
+    'ULIANO': [{"f": "POLI/VELLUTO", "e": {"20": 405.0, "30": 465.0}}],
+    'VENA ORO': [{"f": "POLI/VELLUTO", "e": {"20": 510.0, "30": 630.0}}],
+    'VITORIA REGIA': [{"f": "POLI/VELLUTO", "e": {"20": 562.5, "30": 705.0}}],
+  },
+  'gc-granit': {
+    'ZIMBABWE CLASSIQUE': [{"f": "CUIR", "e": {"20": 292.5, "30": 360.0}}],
+  },
+  'gc-neolith': {
+    'AZURE': [{"f": "SILK", "e": {"12": 375.0, "20": 525.0}}],
+    'CREME': [{"f": "SILK", "e": {"12": 375.0, "20": 525.0}}],
+    'MAMBA': [{"f": "SILK", "e": {"12": 375.0, "20": 525.0}}],
+    'TAJ MAHAL': [{"f": "SILK", "e": {"12": 375.0, "20": 525.0}}],
+  },
+  'gc-quartz': {
+    'BIANCO': [{"f": "POLI / LETANO", "e": {"12": 315.0, "20": 315.0, "30": 397.5}}],
+    'BIANCO ASSOLUTO': [{"f": "POLI / LETANO", "e": {"12": 330.0, "20": 330.0, "30": 412.5}}],
+    'CARRARA MISTERIO': [{"f": "POLI / LETANO", "e": {"12": 390.0, "20": 390.0, "30": 480.0}}],
+    'MISTERIO GOLD': [{"f": "POLI / LETANO", "e": {"12": 390.0, "20": 390.0, "30": 480.0}}],
+    'TAJ MAHAL': [{"f": "POLI / LETANO", "e": {"12": 390.0, "20": 390.0, "30": 480.0}}],
+  },
+  'gc-uniceramica': {
+    'CALACATTA VIOLA': [{"f": "MATE", "e": {"12": 315.0, "20": 495.0}}],
+    'MARMO ANTICO': [{"f": "MATE", "e": {"12": 315.0, "20": 495.0}}],
+    'ORO FANTASTICO': [{"f": "MATE", "e": {"12": 315.0, "20": 495.0}}],
+    'STATUARIO EXTRA': [{"f": "MATE", "e": {"12": 315.0, "20": 495.0}}],
+    'TAJ MAHAL': [{"f": "MATE", "e": {"12": 315.0, "20": 495.0}}],
+  },
+};
+
+
+// Helper: liste des noms de coloris pour un matériau
+function getColorisList(mat) {
+  return COLORIS_DATA[mat] ? Object.keys(COLORIS_DATA[mat]) : [];
+}
+
+// Helper: tableau de finitions pour un coloris [{f, e}]
+function getColorisFinitions(mat, coloris) {
+  return COLORIS_DATA[mat]?.[coloris] || [];
+}
+
+// Helper: données d'une finition spécifique pour un coloris
+function getColorisFinitionData(mat, coloris, finition) {
+  const fins = getColorisFinitions(mat, coloris);
+  if (fins.length === 0) return null;
+  if (!finition) return fins[0]; // défaut = première finition
+  return fins.find(f => f.f === finition) || fins[0];
+}
+
+// Helper: prix par coloris+finition ou fallback PRIX.materiaux
+function getColorisPrice(mat, coloris, ep, finition) {
+  const fd = getColorisFinitionData(mat, coloris, finition);
+  if (fd && fd.e && fd.e[ep] !== undefined) return fd.e[ep];
+  // Fallback: PRIX.materiaux
+  const md = PRIX.materiaux[mat];
+  if (md && md.epaisseurs && md.epaisseurs[ep] !== undefined) return md.epaisseurs[ep];
+  return null;
+}
+
+// Helper: épaisseurs disponibles pour un coloris+finition (ou fallback matériau)
+function getAvailableEpaisseurs(mat, coloris, finition) {
+  const fd = getColorisFinitionData(mat, coloris, finition);
+  if (fd && fd.e && Object.keys(fd.e).length > 0) return Object.keys(fd.e);
+  // Fallback: toutes les épaisseurs du matériau
+  const md = PRIX.materiaux[mat];
+  if (md && md.epaisseurs) return Object.keys(md.epaisseurs);
+  return [];
+}
+
+// Prix par coloris en mode direct (prix cuisiniste × coefficient de vente)
+function getCoeffDirect() {
+  // Priorité au cache Supabase si disponible
+  if (settingsCache.coeff !== null) return settingsCache.coeff;
+  const v = parseFloat(localStorage.getItem(COEFF_KEY));
+  return (!isNaN(v) && v >= 1) ? v : 1.00;
+}
+
+function saveCoeffDirectValue(v) {
+  settingsCache.coeff = v;
+  localStorage.setItem(COEFF_KEY, String(v));
+  saveSettingToSupabase('coeff_direct', v); // Sync Supabase
+}
+
+// ─── Profil société (Intérieur Granit) ─────────────────────────────────────
+function getSociete() {
+  // Priorité au cache Supabase si disponible
+  if (settingsCache.societe) return settingsCache.societe;
+  try {
+    const raw = localStorage.getItem(SOCIETE_KEY);
+    return raw ? JSON.parse(raw) : {
+      raisonSociale:'Intérieur Granit', formeJuridique:'', siret:'', naf:'',
+      tvaIntra:'', adresse:'', cp:'', ville:'', tel:'',
+      email:'admin@interieur-granit.fr', web:'',
+      iban:'', bic:'', banque:'', capitalSocial:''
+    };
+  } catch(e) { return { raisonSociale:'Intérieur Granit' }; }
+}
+function saveSociete(data) { 
+  settingsCache.societe = data;
+  localStorage.setItem(SOCIETE_KEY, JSON.stringify(data)); 
+  saveSettingToSupabase('societe', data); // Sync Supabase
+}
+
+// ─── Profil cuisiniste (pro) ────────────────────────────────────────────────
+function openProProfilModal() {
+  if (!currentUser) return;
+  const db = getDB();
+  const u = db.users[currentUser.email] || currentUser;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setV('pp-societe', u.societe);
+  setV('pp-prenom', u.prenom);
+  setV('pp-nom', u.nom);
+  setV('pp-tel', u.tel);
+  setV('pp-email', u.email);
+  setV('pp-adresse', u.adresse || u.adresseFact || '');
+  setV('pp-cp', u.cp || u.cpFact || '');
+  setV('pp-ville', u.ville || u.villeFact || '');
+  setV('pp-siret', u.siret || '');
+  setV('pp-web', u.web || '');
+  document.getElementById('pp-error').style.display = 'none';
+  document.getElementById('modal-pro-profil').classList.add('active');
+}
+function closeProProfilModal() {
+  document.getElementById('modal-pro-profil').classList.remove('active');
+}
+function saveProProfilModal() {
+  const getV = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const societe = getV('pp-societe');
+  if (!societe) {
+    const err = document.getElementById('pp-error');
+    err.textContent = 'Le nom de la société est obligatoire.';
+    err.style.display = 'block';
+    return;
+  }
+  const db = getDB();
+  const u = db.users[currentUser.email];
+  if (!u) return;
+  u.societe  = societe;
+  u.prenom   = getV('pp-prenom');
+  u.nom      = getV('pp-nom');
+  u.tel      = getV('pp-tel');
+  u.adresse  = getV('pp-adresse');
+  u.cp       = getV('pp-cp');
+  u.ville    = getV('pp-ville');
+  u.siret    = getV('pp-siret');
+  u.web      = getV('pp-web');
+  saveDB(db);
+  // Mettre à jour currentUser en mémoire
+  currentUser = { ...currentUser, ...u };
+  // Rafraîchir le nom affiché dans le header
+  document.getElementById('pro-name').textContent = u.prenom + ' — ' + u.societe;
+  closeProProfilModal();
+  const toast = document.getElementById('pro-profil-toast');
+  if (toast) { toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2500); }
+}
+
+function openSocieteModal() {
+  const s = getSociete();
+  const setV = (id, v) => { const el = document.getElementById(id); if(el) el.value = v||''; };
+  setV('soc-raison',s.raisonSociale); setV('soc-forme',s.formeJuridique);
+  setV('soc-siret',s.siret); setV('soc-naf',s.naf);
+  setV('soc-tva-intra',s.tvaIntra); setV('soc-capital',s.capitalSocial);
+  setV('soc-adresse',s.adresse); setV('soc-cp',s.cp); setV('soc-ville',s.ville);
+  setV('soc-tel',s.tel); setV('soc-email',s.email); setV('soc-web',s.web);
+  setV('soc-iban',s.iban); setV('soc-bic',s.bic); setV('soc-banque',s.banque);
+  document.getElementById('modal-societe').classList.add('active');
+}
+function closeSocieteModal() { document.getElementById('modal-societe').classList.remove('active'); }
+function saveSocieteModal() {
+  const getV = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const data = {
+    raisonSociale: getV('soc-raison'), formeJuridique: getV('soc-forme'),
+    siret: getV('soc-siret'), naf: getV('soc-naf'),
+    tvaIntra: getV('soc-tva-intra'), capitalSocial: getV('soc-capital'),
+    adresse: getV('soc-adresse'), cp: getV('soc-cp'), ville: getV('soc-ville'),
+    tel: getV('soc-tel'), email: getV('soc-email'), web: getV('soc-web'),
+    iban: getV('soc-iban'), bic: getV('soc-bic'), banque: getV('soc-banque')
+  };
+  if (!data.raisonSociale) { alert('La raison sociale est obligatoire.'); return; }
+  saveSociete(data);
+  closeSocieteModal();
+  const msg = document.getElementById('soc-saved-toast');
+  if (msg) { msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2500); }
+}
+
+// ─── Numérotation automatique des factures ─────────────────────────────────
+function getNextFactureNum() {
+  const data = JSON.parse(localStorage.getItem(FACTURES_KEY) || '{"counter":0,"year":0}');
+  const year = new Date().getFullYear();
+  const counter = (data.year === year) ? data.counter + 1 : 1;
+  localStorage.setItem(FACTURES_KEY, JSON.stringify({ counter, year }));
+  return `FAC-${year}-${String(counter).padStart(4,'0')}`;
+}
+
+function getColorisPrixDirect(mat, coloris, ep, finition) {
+  const base = getColorisPrice(mat, coloris, ep, finition);
+  if (base === null) return null;
+  return Math.round(base * getCoeffDirect());
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════
+//  BASE DE DONNÉES (Supabase + localStorage fallback)
+// ═══════════════════════════════════════════════════════════════
+const DB_KEY = 'ig_app_v3';
+const COEFF_KEY = 'ig_coeff_direct_v1';
+const SOCIETE_KEY = 'ig_societe_v1';
+const FACTURES_KEY = 'ig_factures_v1';
+
+// Cache local pour les données
+let dbCache = null;
+let settingsCache = { coeff: null, societe: null, factures: null };
+
+// Retourne la grille de prix de base (cuisiniste)
+function getCurrentPrix() {
+  return PRIX;
+}
+
+// ─── Fonctions Supabase ────────────────────────────────────────────────────
+
+async function loadFromSupabase() {
+  if (!supabase) return null;
+  try {
+    // Charger users
+    const { data: users, error: usersErr } = await supabase.from('users').select('*');
+    if (usersErr) throw usersErr;
+    
+    // Charger quotes
+    const { data: quotes, error: quotesErr } = await supabase.from('quotes').select('*');
+    if (quotesErr) throw quotesErr;
+    
+    // Charger settings
+    const { data: settings, error: settingsErr } = await supabase.from('settings').select('*');
+    if (settingsErr) throw settingsErr;
+    
+    // Convertir users en objet indexé par email
+    const usersObj = {};
+    (users || []).forEach(u => { usersObj[u.email] = u; });
+    
+    // Convertir quotes (parsing JSON si nécessaire)
+    const quotesArr = (quotes || []).map(q => ({
+      ...q,
+      client: typeof q.client === 'string' ? JSON.parse(q.client) : q.client,
+      chant: typeof q.chant === 'string' ? JSON.parse(q.chant) : q.chant,
+      options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+      plans: typeof q.plans === 'string' ? JSON.parse(q.plans) : q.plans,
+      credences: typeof q.credences === 'string' ? JSON.parse(q.credences) : q.credences,
+    }));
+    
+    // Extraire settings
+    const settingsObj = {};
+    (settings || []).forEach(s => { settingsObj[s.key] = s.value; });
+    
+    settingsCache.coeff = settingsObj.coeff_direct ? parseFloat(settingsObj.coeff_direct) : 1.0;
+    settingsCache.societe = settingsObj.societe ? JSON.parse(settingsObj.societe) : null;
+    settingsCache.factures = settingsObj.factures ? JSON.parse(settingsObj.factures) : null;
+    
+    return { users: usersObj, quotes: quotesArr };
+  } catch (e) {
+    console.warn('Supabase load failed, using localStorage:', e);
+    return null;
+  }
+}
+
+async function saveUserToSupabase(user) {
+  if (!supabase) return;
+  try {
+    await supabase.from('users').upsert(user, { onConflict: 'email' });
+  } catch (e) { console.warn('Supabase user save failed:', e); }
+}
+
+async function deleteUserFromSupabase(email) {
+  if (!supabase) return;
+  try {
+    await supabase.from('users').delete().eq('email', email);
+  } catch (e) { console.warn('Supabase user delete failed:', e); }
+}
+
+async function saveQuoteToSupabase(quote) {
+  if (!supabase) return;
+  try {
+    const q = {
+      ...quote,
+      client: JSON.stringify(quote.client),
+      chant: JSON.stringify(quote.chant),
+      options: JSON.stringify(quote.options),
+      plans: quote.plans ? JSON.stringify(quote.plans) : null,
+      credences: quote.credences ? JSON.stringify(quote.credences) : null,
+    };
+    await supabase.from('quotes').upsert(q, { onConflict: 'id' });
+  } catch (e) { console.warn('Supabase quote save failed:', e); }
+}
+
+async function deleteQuoteFromSupabase(id) {
+  if (!supabase) return;
+  try {
+    await supabase.from('quotes').delete().eq('id', id);
+  } catch (e) { console.warn('Supabase quote delete failed:', e); }
+}
+
+async function saveSettingToSupabase(key, value) {
+  if (!supabase) return;
+  try {
+    await supabase.from('settings').upsert({ key, value: typeof value === 'object' ? JSON.stringify(value) : String(value) }, { onConflict: 'key' });
+  } catch (e) { console.warn('Supabase setting save failed:', e); }
+}
+
+// ─── Fonctions DB principales (avec sync Supabase) ─────────────────────────
+
+async function initApp() {
+  // Essayer de charger depuis Supabase d'abord
+  const remoteData = await loadFromSupabase();
+  if (remoteData) {
+    dbCache = remoteData;
+    saveDB(remoteData); // Sync vers localStorage
+    console.log('✓ Données chargées depuis Supabase');
+  } else {
+    dbCache = getDB();
+    console.log('✓ Données chargées depuis localStorage');
+  }
+}
+
+function getDB() {
+  if (dbCache) return dbCache;
+  const raw = localStorage.getItem(DB_KEY);
+  if (raw) {
+    dbCache = JSON.parse(raw);
+    return dbCache;
+  }
+  return initDB();
+}
+
+function saveDB(db) {
+  dbCache = db;
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+function genId(prefix) {
+  return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+}
+
+function initDB() {
+  const db = {
+    users: {
+      'admin@interieur-granit.fr': {
+        id: 'admin_001', role: 'admin',
+        nom: 'Rodrigues', prenom: 'Julien',
+        email: 'admin@interieur-granit.fr', password: 'admin2024',
+        createdAt: '2024-01-01T00:00:00Z'
+      }
+    },
+    quotes: []
+  };
+  saveDB(db);
+  // Sync initial vers Supabase
+  if (supabase) {
+    saveUserToSupabase(db.users['admin@interieur-granit.fr']);
+  }
+  return db;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTHENTIFICATION
+// ═══════════════════════════════════════════════════════════════
+let currentUser = null;
+
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const password = document.getElementById('login-password').value;
+  const db = getDB();
+  const user = db.users[email];
+  if (!user || user.password !== password) {
+    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+  currentUser = user;
+  document.getElementById('login-error').style.display = 'none';
+  if (user.role === 'admin') showAdminView();
+  else showProView();
+}
+
+function doLogout() {
+  currentUser = null;
+  showView('view-login');
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVIGATION ENTRE VUES
+// ═══════════════════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0 });
+}
+
+function showAdminView() {
+  showView('view-admin');
+  document.getElementById('admin-name').textContent = currentUser.prenom || currentUser.nom;
+  document.getElementById('admin-avatar').textContent = (currentUser.prenom || currentUser.nom || 'A')[0].toUpperCase();
+  renderAdminDashboard();
+}
+
+function showProView() {
+  showView('view-pro');
+  document.getElementById('pro-name').textContent = currentUser.prenom + ' — ' + currentUser.societe;
+  document.getElementById('pro-avatar').textContent = (currentUser.prenom || 'P')[0].toUpperCase();
+  document.getElementById('pro-welcome-title').textContent = 'Bonjour, ' + (currentUser.prenom || currentUser.nom);
+  document.getElementById('pro-welcome-sub').textContent = currentUser.societe + ' — Retrouvez vos demandes ou créez-en une nouvelle.';
+  renderProQuotes();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function renderAdminDashboard() {
+  const db = getDB();
+  const proUsers = Object.values(db.users).filter(u => u.role === 'pro');
+  const quotes = db.quotes;
+  const newQuotes = quotes.filter(q => q.status === 'nouveau');
+  const commandeQuotes = quotes.filter(q => q.status === 'commande');
+  const totalHT_commandes = commandeQuotes.reduce((s,q) => s + (q.totalHT||0), 0);
+
+  document.getElementById('stat-clients').textContent = proUsers.length;
+  document.getElementById('stat-total').textContent = quotes.length;
+  document.getElementById('stat-new').textContent = newQuotes.length;
+  document.getElementById('stat-ca').textContent = totalHT_commandes > 0 ? Math.round(totalHT_commandes).toLocaleString('fr-FR') + ' €' : '—';
+
+  // Clients table
+  const tbody = document.getElementById('clients-tbody');
+  if (proUsers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Aucun client professionnel enregistré</td></tr>';
+  } else {
+    tbody.innerHTML = proUsers.map(u => {
+      const count = quotes.filter(q => q.proEmail === u.email).length;
+      return `<tr>
+        <td><div class="company">${u.societe||'—'}</div></td>
+        <td>${u.prenom||''} ${u.nom}</td>
+        <td class="secondary">${u.email}</td>
+        <td class="secondary">${u.tel||'—'}</td>
+        <td><span style="font-weight:500;">${count}</span> chiffrage${count!==1?'s':''}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm btn-secondary" style="margin-right:4px;" onclick="filterByPro('${u.email}')">Voir</button>
+          <button class="btn btn-sm btn-primary" style="margin-right:4px;" onclick="openEditClientModal('${u.email}')">Éditer</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteClient('${u.email}')">Supprimer</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  renderQuotesTable();
+  populateProFilter();
+}
+
+function filterByPro(email) {
+  switchTab('quotes');
+  document.getElementById('filter-pro').value = email;
+  renderQuotesTable();
+}
+
+function populateProFilter() {
+  const db = getDB();
+  const sel = document.getElementById('filter-pro');
+  const proUsers = Object.values(db.users).filter(u => u.role === 'pro');
+  sel.innerHTML = '<option value="">Tous les clients</option>' +
+    proUsers.map(u => `<option value="${u.email}">${u.societe||u.nom}</option>`).join('');
+}
+
+function renderQuotesTable() {
+  const db = getDB();
+  const statusFilter = document.getElementById('filter-status')?.value || '';
+  const proFilter = document.getElementById('filter-pro')?.value || '';
+  let quotes = [...db.quotes].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
+  if (proFilter) quotes = quotes.filter(q => q.proEmail === proFilter);
+
+  const tbody = document.getElementById('quotes-tbody');
+  if (quotes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Aucune demande pour ces critères</td></tr>';
+    return;
+  }
+  tbody.innerHTML = quotes.map(q => {
+    const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+    return `<tr onclick="showQuoteDetail('${q.id}')">
+      <td class="secondary">${q.client?.ref||q.id.slice(-6)}</td>
+      <td><div class="company">${q.proSociete}</div></td>
+      <td>${clientName}</td>
+      <td>${q.materiauLabel||q.materiau}</td>
+      <td>${surf} m²</td>
+      <td class="price">${q.totalTTC ? Math.round(q.totalTTC).toLocaleString('fr-FR')+' €' : 'Sur devis'}</td>
+      <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
+      <td>${statusTag(q.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showQuoteDetail(id) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === id);
+  if (!q) return;
+  const panel = document.getElementById('quote-detail');
+  panel.classList.add('active');
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const optLines = Object.entries(q.options||{}).filter(([k,v])=>v>0).map(([k,v])=>`<div class="detail-row"><span class="dk">${PRIX.options[k]?.label||k}</span><span class="dv">× ${v}</span></div>`).join('');
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <h3>Détail — ${clientName}</h3>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <select class="status-select" onchange="updateQuoteStatus('${id}',this.value)">
+          <option value="nouveau" ${q.status==='nouveau'?'selected':''}>Nouvelle</option>
+          <option value="en_cours" ${q.status==='en_cours'?'selected':''}>En cours</option>
+          <option value="devise" ${q.status==='devise'?'selected':''}>Devisée</option>
+          <option value="commande" ${q.status==='commande'?'selected':''}>Commande</option>
+          <option value="cloture" ${q.status==='cloture'?'selected':''}>Clôturée</option>
+        </select>
+        ${q.status === 'commande' ? `<button class="btn btn-sm btn-gold" onclick="genererFacture('${id}')">🧾 Facture</button>` : ''}
+        <button class="btn btn-sm btn-secondary" onclick="exportBonDeCommande('${id}')">📄 BC</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteQuote('${id}','admin')" title="Supprimer ce devis">🗑 Supprimer</button>
+        <button class="btn btn-sm btn-secondary" onclick="document.getElementById('quote-detail').classList.remove('active')">✕ Fermer</button>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div>
+        <div class="detail-section-title">Cuisiniste</div>
+        <div class="detail-row"><span class="dk">Société</span><span class="dv">${q.proSociete}</span></div>
+        <div class="detail-row"><span class="dk">Email</span><span class="dv">${q.proEmail}</span></div>
+        <div style="margin-top:16px;" class="detail-section-title">Client final</div>
+        <div class="detail-row"><span class="dk">Nom</span><span class="dv">${clientName}</span></div>
+        <div class="detail-row"><span class="dk">Adresse</span><span class="dv">${q.client?.adresse||'—'}, ${q.client?.cp||''} ${q.client?.ville||''}</span></div>
+        <div class="detail-row"><span class="dk">Téléphone</span><span class="dv">${q.client?.tel||'—'}</span></div>
+        ${q.client?.datePose?`<div class="detail-row"><span class="dk">Date souhaitée</span><span class="dv">${new Date(q.client.datePose).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</span></div>`:''}
+        ${q.client?.ref?`<div class="detail-row"><span class="dk">Référence</span><span class="dv">${q.client.ref}</span></div>`:''}
+      </div>
+      <div>
+        <div class="detail-section-title">Matériau & dimensions</div>
+        <div class="detail-row"><span class="dk">Matériau</span><span class="dv">${q.materiauLabel} — ${q.coloris}</span></div>
+        <div class="detail-row"><span class="dk">Finition</span><span class="dv">${q.finition}${q.epaisseur?' · '+q.epaisseur+' mm':''}</span></div>
+        <div class="detail-row"><span class="dk">Surface plans</span><span class="dv">${q.surfacePlans?.toFixed(2)||'—'} m²</span></div>
+        <div class="detail-row"><span class="dk">Surface crédences</span><span class="dv">${q.surfaceCred?.toFixed(2)||'—'} m²</span></div>
+        ${q.chant?.type?`<div class="detail-row"><span class="dk">Chant</span><span class="dv">${q.chant.type} — ${(q.chant.longueur/1000).toFixed(2)} ml</span></div>`:''}
+        <div class="detail-row"><span class="dk">Accès</span><span class="dv">${q.livraison==='etage'?'Étage':'Rez-de-chaussée'}</span></div>
+        ${optLines?`<div style="margin-top:16px;" class="detail-section-title">Options</div>${optLines}`:''}
+        <div style="margin-top:16px;" class="detail-section-title">Tarif estimé</div>
+        <div class="detail-row"><span class="dk">Total HT</span><span class="dv">${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' €':'—'}</span></div>
+        <div class="detail-row"><span class="dk">TVA ${q.tva}%</span><span class="dv">${q.totalHT?Math.round(q.totalHT*(q.tva/100)).toLocaleString('fr-FR')+' €':'—'}</span></div>
+        <div style="margin-top:8px;"><div class="price-ttc">${q.totalTTC?Math.round(q.totalTTC).toLocaleString('fr-FR')+' €':'Sur devis'}</div><div class="price-ht">Total TTC estimé</div></div>
+      </div>
+    </div>
+    ${q.commentaire?`<div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);font-size:.82rem;color:var(--stone-light);">${q.commentaire}</div>`:''}
+    ${q.commande ? `
+    <div style="margin-top:18px;padding:14px;background:rgba(45,122,79,.1);border-radius:6px;">
+      <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#1a6640;margin-bottom:10px;font-weight:600;">✓ Commande passée</div>
+      <div class="detail-row"><span class="dk">Date d'installation</span><span class="dv">${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</span></div>
+      ${q.commande.notes ? `<div class="detail-row"><span class="dk">Notes</span><span class="dv">${q.commande.notes}</span></div>` : ''}
+      ${q.commande.planFile ? `<div class="detail-row"><span class="dk">📐 Plan cuisine</span><span class="dv">${
+        q.commande.planFileData
+          ? `<a href="${q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.planFile}</a>`
+          : `<em>${q.commande.planFile}</em>`
+      }</span></div>` : ''}
+      ${q.commande.devisFile ? `<div class="detail-row"><span class="dk">✍️ Devis signé</span><span class="dv">${
+        q.commande.devisFileData
+          ? `<a href="${q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.devisFile}</a>`
+          : `<em>${q.commande.devisFile}</em>`
+      }</span></div>` : ''}
+    </div>` : ''}
+  `;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function updateQuoteStatus(id, status) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === id);
+  if (q) { 
+    q.status = status; 
+    saveDB(db); 
+    saveQuoteToSupabase(q); // Sync Supabase
+    renderQuotesTable(); 
+    renderAdminDashboard(); 
+  }
+}
+
+function statusTag(status) {
+  const labels = { nouveau:'Nouvelle', en_cours:'En cours', devise:'Devisée', cloture:'Clôturée', commande:'Commandé', facture:'Facturé' };
+  return `<span class="tag tag-${status}">${labels[status]||status}</span>`;
+}
+
+function switchTab(tab) {
+  const tabs = ['clients','quotes','direct','coeff'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
+  tabs.forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.classList.toggle('active', t===tab);
+  });
+  if (tab === 'direct') renderDevisDirectTab();
+  if (tab === 'coeff') renderCoeffTab();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TARIFS DE VENTE (admin)
+// ═══════════════════════════════════════════════════════════════
+function renderCoeffTab() {
+  const coeff = getCoeffDirect();
+  const input = document.getElementById('coeff-direct-input');
+  if (input) { input.value = coeff.toFixed(2); }
+  updateCoeffPreview();
+}
+
+function updateCoeffPreview() {
+  const input = document.getElementById('coeff-direct-input');
+  if (!input) return;
+  const coeff = parseFloat(input.value) || 1.00;
+  const pct = Math.round((coeff - 1) * 100);
+  const preview = document.getElementById('coeff-preview');
+  if (preview) preview.textContent = coeff >= 1 ? `Marge : +${pct}%` : '';
+
+  // Aperçu sur quelques matériaux
+  const apercu = document.getElementById('coeff-apercu');
+  if (!apercu) return;
+  const exemples = [
+    ['granit', '20'], ['ceramique-neolith', '12'], ['quartz-silestone', '20']
+  ];
+  let rows = '';
+  exemples.forEach(([mat, ep]) => {
+    const base = PRIX.materiaux[mat]?.epaisseurs?.[ep];
+    if (!base) return;
+    const direct = Math.round(base * coeff);
+    const label = PRIX.materiaux[mat]?.label || mat;
+    rows += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--cream-dark);font-size:.82rem;">
+      <span style="color:var(--stone-mid);">${label} — ${ep} mm</span>
+      <span><span style="color:var(--stone-light);">${base} €</span>
+      <span style="margin:0 6px;color:var(--stone-light);">→</span>
+      <strong style="color:var(--stone);">${direct} € HT</strong></span>
+    </div>`;
+  });
+  apercu.innerHTML = rows || '<em style="color:var(--stone-light);">Aperçu non disponible</em>';
+}
+
+function saveCoeffDirect() {
+  const input = document.getElementById('coeff-direct-input');
+  if (!input) return;
+  const val = parseFloat(input.value);
+  if (isNaN(val) || val < 1) { alert('Le coefficient doit être ≥ 1.00'); return; }
+  saveCoeffDirectValue(val);
+  const msg = document.getElementById('coeff-saved-msg');
+  if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 3000); }
+}
+
+
+function renderDevisDirectTab() {
+  const db = getDB();
+  // Filtre : type === 'direct' OU quote créée par admin (pas de proSociete = admin, pas de cuisiniste)
+  const directQuotes = db.quotes.filter(q => q.type === 'direct' || !q.proSociete);
+  const container = document.getElementById('direct-quotes-list');
+  if (!container) return;
+
+  if (directQuotes.length === 0) {
+    container.innerHTML = '<p style="color:var(--stone-light);font-style:italic;padding:16px 0;">Aucun devis particulier pour l\'instant.</p>';
+    return;
+  }
+
+  container.innerHTML = directQuotes.map(q => {
+    const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+    const matLabel = q.materiauLabel || q.materiau || '—';
+    const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('fr-FR') : '—';
+    const prixHT = q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR') + ' € HT' : 'Sur devis';
+    return `
+      <div class="direct-quote-card" onclick="toggleDirectQuoteDetail('${q.id}', this)" id="dqc-${q.id}">
+        <div>
+          <div style="font-weight:500;margin-bottom:4px;">${clientName}</div>
+          <div style="font-size:.82rem;color:var(--stone-light);">${matLabel} · ${date} · ${prixHT}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;" onclick="event.stopPropagation()">
+          ${statusTag(q.status)}
+          <button class="btn btn-secondary btn-sm" onclick="editDirectQuote('${q.id}')">Modifier</button>
+          <button class="btn btn-secondary btn-sm" onclick="duplicateDirectQuote('${q.id}')">Dupliquer</button>
+          <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis ?')) { deleteQuote('${q.id}','direct'); }" title="Supprimer">🗑</button>
+        </div>
+      </div>
+      <div class="direct-detail-panel" id="ddp-${q.id}"></div>`;
+  }).join('');
+}
+
+function toggleDirectQuoteDetail(quoteId, cardEl) {
+  const panel = document.getElementById('ddp-' + quoteId);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('active');
+  // Close all panels first
+  document.querySelectorAll('.direct-detail-panel.active').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.direct-quote-card').forEach(c => c.style.borderColor = '');
+  if (!isOpen) {
+    panel.innerHTML = buildDirectQuoteDetail(quoteId);
+    panel.classList.add('active');
+    cardEl.style.borderColor = 'var(--gold)';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function buildDirectQuoteDetail(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return '';
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const totalTTC = q.totalTTC ? Math.round(q.totalTTC).toLocaleString('fr-FR') + ' €' : '—';
+  const totalHT = q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR') + ' €' : '—';
+
+  const surfTotal = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+  const adresseFull = [q.client?.adresse, q.client?.cp, q.client?.ville].filter(Boolean).join(', ');
+
+  let dimRows = '';
+  if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
+    q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
+      dimRows += `<div class="direct-detail-row"><span class="dk">Plan P${i+1}</span><span class="dv">${p.larg} × ${p.long} mm${p.ep?' · ép. '+p.ep+' mm':''}</span></div>`;
+    });
+  } else if (q.surfacePlans > 0) {
+    dimRows += `<div class="direct-detail-row"><span class="dk">Plans de travail</span><span class="dv">${q.surfacePlans.toFixed(2)} m²</span></div>`;
+  }
+  if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
+    q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
+      dimRows += `<div class="direct-detail-row"><span class="dk">Crédence C${i+1}</span><span class="dv">${c.larg} × ${c.long} mm</span></div>`;
+    });
+  } else if (q.surfaceCred > 0) {
+    dimRows += `<div class="direct-detail-row"><span class="dk">Crédences</span><span class="dv">${q.surfaceCred.toFixed(2)} m²</span></div>`;
+  }
+
+  let optRows = '';
+  if (q.chant?.type) optRows += `<div class="direct-detail-row"><span class="dk">Chant — ${q.chant.type}</span><span class="dv">${q.chant.longueur ? (q.chant.longueur/1000).toFixed(2)+' ml' : ''}</span></div>`;
+  if (q.options) Object.entries(q.options).filter(([,v])=>v>0).forEach(([k,v]) => {
+    optRows += `<div class="direct-detail-row"><span class="dk">${PRIX.options[k]?.label||k}</span><span class="dv">× ${v}</span></div>`;
+  });
+
+  const tvaLabel = q.tva ? `TVA ${q.tva}%` : 'TVA 20%';
+  const tvaAmt = q.totalHT && q.tva ? Math.round(q.totalHT * q.tva / 100).toLocaleString('fr-FR') + ' €' : '—';
+
+  return `
+    <div class="direct-detail-title">
+      <span>Détail — ${clientName}</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select onchange="updateDirectQuoteStatus('${q.id}',this.value)"
+          style="padding:6px 10px;font-size:.78rem;border:1px solid var(--cream-dark);border-radius:4px;background:var(--white);color:var(--stone);cursor:pointer;">
+          <option value="nouveau" ${q.status==='nouveau'?'selected':''}>Nouvelle demande</option>
+          <option value="en_cours" ${q.status==='en_cours'?'selected':''}>En cours</option>
+          <option value="devise" ${q.status==='devise'?'selected':''}>Devisée</option>
+          <option value="commande" ${q.status==='commande'?'selected':''}>Commandé</option>
+          <option value="facture" ${q.status==='facture'?'selected':''}>Facturé</option>
+          <option value="cloture" ${q.status==='cloture'?'selected':''}>Clôturée</option>
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+        ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis définitivement ?')) deleteQuote('${q.id}','direct')">🗑</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleDirectQuoteDetail('${q.id}')">× Fermer</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div class="direct-detail-section">
+          <div class="direct-detail-section-title">Client</div>
+          <div class="direct-detail-row"><span class="dk">Nom</span><span class="dv">${clientName}</span></div>
+          ${q.client?.tel ? `<div class="direct-detail-row"><span class="dk">Téléphone</span><span class="dv">${q.client.tel}</span></div>` : ''}
+          ${q.client?.email ? `<div class="direct-detail-row"><span class="dk">Email</span><span class="dv">${q.client.email}</span></div>` : ''}
+          ${adresseFull ? `<div class="direct-detail-row"><span class="dk">Adresse</span><span class="dv">${adresseFull}</span></div>` : ''}
+          ${q.client?.datePose ? `<div class="direct-detail-row"><span class="dk">Date de pose</span><span class="dv">${new Date(q.client.datePose).toLocaleDateString('fr-FR')}</span></div>` : ''}
+          ${q.client?.ref ? `<div class="direct-detail-row"><span class="dk">Référence</span><span class="dv">${q.client.ref}</span></div>` : ''}
+        </div>
+        <div class="direct-detail-section">
+          <div class="direct-detail-section-title">Matériau</div>
+          <div class="direct-detail-row"><span class="dk">Matière</span><span class="dv">${q.materiauLabel||q.materiau||'—'}</span></div>
+          <div class="direct-detail-row"><span class="dk">Coloris</span><span class="dv">${q.coloris||'—'}</span></div>
+          <div class="direct-detail-row"><span class="dk">Finition</span><span class="dv">${q.finition||'—'}</span></div>
+          <div class="direct-detail-row"><span class="dk">Épaisseur</span><span class="dv">${q.epaisseur ? q.epaisseur+' mm' : '—'}</span></div>
+          <div class="direct-detail-row"><span class="dk">Surface totale</span><span class="dv">${surfTotal} m²</span></div>
+        </div>
+      </div>
+      <div>
+        ${dimRows ? `<div class="direct-detail-section">
+          <div class="direct-detail-section-title">Dimensions</div>
+          ${dimRows}
+        </div>` : ''}
+        ${optRows ? `<div class="direct-detail-section">
+          <div class="direct-detail-section-title">Façonnage &amp; options</div>
+          ${optRows}
+        </div>` : ''}
+        <div class="direct-detail-section">
+          <div class="direct-detail-section-title">Prix</div>
+          <div class="direct-detail-row"><span class="dk">Total HT</span><span class="dv">${totalHT}</span></div>
+          <div class="direct-detail-row"><span class="dk">${tvaLabel}</span><span class="dv">${tvaAmt}</span></div>
+          <div class="direct-detail-total">
+            <span class="direct-detail-ht">${totalHT} HT</span>
+            <span class="direct-detail-ttc">${totalTTC} TTC</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function editDirectQuote(quoteId) {
+  loadQuoteIntoForm(quoteId, false);
+}
+
+function duplicateDirectQuote(quoteId) {
+  loadQuoteIntoForm(quoteId, true);
+  // quoteMode already set to 'direct' by loadQuoteIntoForm since q.type === 'direct'
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GESTION DES CLIENTS (ADMIN)
+// ═══════════════════════════════════════════════════════════════
+function openNewClientModal() {
+  document.getElementById('modal-new-client').classList.add('active');
+  document.getElementById('modal-error').style.display = 'none';
+  ['new-societe','new-nom','new-prenom','new-email','new-tel','new-password'].forEach(id => document.getElementById(id).value = '');
+}
+
+function closeModal() {
+  document.getElementById('modal-new-client').classList.remove('active');
+}
+
+function createClient() {
+  const societe = document.getElementById('new-societe').value.trim();
+  const nom = document.getElementById('new-nom').value.trim();
+  const prenom = document.getElementById('new-prenom').value.trim();
+  const email = document.getElementById('new-email').value.trim().toLowerCase();
+  const tel = document.getElementById('new-tel').value.trim();
+  const password = document.getElementById('new-password').value.trim();
+  const errEl = document.getElementById('modal-error');
+  if (!societe || !nom || !email || !password) { errEl.textContent='Veuillez remplir tous les champs obligatoires.'; errEl.style.display='block'; return; }
+  const db = getDB();
+  if (db.users[email]) { errEl.textContent='Cet email est déjà utilisé.'; errEl.style.display='block'; return; }
+  const newUser = { id: genId('pro'), role:'pro', societe, nom, prenom, tel, email, password, createdAt: new Date().toISOString() };
+  db.users[email] = newUser;
+  saveDB(db);
+  saveUserToSupabase(newUser); // Sync Supabase
+  closeModal();
+  renderAdminDashboard();
+}
+
+function openEditClientModal(email) {
+  const db = getDB();
+  const u = db.users[email];
+  if (!u) return;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v||''; };
+  setV('edit-client-email-orig', email);
+  setV('edit-societe', u.societe);
+  setV('edit-nom', u.nom);
+  setV('edit-prenom', u.prenom);
+  setV('edit-email', u.email);
+  setV('edit-tel', u.tel);
+  document.getElementById('edit-password').value = '';
+  // Champs légaux
+  setV('edit-raison-sociale', u.raisonSociale);
+  setV('edit-siret', u.siret);
+  setV('edit-tva-intra', u.tvaIntra);
+  setV('edit-adresse-fact', u.adresseFact);
+  setV('edit-cp-fact', u.cpFact);
+  setV('edit-ville-fact', u.villeFact);
+  const condEl = document.getElementById('edit-conditions-paiement');
+  if (condEl) condEl.value = u.conditionsPaiement || '';
+  document.getElementById('modal-edit-error').style.display = 'none';
+  document.getElementById('modal-edit-client').classList.add('active');
+}
+
+function closeEditModal() {
+  document.getElementById('modal-edit-client').classList.remove('active');
+}
+
+function saveEditClient() {
+  const origEmail = document.getElementById('edit-client-email-orig').value;
+  const societe = document.getElementById('edit-societe').value.trim();
+  const nom = document.getElementById('edit-nom').value.trim();
+  const prenom = document.getElementById('edit-prenom').value.trim();
+  const newEmail = document.getElementById('edit-email').value.trim().toLowerCase();
+  const tel = document.getElementById('edit-tel').value.trim();
+  const newPwd = document.getElementById('edit-password').value.trim();
+  const errEl = document.getElementById('modal-edit-error');
+
+  if (!societe || !nom || !newEmail) { errEl.textContent = 'Société, nom et email sont obligatoires.'; errEl.style.display = 'block'; return; }
+
+  const db = getDB();
+  if (newEmail !== origEmail && db.users[newEmail]) {
+    errEl.textContent = 'Cet email est déjà utilisé par un autre compte.'; errEl.style.display = 'block'; return;
+  }
+
+  const getV = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const raisonSociale = getV('edit-raison-sociale');
+  const siret = getV('edit-siret');
+  const tvaIntra = getV('edit-tva-intra');
+  const adresseFact = getV('edit-adresse-fact');
+  const cpFact = getV('edit-cp-fact');
+  const villeFact = getV('edit-ville-fact');
+  const condEl = document.getElementById('edit-conditions-paiement');
+  const conditionsPaiement = condEl ? condEl.value : '';
+
+  const existing = db.users[origEmail];
+  const updated = { ...existing, societe, nom, prenom, tel, email: newEmail,
+    raisonSociale, siret, tvaIntra, adresseFact, cpFact, villeFact, conditionsPaiement };
+  if (newPwd) updated.password = newPwd;
+
+  // Si email changé : re-clé + MAJ des devis
+  if (newEmail !== origEmail) {
+    delete db.users[origEmail];
+    deleteUserFromSupabase(origEmail); // Sync Supabase
+    db.quotes.forEach(q => { 
+      if (q.proEmail === origEmail) {
+        q.proEmail = newEmail;
+        saveQuoteToSupabase(q); // Sync Supabase
+      }
+    });
+  }
+  db.users[newEmail] = updated;
+  saveUserToSupabase(updated); // Sync Supabase
+
+  saveDB(db);
+  closeEditModal();
+  renderAdminDashboard();
+}
+
+function deleteClient(email) {
+  if (!confirm(`Supprimer le compte de ${email} ? Les chiffrages associés seront conservés.`)) return;
+  const db = getDB();
+  delete db.users[email];
+  deleteUserFromSupabase(email); // Sync Supabase
+  saveDB(db);
+  renderAdminDashboard();
+}
+
+function deleteQuote(quoteId, source) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const clientName = [q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || 'ce devis';
+  if (!confirm(`Supprimer définitivement le devis de ${clientName} ? Cette action est irréversible.`)) return;
+  db.quotes = db.quotes.filter(x => x.id !== quoteId);
+  saveDB(db);
+  deleteQuoteFromSupabase(quoteId); // Sync Supabase
+  if (source === 'admin') {
+    document.getElementById('quote-detail').classList.remove('active');
+    renderAdminDashboard();
+  } else if (source === 'pro') {
+    const panel = document.getElementById('pro-quote-detail');
+    if (panel) { panel.classList.remove('active'); panel.dataset.openId = ''; }
+    renderProQuotes();
+  } else if (source === 'direct') {
+    renderDevisDirectTab();
+  }
+}
+
+function updateDirectQuoteStatus(quoteId, newStatus) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (q) { 
+    q.status = newStatus; 
+    saveDB(db); 
+    saveQuoteToSupabase(q); // Sync Supabase
+    renderDevisDirectTab(); 
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VUE PRO — MES CHIFFRAGES
+// ═══════════════════════════════════════════════════════════════
+let allProQuotes = []; // cache pour la recherche
+
+function renderProQuotes() {
+  const db = getDB();
+  allProQuotes = db.quotes.filter(q => q.proEmail === currentUser.email)
+                          .sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  displayFilteredQuotes(allProQuotes);
+}
+
+function filterProQuotes() {
+  const term = (document.getElementById('pro-search').value || '').toLowerCase().trim();
+  if (!term) { displayFilteredQuotes(allProQuotes); return; }
+  const filtered = allProQuotes.filter(q => {
+    const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].join(' ').toLowerCase();
+    return clientName.includes(term)
+      || (q.client?.ville||'').toLowerCase().includes(term)
+      || (q.client?.ref||'').toLowerCase().includes(term)
+      || (q.materiauLabel||q.materiau||'').toLowerCase().includes(term)
+      || (q.client?.cp||'').includes(term)
+      || (q.coloris||'').toLowerCase().includes(term);
+  });
+  displayFilteredQuotes(filtered);
+}
+
+function displayFilteredQuotes(quotes) {
+  const listEl = document.getElementById('pro-quotes-list');
+  const total = allProQuotes.length;
+  const shown = quotes.length;
+  document.getElementById('pro-count-label').textContent =
+    shown === total ? `${total} devis` : `${shown} résultat${shown>1?'s':''} sur ${total}`;
+
+  if (total === 0) {
+    listEl.innerHTML = '<div class="empty-state" style="background:var(--white);border:1px solid var(--cream-dark);border-radius:4px;padding:48px 20px;">Aucun devis pour le moment. Créez votre premier chiffrage !</div>';
+    return;
+  }
+  if (shown === 0) {
+    listEl.innerHTML = '<div class="empty-state" style="background:var(--white);border:1px solid var(--cream-dark);border-radius:4px;padding:32px 20px;">Aucun résultat pour cette recherche.</div>';
+    return;
+  }
+  listEl.innerHTML = quotes.map(q => {
+    const clientName = [q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+    const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    const cmdBtn = (q.status === 'devise')
+      ? `<button class="btn btn-sm btn-commande qc-commander" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>`
+      : '';
+    return `<div class="quote-card fade-in" onclick="showProQuoteDetail('${q.id}')">
+      <div>
+        <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
+        <div class="qc-client">${clientName} — ${q.client?.ville||''}</div>
+        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}</div>
+        ${cmdBtn}
+      </div>
+      <div style="text-align:right;">
+        <div class="qc-price">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : 'Sur devis'}</div>
+        <div class="qc-date">${q.totalHT ? 'Prix d\'achat HT' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showProQuoteDetail(id) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === id);
+  if (!q) return;
+  const panel = document.getElementById('pro-quote-detail');
+  if (panel.dataset.openId === id && panel.classList.contains('active')) {
+    panel.classList.remove('active');
+    panel.dataset.openId = '';
+    return;
+  }
+  panel.dataset.openId = id;
+  panel.classList.add('active');
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+  const optLines = Object.entries(q.options||{}).filter(([k,v])=>v>0)
+    .map(([k,v])=>`<div class="summary-row"><span class="key">${PRIX.options[k]?.label||k}</span><span class="val">× ${v}</span></div>`).join('');
+  const commandeInfo = q.commande
+    ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
+         <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
+         ${q.commande.notes ? `<br><span style="color:var(--stone-light);">Note : ${q.commande.notes}</span>` : ''}
+         ${q.commande.planFile
+           ? `<br>📐 Plan : ${q.commande.planFileData
+               ? `<a href="${q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.planFile}</a>`
+               : `<em>${q.commande.planFile}</em>`}`
+           : ''}
+         ${q.commande.devisFile
+           ? `<br>✍️ Devis signé : ${q.commande.devisFileData
+               ? `<a href="${q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.devisFile}</a>`
+               : `<em>${q.commande.devisFile}</em>`}`
+           : ''}
+       </div>` : '';
+  const cmdAction = (q.status === 'devise')
+    ? `<button class="btn btn-commande" onclick="openCommandeModal('${id}')">🛒 Passer en commande</button>`
+    : '';
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);margin-bottom:3px;">${q.client?.ref||('Réf. '+q.id.slice(-6))}</div>
+        <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status)}
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('pro-quote-detail').classList.remove('active')">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">Client</div>
+        <div class="summary-row"><span class="key">Adresse</span><span class="val">${q.client?.adresse||'—'}, ${q.client?.cp||''} ${q.client?.ville||''}</span></div>
+        <div class="summary-row"><span class="key">Téléphone</span><span class="val">${q.client?.tel||'—'}</span></div>
+        ${q.client?.datePose?`<div class="summary-row"><span class="key">Date pose demandée</span><span class="val">${new Date(q.client.datePose).toLocaleDateString('fr-FR')}</span></div>`:''}
+      </div>
+      <div>
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">Matériau & prix d'achat</div>
+        <div class="summary-row"><span class="key">Matériau</span><span class="val">${q.materiauLabel} — ${q.coloris||'—'}</span></div>
+        <div class="summary-row"><span class="key">Surface</span><span class="val">${surf} m²</span></div>
+        ${q.chant?.type?`<div class="summary-row"><span class="key">Chant</span><span class="val">${q.chant.type}</span></div>`:''}
+        ${optLines}
+        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' €':'—'}</span></div>
+      </div>
+    </div>
+    ${commandeInfo}
+    <div class="pro-detail-actions">
+      <button class="btn btn-primary btn-sm" onclick="loadQuoteIntoForm('${id}', false)">✏️ Modifier</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadQuoteIntoForm('${id}', true)">⧉ Dupliquer</button>
+      ${cmdAction}
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteQuote('${id}','pro')" title="Supprimer ce devis">🗑 Supprimer</button>
+    </div>`;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODALE PASSAGE EN COMMANDE
+// ═══════════════════════════════════════════════════════════════
+function openCommandeModal(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  document.getElementById('commande-quote-id').value = quoteId;
+  document.getElementById('commande-date-install').value = '';
+  document.getElementById('commande-notes').value = '';
+  document.getElementById('modal-commande-error').style.display = 'none';
+  // Reset file zones et données en attente
+  pendingFiles = { plan: null, devis: null };
+  ['drop-plan','drop-devis'].forEach(id => document.getElementById(id).classList.remove('file-selected'));
+  document.getElementById('label-plan').textContent = 'Cliquez pour ajouter le plan coté';
+  document.getElementById('label-devis').textContent = 'Cliquez pour joindre le devis signé';
+  document.getElementById('file-plan').value = '';
+  document.getElementById('file-devis').value = '';
+  // Recap
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  document.getElementById('commande-quote-recap').innerHTML =
+    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; <strong>${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' € HT':''}</strong>`;
+  document.getElementById('modal-commande').classList.add('active');
+}
+
+function closeCommandeModal() {
+  document.getElementById('modal-commande').classList.remove('active');
+}
+
+// Stockage temporaire des fichiers (base64) avant confirmation commande
+let pendingFiles = { plan: null, devis: null };
+
+function handleFileSelect(input, dropZoneId, labelId) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Limite de taille : 5 Mo
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Le fichier est trop lourd (5 Mo maximum). Veuillez choisir un fichier plus petit.');
+    input.value = '';
+    return;
+  }
+
+  const name = file.name.length > 40 ? file.name.slice(0,37)+'…' : file.name;
+  document.getElementById(labelId).textContent = '⏳ Chargement…';
+  document.getElementById(dropZoneId).classList.add('file-selected');
+
+  const key = dropZoneId === 'drop-plan' ? 'plan' : 'devis';
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingFiles[key] = { name: file.name, dataUrl: e.target.result };
+    document.getElementById(labelId).textContent = '✓ ' + name;
+  };
+  reader.onerror = () => {
+    document.getElementById(labelId).textContent = '✗ Erreur de lecture';
+    document.getElementById(dropZoneId).classList.remove('file-selected');
+    pendingFiles[key] = null;
+  };
+  reader.readAsDataURL(file);
+}
+
+function confirmCommande() {
+  const quoteId = document.getElementById('commande-quote-id').value;
+  const dateInstall = document.getElementById('commande-date-install').value;
+  const notes = document.getElementById('commande-notes').value.trim();
+  const errEl = document.getElementById('modal-commande-error');
+
+  if (!dateInstall) { errEl.textContent = 'Veuillez indiquer une date d\'installation souhaitée.'; errEl.style.display = 'block'; return; }
+
+  // Vérifier que les fichiers sélectionnés ont bien fini de se charger
+  const planInputHasFile = document.getElementById('file-plan').files.length > 0;
+  const devisInputHasFile = document.getElementById('file-devis').files.length > 0;
+  if ((planInputHasFile && !pendingFiles.plan) || (devisInputHasFile && !pendingFiles.devis)) {
+    errEl.textContent = 'Les fichiers sont encore en cours de chargement, veuillez patienter un instant.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const db = getDB();
+  const idx = db.quotes.findIndex(x => x.id === quoteId);
+  if (idx === -1) return;
+  db.quotes[idx].status = 'commande';
+  db.quotes[idx].commande = {
+    dateInstall,
+    notes,
+    planFile:      pendingFiles.plan  ? pendingFiles.plan.name    : null,
+    planFileData:  pendingFiles.plan  ? pendingFiles.plan.dataUrl : null,
+    devisFile:     pendingFiles.devis ? pendingFiles.devis.name   : null,
+    devisFileData: pendingFiles.devis ? pendingFiles.devis.dataUrl: null,
+    createdAt: new Date().toISOString()
+  };
+  pendingFiles = { plan: null, devis: null };
+  saveDB(db);
+  closeCommandeModal();
+  renderProQuotes();
+  // Fermer le panneau de détail et le ré-ouvrir pour afficher l'état mis à jour
+  const panel = document.getElementById('pro-quote-detail');
+  panel.classList.remove('active');
+  panel.dataset.openId = '';
+  setTimeout(() => showProQuoteDetail(quoteId), 100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORMULAIRE MULTI-ÉTAPES
+// ═══════════════════════════════════════════════════════════════
+let quoteMode = 'pro'; // 'pro' | 'direct'
+let currentStep = 1;
+let planCount = 3;
+let credCount = 2;
+let currentEditingQuoteId = null;
+
+function getPlansData() {
+  const plans = [];
+  document.querySelectorAll('#plans-container .plan-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const epSel = row.querySelector('.ep-select');
+    plans.push({ larg: inputs[0]?.value||'', long: inputs[1]?.value||'', ep: epSel?.value || inputs[2]?.value || '' });
+  });
+  return plans;
+}
+
+function getCredencesData() {
+  const creds = [];
+  document.querySelectorAll('#credences-container .plan-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    creds.push({ larg: inputs[0]?.value||'', long: inputs[1]?.value||'' });
+  });
+  return creds;
+}
+
+function startNewQuote() {
+  quoteMode = 'pro';
+  currentEditingQuoteId = null;
+  resetFormFields();
+  currentStep = 1;
+  renderStep();
+  document.getElementById('form-success').style.display = 'none';
+  document.querySelector('#view-form .form-main').style.display = 'block';
+  document.querySelector('#view-form .progress-wrapper').style.display = 'block';
+  document.getElementById('form-back-btn').textContent = '← Mes chiffrages';
+  // Fill banner
+  document.getElementById('banner-societe').textContent = currentUser.societe || '';
+  document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
+  document.getElementById('banner-email').textContent = currentUser.email || '';
+  showView('view-form');
+  initCounterPrices();
+}
+
+function startDirectQuote() {
+  quoteMode = 'direct';
+  currentEditingQuoteId = null;
+  resetFormFields();
+  currentStep = 1;
+  renderStep();
+  document.getElementById('form-success').style.display = 'none';
+  document.querySelector('#view-form .form-main').style.display = 'block';
+  document.querySelector('#view-form .progress-wrapper').style.display = 'block';
+  document.getElementById('form-back-btn').textContent = '← Devis particuliers';
+  // Banner : admin using IG identity
+  document.getElementById('banner-societe').textContent = 'Intérieur Granit';
+  document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
+  document.getElementById('banner-email').textContent = currentUser.email || '';
+  showView('view-form');
+  initCounterPrices();
+}
+
+function backFromForm() {
+  if (quoteMode === 'direct') {
+    showAdminView();
+    switchTab('direct');
+    showView('view-admin');
+  } else {
+    backToPro();
+  }
+}
+
+function loadQuoteIntoForm(quoteId, isDuplicate) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  quoteMode = q.type === 'direct' ? 'direct' : 'pro';
+  currentEditingQuoteId = isDuplicate ? null : quoteId;
+  resetFormFields();
+
+  // Étape 1 — Client
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v||''; };
+  setV('civilite', q.client?.civilite);
+  setV('nom-client', q.client?.nom);
+  setV('prenom-client', q.client?.prenom);
+  setV('tel-client', q.client?.tel);
+  setV('email-client', q.client?.email);
+  setV('adresse', q.client?.adresse);
+  setV('cp', q.client?.cp);
+  setV('ville', q.client?.ville);
+  setV('date-pose', q.client?.datePose);
+  setV('ref-chantier', isDuplicate ? '' : q.client?.ref);
+
+  // Étape 2 — Matériau
+  setV('materiau', q.materiau);
+  updateColoris();
+  updatePriceBadge();
+  setV('coloris', q.coloris);
+  setV('finition', q.finition);
+  setV('epaisseur', q.epaisseur);
+
+  // Étape 3 — Dimensions (si stockées)
+  if (q.plans && q.plans.length > 0) {
+    const cont = document.getElementById('plans-container');
+    cont.innerHTML = '';
+    q.plans.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'plan-row';
+      row.style.gridTemplateColumns = '36px 1fr 1fr 1fr';
+      row.innerHTML = `<div class="plan-label">P${i+1}</div><input type="number" value="${p.larg}" min="0" oninput="updateLiveSurface()"><input type="number" value="${p.long}" min="0" oninput="updateLiveSurface()">${buildEpSelect(p.ep)}`;
+      cont.appendChild(row);
+    });
+    planCount = q.plans.length;
+  }
+  if (q.credences && q.credences.length > 0) {
+    const cont = document.getElementById('credences-container');
+    cont.innerHTML = '';
+    q.credences.forEach((c, i) => {
+      const row = document.createElement('div');
+      row.className = 'plan-row';
+      row.style.gridTemplateColumns = '36px 1fr 1fr';
+      row.innerHTML = `<div class="plan-label">C${i+1}</div><input type="number" value="${c.larg}" min="0" oninput="updateLiveSurface()"><input type="number" value="${c.long}" min="0" oninput="updateLiveSurface()">`;
+      cont.appendChild(row);
+    });
+    credCount = q.credences.length;
+  }
+  updateLiveSurface();
+
+  // Étape 4 — Chant & options
+  setV('chant', q.chant?.type);
+  setV('chant-longueur', q.chant?.longueur||'');
+  const counterKeys = ['plaque-cuisson','evier-encastre','evier-sous-plan','percage-mitigeur','percage-bar','prise-plan','prise-credence','poubelle'];
+  document.querySelectorAll('#counters .counter-item').forEach((item, i) => {
+    item.querySelector('.counter-val').textContent = q.options?.[counterKeys[i]] || 0;
+  });
+  if (q.tva === 20) document.getElementById('tva-non').checked = true;
+  else document.getElementById('tva-oui').checked = true;
+  if (q.livraison === 'etage') document.getElementById('etage').checked = true;
+  else document.getElementById('rdc').checked = true;
+  setV('commentaire', q.commentaire);
+
+  // Ouvrir le formulaire
+  currentStep = 1;
+  renderStep();
+  document.getElementById('form-success').style.display = 'none';
+  document.querySelector('#view-form .form-main').style.display = 'block';
+  document.querySelector('#view-form .progress-wrapper').style.display = 'block';
+  document.getElementById('form-back-btn').textContent = quoteMode === 'direct' ? '← Devis particuliers' : '← Mes chiffrages';
+  if (quoteMode === 'direct') {
+    document.getElementById('banner-societe').textContent = 'Intérieur Granit';
+  } else {
+    document.getElementById('banner-societe').textContent = currentUser.societe || '';
+  }
+  document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
+  document.getElementById('banner-email').textContent = currentUser.email || '';
+  showView('view-form');
+  initCounterPrices();
+}
+
+function backToPro() {
+  showProView();
+  showView('view-pro');
+}
+
+function resetFormFields() {
+  planCount = 3; credCount = 2;
+  ['civilite','nom-client','prenom-client','tel-client','email-client','adresse','cp','ville','date-pose','ref-chantier',
+   'materiau','coloris','finition','chant','chant-longueur','commentaire'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  // Réinitialiser le dropdown épaisseur au placeholder
+  const epSel = document.getElementById('epaisseur');
+  if (epSel) { epSel.innerHTML = '<option value="">— Sélectionnez d\'abord un matériau —</option>'; }
+  const epBlank = `<select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;"><option value="">—</option></select>`;
+  document.getElementById('plans-container').innerHTML = `
+    <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;"><div class="plan-label">P1</div><input type="number" placeholder="2400" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="650" min="0" oninput="updateLiveSurface()">${epBlank}</div>
+    <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;"><div class="plan-label">P2</div><input type="number" placeholder="1200" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="" min="0" oninput="updateLiveSurface()">${epBlank}</div>
+    <div class="plan-row" style="grid-template-columns:36px 1fr 1fr 1fr;"><div class="plan-label">P3</div><input type="number" placeholder="" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="" min="0" oninput="updateLiveSurface()">${epBlank}</div>`;
+  document.getElementById('credences-container').innerHTML = `
+    <div class="plan-row" style="grid-template-columns:36px 1fr 1fr;"><div class="plan-label">C1</div><input type="number" placeholder="1200" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="600" min="0" oninput="updateLiveSurface()"></div>
+    <div class="plan-row" style="grid-template-columns:36px 1fr 1fr;"><div class="plan-label">C2</div><input type="number" placeholder="" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="" min="0" oninput="updateLiveSurface()"></div>`;
+  document.querySelectorAll('.counter-val').forEach(el => el.textContent = '0');
+  document.getElementById('tva-oui').checked = true;
+  document.getElementById('rdc').checked = true;
+  document.getElementById('price-badge').style.display = 'none';
+  document.getElementById('live-surface').style.display = 'none';
+}
+
+function goToStep(n) { if (n > currentStep) return; currentStep = n; renderStep(); }
+
+function nextStep(from) {
+  if (!validateFormStep(from)) return;
+  currentStep = from + 1;
+  if (currentStep === 5) buildSummary();
+  renderStep();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function prevStep(from) { currentStep = from - 1; renderStep(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function validateFormStep(step) {
+  if (step === 1) {
+    if (!document.getElementById('nom-client').value.trim()) { alert('Veuillez renseigner le nom du client.'); return false; }
+    if (!document.getElementById('cp').value.trim() || !document.getElementById('ville').value.trim()) { alert('Veuillez renseigner le code postal et la ville.'); return false; }
+  }
+  if (step === 2) {
+    if (!document.getElementById('materiau').value) { alert('Veuillez sélectionner un matériau.'); return false; }
+  }
+  return true;
+}
+
+function renderStep() {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step-' + currentStep)?.classList.add('active');
+  document.querySelectorAll('#view-form .step-item').forEach((item, i) => {
+    const n = i + 1;
+    item.classList.remove('active', 'done');
+    if (n < currentStep) item.classList.add('done');
+    else if (n === currentStep) item.classList.add('active');
+    item.querySelector('.step-circle').textContent = n < currentStep ? '✓' : n;
+  });
+  document.querySelectorAll('#view-form .step-line').forEach((line, i) => {
+    line.style.background = (i + 1) < currentStep ? 'var(--gold)' : 'var(--stone-light)';
+  });
+}
+
+function updateColoris() {
+  const mat = document.getElementById('materiau').value;
+  const sel = document.getElementById('coloris');
+  sel.innerHTML = '<option value="">Sélectionnez un coloris...</option>';
+  getColorisList(mat).forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+  onColorisChange();
+}
+
+function onColorisChange() {
+  const mat = document.getElementById('materiau').value;
+  const coloris = document.getElementById('coloris').value;
+  const finSel = document.getElementById('finition');
+  const fins = getColorisFinitions(mat, coloris);
+  if (fins.length > 1) {
+    // Plusieurs finitions disponibles — dropdown interactif
+    finSel.innerHTML = fins.map(f => '<option value="' + f.f + '">' + f.f + '</option>').join('');
+  } else if (fins.length === 1) {
+    finSel.innerHTML = '<option value="' + fins[0].f + '" selected>' + fins[0].f + '</option>';
+  } else {
+    finSel.innerHTML = '<option value="">—</option>';
+  }
+  onFinitionChange();
+}
+
+function onFinitionChange() {
+  updateEpaisseurOptionsForColoris();
+  updatePriceBadge();
+}
+
+// Génère le HTML d'un select épaisseur pour une ligne de plan
+function buildEpSelect(selectedVal) {
+  const mat = document.getElementById('materiau').value;
+  const coloris = document.getElementById('coloris').value;
+  const finition = document.getElementById('finition').value;
+  const eps = getAvailableEpaisseurs(mat, coloris, finition);
+  if (eps.length === 0) {
+    return `<select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;"><option value="">—</option></select>`;
+  }
+  const opts = eps.map(ep =>
+    `<option value="${ep}"${ep === String(selectedVal) ? ' selected' : ''}>${ep} mm</option>`
+  ).join('');
+  return `<select class="ep-select" style="width:100%;padding:6px 4px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--stone);font-size:.85rem;">${opts}</select>`;
+}
+
+function updateEpaisseurOptions() {
+  // Fallback vers PRIX.materiaux (quand pas de coloris sélectionné)
+  const mat = document.getElementById('materiau').value;
+  const matData = PRIX.materiaux[mat];
+  if (!matData || !matData.epaisseurs) {
+    const sel = document.getElementById('epaisseur');
+    sel.innerHTML = '<option value="">— Sélectionnez d\'abord un matériau —</option>';
+    document.querySelectorAll('#plans-container .ep-select').forEach(s => { s.innerHTML = '<option value="">—</option>'; });
+    return;
+  }
+  updateEpaisseurOptionsForColoris();
+}
+
+function updateEpaisseurOptionsForColoris() {
+  const mat = document.getElementById('materiau').value;
+  const coloris = document.getElementById('coloris').value;
+  const finition = document.getElementById('finition').value;
+  const sel = document.getElementById('epaisseur');
+  const currentVal = sel.value;
+  const eps = getAvailableEpaisseurs(mat, coloris, finition);
+  if (eps.length === 0) {
+    sel.innerHTML = '<option value="">— Sélectionnez d\'abord un matériau —</option>';
+    document.querySelectorAll('#plans-container .ep-select').forEach(s => { s.innerHTML = '<option value="">—</option>'; });
+    return;
+  }
+  sel.innerHTML = eps.map(ep => `<option value="${ep}"${ep === currentVal ? ' selected' : ''}>${ep} mm</option>`).join('');
+  if (!eps.includes(currentVal)) sel.value = eps[0] || '';
+  const newEp = sel.value;
+  document.querySelectorAll('#plans-container .ep-select').forEach(s => {
+    const prev = s.value;
+    s.innerHTML = eps.map(ep => `<option value="${ep}">${ep} mm</option>`).join('');
+    s.value = eps.includes(prev) ? prev : newEp;
+  });
+  syncEpaisseur();
+}
+
+function updatePriceBadge() {
+  const mat = document.getElementById('materiau').value;
+  const ep  = document.getElementById('epaisseur').value;
+  const coloris = document.getElementById('coloris').value;
+  const badge = document.getElementById('price-badge');
+  if (mat) {
+    badge.style.display = 'inline-flex';
+    const label = quoteMode === 'direct' ? 'Prix de vente' : 'Prix cuisiniste';
+    let prix = null;
+    const finition = document.getElementById('finition').value;
+    if (ep) {
+      prix = quoteMode === 'direct'
+        ? getColorisPrixDirect(mat, coloris, ep, finition)
+        : getColorisPrice(mat, coloris, ep, finition);
+    }
+    const prixTxt = prix !== null ? `${Math.round(prix)} €/m² HT` : 'sélectionnez un coloris';
+    const epTxt = ep ? ` — ${ep} mm` : '';
+    document.getElementById('price-badge-text').textContent = `${label}${epTxt} : ${prixTxt}`;
+  } else { badge.style.display = 'none'; }
+}
+
+function syncEpaisseur() {
+  const ep = document.getElementById('epaisseur').value;
+  if (!ep) return;
+  document.querySelectorAll('#plans-container .ep-select').forEach(sel => { if (!sel.value) sel.value = ep; });
+}
+
+function addPlan() {
+  planCount++;
+  const row = document.createElement('div');
+  row.className = 'plan-row';
+  row.style.gridTemplateColumns = '36px 1fr 1fr 1fr';
+  const ep = document.getElementById('epaisseur').value || '';
+  row.innerHTML = `<div class="plan-label">P${planCount}</div><input type="number" placeholder="" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="" min="0" oninput="updateLiveSurface()">${buildEpSelect(ep)}`;
+  document.getElementById('plans-container').appendChild(row);
+}
+
+function addCredence() {
+  credCount++;
+  const row = document.createElement('div');
+  row.className = 'plan-row';
+  row.style.gridTemplateColumns = '36px 1fr 1fr';
+  row.innerHTML = `<div class="plan-label">C${credCount}</div><input type="number" placeholder="" min="0" oninput="updateLiveSurface()"><input type="number" placeholder="" min="0" oninput="updateLiveSurface()">`;
+  document.getElementById('credences-container').appendChild(row);
+}
+
+function changeCount(btn, delta) {
+  const valEl = btn.parentElement.querySelector('.counter-val');
+  valEl.textContent = Math.max(0, parseInt(valEl.textContent) + delta);
+}
+
+function initCounterPrices() {
+  const P = getCurrentPrix();
+  const _coeff = quoteMode === 'direct' ? getCoeffDirect() : 1;
+  document.querySelectorAll('.counter-price[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
+    if (P.options[key]) el.textContent = Math.round(P.options[key].prix * _coeff) + ' € HT / unité';
+  });
+  // Labels livraison avec prix
+  const rdcEl = document.getElementById('lbl-rdc');
+  const etageEl = document.getElementById('lbl-etage');
+  if (rdcEl && P.pose?.rdc) rdcEl.textContent = Math.round(P.pose.rdc * _coeff) + ' € HT';
+  if (etageEl && P.pose?.etage) etageEl.textContent = Math.round(P.pose.etage * _coeff) + ' € HT';
+}
+
+function updateLiveSurface() {
+  let total = 0;
+  document.querySelectorAll('#plans-container .plan-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    total += ((parseFloat(inputs[0].value)||0) * (parseFloat(inputs[1].value)||0)) / 1e6;
+  });
+  const el = document.getElementById('live-surface');
+  if (total > 0) { el.style.display='block'; document.getElementById('live-surface-val').textContent = total.toFixed(2)+' m²'; }
+  else el.style.display = 'none';
+}
+
+function calcSurface(containerSelector) {
+  let total = 0;
+  document.querySelectorAll(containerSelector + ' .plan-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    total += ((parseFloat(inputs[0].value)||0) * (parseFloat(inputs[1].value)||0)) / 1e6;
+  });
+  return total;
+}
+
+function getCounters() {
+  const result = {};
+  document.querySelectorAll('.counter-item').forEach(item => {
+    const priceEl = item.querySelector('.counter-price[data-key]');
+    if (!priceEl) return;
+    const key = priceEl.dataset.key;
+    result[key] = parseInt(item.querySelector('.counter-val').textContent) || 0;
+  });
+  return result;
+}
+
+function computePrice() {
+  const P = getCurrentPrix();
+  const mat = document.getElementById('materiau').value;
+  const ep  = document.getElementById('epaisseur').value;
+  const coloris = document.getElementById('coloris').value;
+  const finition = document.getElementById('finition').value;
+  // Résolution du prix au m² : per-coloris+finition d'abord, puis fallback PRIX.materiaux
+  let prixMat = null;
+  if (mat && ep) {
+    if (quoteMode === 'direct') {
+      prixMat = getColorisPrixDirect(mat, coloris, ep, finition);
+    } else {
+      prixMat = getColorisPrice(mat, coloris, ep, finition);
+    }
+  }
+  const surfacePlans = calcSurface('#plans-container');
+  const surfaceCred = calcSurface('#credences-container');
+  const chantType = document.getElementById('chant').value;
+  const chantLongueur = (parseFloat(document.getElementById('chant-longueur')?.value)||0) / 1000;
+  const counters = getCounters();
+  const tva = parseInt(document.querySelector('input[name="tva"]:checked')?.value||10) / 100;
+  const livraison = document.querySelector('input[name="livraison"]:checked')?.value;
+  const lines = [];
+
+  if (surfacePlans > 0 && prixMat !== null)
+    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m² × ${prixMat} €/m²`, ht: surfacePlans*prixMat });
+  else if (surfacePlans > 0)
+    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m²`, ht: null });
+
+  if (surfaceCred > 0 && prixMat !== null) {
+    const pc = prixMat * P.credences.facteur;
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${Math.round(pc)} €/m²`, ht: surfaceCred*pc });
+  } else if (surfaceCred > 0)
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
+
+  const coeff = quoteMode === 'direct' ? getCoeffDirect() : 1;
+  if (chantType && chantLongueur > 0 && P.chants[chantType]) {
+    const prixChant = Math.round(P.chants[chantType] * coeff);
+    lines.push({ cat:'Chant', label:`${chantType} — ${chantLongueur.toFixed(2)} ml × ${prixChant} €/ml`, ht: chantLongueur*prixChant });
+  }
+
+  Object.entries(counters).forEach(([key, qty]) => {
+    if (qty > 0 && P.options[key]) {
+      const prixOpt = Math.round(P.options[key].prix * coeff);
+      lines.push({ cat:'Options', label:`${P.options[key].label} × ${qty}`, ht: prixOpt*qty });
+    }
+  });
+
+  if (livraison === 'rdc' && P.pose.rdc) {
+    const prixPose = Math.round(P.pose.rdc * coeff);
+    lines.push({ cat:'Livraison', label:'Livraison rez-de-chaussée', ht: prixPose });
+  } else if (livraison === 'etage' && P.pose.etage) {
+    const prixPose = Math.round(P.pose.etage * coeff);
+    lines.push({ cat:'Livraison', label:'Livraison étage / Paris', ht: prixPose });
+  }
+
+  const totalHT = lines.every(l => l.ht !== null) && lines.length > 0
+    ? lines.reduce((s,l) => s+(l.ht||0), 0) : null;
+
+  return { lines, totalHT, tva, surfacePlans, surfaceCred };
+}
+
+function buildSummary() {
+  const P = getCurrentPrix();
+  const mat = document.getElementById('materiau').value;
+  // Label toujours depuis PRIX (référence), car PRIX_VENTE n'a pas de propriété label
+  const matLabel = mat ? (PRIX.materiaux[mat]?.label || mat) : '—';
+  const clientName = [document.getElementById('civilite').value, document.getElementById('prenom-client').value, document.getElementById('nom-client').value].filter(Boolean).join(' ');
+  const tvaLabel = document.getElementById('tva-oui').checked ? '10%' : '20%';
+  const livLabel = document.getElementById('rdc').checked ? 'Rez-de-chaussée' : 'Étage';
+  const ref = document.getElementById('ref-chantier').value;
+  const datePose = document.getElementById('date-pose').value;
+
+  document.getElementById('summary-chantier').innerHTML = `
+    <h3>Informations chantier</h3>
+    ${ref?`<div class="summary-row"><span class="key">Référence</span><span class="val">${ref}</span></div>`:''}
+    <div class="summary-row"><span class="key">Client</span><span class="val">${clientName||'—'}</span></div>
+    <div class="summary-row"><span class="key">Adresse</span><span class="val">${document.getElementById('adresse').value||'—'}, ${document.getElementById('cp').value} ${document.getElementById('ville').value}</span></div>
+    ${datePose?`<div class="summary-row"><span class="key">Date souhaitée</span><span class="val">${new Date(datePose).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</span></div>`:''}
+    <div class="summary-row"><span class="key">Matériau</span><span class="val">${matLabel} — ${document.getElementById('coloris').value||'—'}</span></div>
+    <div class="summary-row"><span class="key">Finition</span><span class="val">${document.getElementById('finition').value||'—'}${document.getElementById('epaisseur').value?' · '+document.getElementById('epaisseur').value+' mm':''}</span></div>
+    <div class="summary-row"><span class="key">TVA</span><span class="val">${tvaLabel}</span></div>
+    <div class="summary-row"><span class="key">Accès chantier</span><span class="val">${livLabel}</span></div>
+  `;
+
+  const { lines, totalHT, tva } = computePrice();
+  let rows = '';
+  if (lines.length === 0) {
+    rows = '<tr><td colspan="2" style="color:var(--stone-light);font-style:italic;padding:12px 0;">Aucune dimension saisie — le tarif sera communiqué après étude.</td></tr>';
+  } else {
+    let lastCat = '';
+    lines.forEach(l => {
+      if (l.cat !== lastCat) { rows += `<tr class="group-header"><td colspan="2">${l.cat}</td></tr>`; lastCat=l.cat; }
+      rows += `<tr><td style="padding-left:12px;">${l.label}</td><td>${l.ht!==null?Math.round(l.ht).toLocaleString('fr-FR')+' €':'Sur devis'}</td></tr>`;
+    });
+  }
+  if (totalHT !== null) {
+    const tvaAmt = totalHT*tva;
+    rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Total HT</td><td>${Math.round(totalHT).toLocaleString('fr-FR')} €</td></tr>
+             <tr class="tva-row"><td>TVA ${Math.round(tva*100)}%</td><td>${Math.round(tvaAmt).toLocaleString('fr-FR')} €</td></tr>
+             <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${Math.round(totalHT+tvaAmt).toLocaleString('fr-FR')} €</td></tr>`;
+  }
+  document.getElementById('price-breakdown').innerHTML = `
+    <h3>Décomposition tarifaire</h3>
+    <table class="price-table">${rows}</table>
+    <p style="font-size:.76rem;color:var(--stone-light);font-style:italic;margin-top:12px;">Prix indicatifs HT — confirmés après étude du dossier.</p>`;
+}
+
+function submitQuote(action) {
+  const P = getCurrentPrix();
+  const mat = document.getElementById('materiau').value;
+  const matLabel = mat ? (PRIX.materiaux[mat]?.label || mat) : mat;
+  const { lines, totalHT, tva, surfacePlans, surfaceCred } = computePrice();
+  const totalTTC = totalHT !== null ? totalHT * (1 + tva) : null;
+  const datePose = document.getElementById('date-pose').value;
+  const newStatus = action === 'commande' ? 'commande' : 'devise';
+
+  const db = getDB();
+
+  const quoteData = {
+    proEmail: currentUser.email,
+    proSociete: currentUser.societe,
+    client: {
+      civilite: document.getElementById('civilite').value,
+      nom: document.getElementById('nom-client').value,
+      prenom: document.getElementById('prenom-client').value,
+      tel: document.getElementById('tel-client').value,
+      email: document.getElementById('email-client').value,
+      adresse: document.getElementById('adresse').value,
+      cp: document.getElementById('cp').value,
+      ville: document.getElementById('ville').value,
+      datePose: datePose || '',
+      ref: document.getElementById('ref-chantier').value
+    },
+    materiau: mat, materiauLabel: matLabel,
+    coloris: document.getElementById('coloris').value,
+    finition: document.getElementById('finition').value,
+    epaisseur: document.getElementById('epaisseur').value,
+    surfacePlans, surfaceCred,
+    plans: getPlansData(),
+    credences: getCredencesData(),
+    chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
+    options: getCounters(),
+    tva: Math.round(tva*100),
+    livraison: document.querySelector('input[name="livraison"]:checked')?.value,
+    commentaire: document.getElementById('commentaire').value,
+    totalHT: totalHT ? Math.round(totalHT) : null,
+    totalTTC: totalTTC ? Math.round(totalTTC) : null,
+    status: newStatus,
+    // Détection fiable du mode : quoteMode + vérification via le texte du bouton retour
+    type: (quoteMode === 'direct' || document.getElementById('form-back-btn')?.textContent?.includes('particuliers')) ? 'direct' : 'pro'
+  };
+
+  let savedQuote;
+  if (currentEditingQuoteId) {
+    // Mise à jour d'un devis existant
+    const idx = db.quotes.findIndex(x => x.id === currentEditingQuoteId);
+    if (idx !== -1) {
+      db.quotes[idx] = { ...db.quotes[idx], ...quoteData };
+      savedQuote = db.quotes[idx];
+    }
+  } else {
+    // Nouveau devis
+    savedQuote = { id: genId('q'), ...quoteData, createdAt: new Date().toISOString() };
+    db.quotes.unshift(savedQuote);
+  }
+  saveDB(db);
+  if (savedQuote) saveQuoteToSupabase(savedQuote); // Sync Supabase
+
+  // Écran de confirmation
+  const isEdit = !!currentEditingQuoteId;
+  const isDirect = quoteMode === 'direct';
+  if (isDirect) {
+    document.getElementById('success-title').textContent = isEdit ? 'Devis mis à jour !' : 'Devis particulier enregistré !';
+    document.getElementById('success-msg').textContent = isEdit ? 'Le devis a été modifié et enregistré.' : 'Le devis vente directe a été enregistré.';
+  } else {
+    document.getElementById('success-title').textContent = action === 'commande' ? 'Commande passée !' : (isEdit ? 'Devis mis à jour !' : 'Devis validé !');
+    document.getElementById('success-msg').textContent = action === 'commande'
+      ? 'Votre commande a été transmise à Intérieur Granit. Vous serez recontacté rapidement.'
+      : (isEdit ? 'Le devis a été modifié et enregistré.' : 'Votre devis a été enregistré. Intérieur Granit en prendra connaissance.');
+  }
+  currentEditingQuoteId = null;
+
+  // Adapter les boutons de l'écran de confirmation selon le mode
+  const successBtns = document.querySelector('#form-success .btn-row-success, #form-success div[style]');
+  if (quoteMode === 'direct') {
+    document.getElementById('success-btn-new').textContent = '+ Nouveau devis particulier';
+    document.getElementById('success-btn-new').onclick = startDirectQuote;
+    document.getElementById('success-btn-back').textContent = '← Devis particuliers';
+    document.getElementById('success-btn-back').onclick = function() { backFromForm(); };
+  } else {
+    document.getElementById('success-btn-new').textContent = 'Nouveau chiffrage';
+    document.getElementById('success-btn-new').onclick = startNewQuote;
+    document.getElementById('success-btn-back').textContent = 'Mes chiffrages';
+    document.getElementById('success-btn-back').onclick = backToPro;
+  }
+
+  document.querySelector('#view-form .form-main').style.display = 'none';
+  document.getElementById('form-success').style.display = 'block';
+  document.querySelector('#view-form .progress-wrapper').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT BON DE COMMANDE (PDF via impression navigateur)
+// ═══════════════════════════════════════════════════════════════
+function exportBonDeCommande(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+
+  const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const ref = q.client?.ref || ('BC-' + q.id.slice(-6).toUpperCase());
+
+  // Lignes plans
+  let plansRows = '';
+  if (q.plans && q.plans.filter(p => p.larg && p.long).length > 0) {
+    q.plans.filter(p => p.larg && p.long).forEach((p, i) => {
+      plansRows += `<tr><td>Plan P${i+1}</td><td>${p.larg} × ${p.long} mm${p.ep ? ' &nbsp;·&nbsp; ép. ' + p.ep + ' mm' : ''}</td></tr>`;
+    });
+    plansRows = `<tr class="sub-header"><td colspan="2">Plans de travail &nbsp;—&nbsp; Surface totale : ${q.surfacePlans ? q.surfacePlans.toFixed(2) + ' m²' : '—'}</td></tr>` + plansRows;
+  } else if (q.surfacePlans > 0) {
+    plansRows = `<tr><td>Plans de travail</td><td>${q.surfacePlans.toFixed(2)} m²</td></tr>`;
+  }
+
+  // Lignes crédences
+  let credRows = '';
+  if (q.credences && q.credences.filter(c => c.larg && c.long).length > 0) {
+    q.credences.filter(c => c.larg && c.long).forEach((c, i) => {
+      credRows += `<tr><td>Crédence C${i+1}</td><td>${c.larg} × ${c.long} mm</td></tr>`;
+    });
+    credRows = `<tr class="sub-header"><td colspan="2">Crédences &nbsp;—&nbsp; Surface totale : ${q.surfaceCred ? q.surfaceCred.toFixed(2) + ' m²' : '—'}</td></tr>` + credRows;
+  } else if (q.surfaceCred > 0) {
+    credRows = `<tr><td>Crédences</td><td>${q.surfaceCred.toFixed(2)} m²</td></tr>`;
+  }
+
+  // Façonnage & options (sans prix)
+  let optRows = '';
+  if (q.chant?.type) {
+    const ml = q.chant.longueur ? (q.chant.longueur / 1000).toFixed(2) + ' ml' : '';
+    optRows += `<tr><td>Chant — ${q.chant.type}</td><td>${ml}</td></tr>`;
+  }
+  if (q.options) {
+    Object.entries(q.options).filter(([k, v]) => v > 0).forEach(([k, v]) => {
+      optRows += `<tr><td>${PRIX.options[k]?.label || k}</td><td>${v > 1 ? '× ' + v : ''}</td></tr>`;
+    });
+  }
+
+  // Date installation
+  const rawDate = q.commande?.dateInstall || q.client?.datePose;
+  const installDate = rawDate ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : null;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Bon de commande — ${ref}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:11px;color:#1a1814;background:#fff;padding:32px 40px;}
+  /* EN-TÊTE */
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2.5px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:9.5px;color:#7a6f62;margin-top:5px;line-height:1.7;}
+  .doc-meta{text-align:right;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:.18em;text-transform:uppercase;}
+  .doc-ref{font-size:9.5px;color:#7a6f62;margin-top:5px;}
+  /* PARTIES */
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:13px 15px;}
+  .p-label{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;margin-bottom:7px;}
+  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:10px;color:#3d3830;line-height:1.65;}
+  /* SECTIONS */
+  .sec{margin-bottom:18px;}
+  .sec-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;border-bottom:1px solid #ede6d6;padding-bottom:5px;margin-bottom:10px;}
+  /* GRILLE MATÉRIAU */
+  .mat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
+  .mat-cell{background:#f5f0e8;padding:9px 11px;border-radius:2px;}
+  .mat-key{font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;color:#7a6f62;margin-bottom:3px;}
+  .mat-val{font-size:11px;font-weight:500;}
+  /* TABLEAU DÉTAILS */
+  table.det{width:100%;border-collapse:collapse;}
+  table.det td{padding:5.5px 8px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
+  table.det td:last-child{text-align:right;font-weight:500;}
+  table.det tr:last-child td{border-bottom:none;}
+  table.det .sub-header td{background:#f5f0e8;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;padding:5px 8px;border-bottom:none;}
+  /* DÉLAI */
+  .delais{border:2px solid #1a1814;border-radius:3px;padding:12px 18px;margin:20px 0;display:flex;align-items:center;gap:14px;}
+  .delais-icon{font-size:20px;flex-shrink:0;}
+  .delais-title{font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;}
+  .delais-sub{font-size:9px;color:#7a6f62;margin-top:3px;}
+  /* SIGNATURES */
+  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;}
+  .sig-box{border:1px solid #ede6d6;border-radius:3px;padding:15px 16px;}
+  .sig-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#7a6f62;margin-bottom:6px;}
+  .sig-mention{font-size:10px;font-style:italic;color:#3d3830;margin-bottom:14px;}
+  .sig-zone{height:56px;border-bottom:1px solid #1a1814;}
+  .sig-date{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:10px;}
+  .sig-date span{flex:1;border-bottom:1px solid #7a6f62;}
+  /* PIED */
+  .footer{margin-top:22px;padding-top:10px;border-top:1px solid #ede6d6;font-size:8.5px;color:#7a6f62;text-align:center;}
+  @media print{
+    body{padding:0;}
+    @page{margin:16mm 15mm;size:A4;}
+  }
+</style>
+</head>
+<body>
+
+<!-- EN-TÊTE -->
+<div class="header">
+  <div>
+    <div class="co-name">${pro.societe || pro.raisonSociale || 'Intérieur Granit'}</div>
+    <div class="co-sub">
+      ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
+      ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
+      ${pro.email ? '<br>' + pro.email : ''}
+      ${pro.adresse ? '<br>' + pro.adresse : ''}
+      ${(pro.cp || pro.ville) ? ' ' + [pro.cp, pro.ville].filter(Boolean).join(' ') : ''}
+      ${pro.siret ? '<br>SIRET : ' + pro.siret : ''}
+      ${pro.web ? '<br>' + pro.web : ''}
+    </div>
+  </div>
+  <div class="doc-meta">
+    <div class="doc-title">Bon de Commande</div>
+    <div class="doc-ref">Réf. ${ref} &nbsp;·&nbsp; ${today}</div>
+  </div>
+</div>
+
+<!-- CLIENT / CHANTIER -->
+<div class="parties">
+  <div class="party">
+    <div class="p-label">Client final</div>
+    <div class="p-name">${clientName}</div>
+    <div class="p-detail">
+      ${q.client?.tel || ''}
+      ${q.client?.tel && q.client?.email ? '<br>' : ''}
+      ${q.client?.email || ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Adresse du chantier</div>
+    <div class="p-name">${q.client?.adresse || '—'}</div>
+    <div class="p-detail">
+      ${q.client?.cp || ''} ${q.client?.ville || ''}
+      ${installDate ? '<br>Date installation : <strong>' + installDate + '</strong>' : ''}
+    </div>
+  </div>
+</div>
+
+<!-- MATÉRIAU -->
+<div class="sec">
+  <div class="sec-title">Matériau</div>
+  <div class="mat-grid">
+    <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel || '—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris || '—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition || '—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur + ' mm' : '—'}</div></div>
+  </div>
+</div>
+
+<!-- DIMENSIONS -->
+<div class="sec">
+  <div class="sec-title">Dimensions</div>
+  <table class="det">
+    ${plansRows}
+    ${credRows}
+    ${!plansRows && !credRows ? '<tr><td colspan="2" style="color:#7a6f62;font-style:italic;">Dimensions à préciser lors de la prise de côte</td></tr>' : ''}
+  </table>
+</div>
+
+<!-- FAÇONNAGE -->
+${optRows ? `<div class="sec">
+  <div class="sec-title">Façonnage &amp; options</div>
+  <table class="det">${optRows}</table>
+</div>` : ''}
+
+<!-- ACCÈS & COMMENTAIRE -->
+<div class="sec">
+  <table class="det">
+    <tr><td>Accès chantier</td><td>${q.livraison === 'etage' ? 'Étage' : 'Rez-de-chaussée'}</td></tr>
+    ${q.commentaire ? `<tr><td>Commentaire</td><td>${q.commentaire}</td></tr>` : ''}
+  </table>
+</div>
+
+<!-- DÉLAI -->
+<div class="delais">
+  <div class="delais-icon">⏱</div>
+  <div>
+    <div class="delais-title">Délai : 6 semaines après la prise de côte</div>
+    <div class="delais-sub">Délai indicatif, conditionné à la disponibilité du matériau et à la validation du dossier complet.</div>
+  </div>
+</div>
+
+<!-- SIGNATURES -->
+<div class="sigs">
+  <div class="sig-box">
+    <div class="sig-lbl">${pro.societe || q.proSociete}</div>
+    <div class="sig-mention">Bon pour accord</div>
+    <div class="sig-zone"></div>
+    <div class="sig-date">Date :&nbsp;<span></span></div>
+  </div>
+  <div class="sig-box">
+    <div class="sig-lbl">Client — Lu et approuvé</div>
+    <div class="sig-mention">Bon pour accord</div>
+    <div class="sig-zone"></div>
+    <div class="sig-date">Date :&nbsp;<span></span></div>
+  </div>
+</div>
+
+<div class="footer">
+  Intérieur Granit &nbsp;·&nbsp; Bon de commande &nbsp;·&nbsp; Réf. ${ref} &nbsp;·&nbsp; Émis le ${today}
+</div>
+
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { alert('Veuillez autoriser les pop-ups pour générer le bon de commande.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT DEVIS PARTICULIER (PDF via impression navigateur)
+// ═══════════════════════════════════════════════════════════════
+function exportDevisParticulier(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+
+  const adminUser = db.users['admin@interieur-granit.fr'] || {};
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const ref = q.client?.ref || ('DEV-' + q.id.slice(-6).toUpperCase());
+
+  // Lignes plans
+  let plansRows = '';
+  if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
+    q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
+      plansRows += `<tr><td>Plan P${i+1}</td><td>${p.larg} × ${p.long} mm${p.ep?' &nbsp;·&nbsp; ép. '+p.ep+' mm':''}</td></tr>`;
+    });
+    plansRows = `<tr class="sub-header"><td colspan="2">Plans de travail &nbsp;—&nbsp; Surface : ${q.surfacePlans ? q.surfacePlans.toFixed(2)+' m²' : '—'}</td></tr>` + plansRows;
+  } else if (q.surfacePlans > 0) {
+    plansRows = `<tr><td>Plans de travail</td><td>${q.surfacePlans.toFixed(2)} m²</td></tr>`;
+  }
+
+  let credRows = '';
+  if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
+    q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
+      credRows += `<tr><td>Crédence C${i+1}</td><td>${c.larg} × ${c.long} mm</td></tr>`;
+    });
+    credRows = `<tr class="sub-header"><td colspan="2">Crédences &nbsp;—&nbsp; Surface : ${q.surfaceCred ? q.surfaceCred.toFixed(2)+' m²' : '—'}</td></tr>` + credRows;
+  } else if (q.surfaceCred > 0) {
+    credRows = `<tr><td>Crédences</td><td>${q.surfaceCred.toFixed(2)} m²</td></tr>`;
+  }
+
+  // Façonnage & options avec prix
+  const coeff = getCoeffDirect();
+  let optRows = '';
+  if (q.chant?.type && PRIX.chants?.[q.chant.type]) {
+    const ml = q.chant.longueur ? (q.chant.longueur/1000).toFixed(2) : 0;
+    const pu = Math.round(PRIX.chants[q.chant.type] * coeff);
+    const ht = Math.round(ml * pu);
+    optRows += `<tr><td>Chant — ${q.chant.type} &nbsp;·&nbsp; ${ml} ml × ${pu} €/ml</td><td>${ht.toLocaleString('fr-FR')} €</td></tr>`;
+  } else if (q.chant?.type) {
+    const ml = q.chant.longueur ? (q.chant.longueur/1000).toFixed(2) : 0;
+    optRows += `<tr><td>Chant — ${q.chant.type} &nbsp;·&nbsp; ${ml} ml</td><td>—</td></tr>`;
+  }
+  if (q.options) {
+    Object.entries(q.options).filter(([,v])=>v>0).forEach(([k,v]) => {
+      const opt = PRIX.options[k];
+      if (opt) {
+        const pu = Math.round(opt.prix * coeff);
+        optRows += `<tr><td>${opt.label} × ${v}</td><td>${Math.round(pu*v).toLocaleString('fr-FR')} €</td></tr>`;
+      }
+    });
+  }
+
+  // Livraison
+  if (q.livraison === 'etage') {
+    const livrPrix = Math.round((PRIX.livraison?.etage||0) * coeff);
+    if (livrPrix > 0) optRows += `<tr><td>Livraison (étage)</td><td>${livrPrix.toLocaleString('fr-FR')} €</td></tr>`;
+  }
+
+  const tvaRate = (q.tva || 20) / 100;
+  const tvaLabel = q.tva || 20;
+  const totalHT = q.totalHT ? Math.round(q.totalHT) : null;
+  const tvaAmt = totalHT ? Math.round(totalHT * tvaRate) : null;
+  const totalTTC = q.totalTTC ? Math.round(q.totalTTC) : null;
+
+  const installDate = q.client?.datePose ? new Date(q.client.datePose).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : null;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Devis — ${ref}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:11px;color:#1a1814;background:#fff;padding:32px 40px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2.5px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:9.5px;color:#7a6f62;margin-top:5px;line-height:1.8;}
+  .doc-meta{text-align:right;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;letter-spacing:.18em;text-transform:uppercase;color:#1a1814;}
+  .doc-badge{display:inline-block;background:#c9a84c;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:.12em;padding:3px 10px;border-radius:2px;margin-top:7px;}
+  .doc-ref{font-size:9.5px;color:#7a6f62;margin-top:5px;}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:13px 15px;}
+  .p-label{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;margin-bottom:7px;}
+  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:10px;color:#3d3830;line-height:1.65;}
+  .sec{margin-bottom:18px;}
+  .sec-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;border-bottom:1px solid #ede6d6;padding-bottom:5px;margin-bottom:10px;}
+  .mat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
+  .mat-cell{background:#f5f0e8;padding:9px 11px;border-radius:2px;}
+  .mat-key{font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;color:#7a6f62;margin-bottom:3px;}
+  .mat-val{font-size:11px;font-weight:500;}
+  table.det{width:100%;border-collapse:collapse;}
+  table.det td{padding:5.5px 8px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
+  table.det td:last-child{text-align:right;font-weight:500;}
+  table.det tr:last-child td{border-bottom:none;}
+  table.det .sub-header td{background:#f5f0e8;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;padding:5px 8px;border-bottom:none;}
+  .totals{margin-top:14px;border-top:2px solid #1a1814;}
+  .totals table{width:100%;border-collapse:collapse;margin-top:8px;}
+  .totals td{padding:5px 8px;font-size:10.5px;}
+  .totals td:last-child{text-align:right;font-weight:500;}
+  .totals .total-ttc td{font-size:14px;font-weight:600;font-family:'Cormorant Garamond',serif;padding-top:9px;}
+  .totals .total-ttc td:first-child{color:#7a6f62;}
+  .totals .total-ttc td:last-child{color:#1a1814;font-size:16px;}
+  .mention-box{border:1px solid #ede6d6;border-radius:3px;padding:11px 14px;margin:16px 0;font-size:9.5px;color:#3d3830;line-height:1.7;background:#fdfaf5;}
+  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;}
+  .sig-box{border:1px solid #ede6d6;border-radius:3px;padding:15px 16px;}
+  .sig-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#7a6f62;margin-bottom:6px;}
+  .sig-mention{font-size:10px;font-style:italic;color:#3d3830;margin-bottom:14px;}
+  .sig-zone{height:56px;border-bottom:1px solid #1a1814;}
+  .sig-date{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:10px;}
+  .sig-date span{flex:1;border-bottom:1px solid #7a6f62;}
+  .footer{margin-top:22px;padding-top:10px;border-top:1px solid #ede6d6;font-size:8.5px;color:#7a6f62;text-align:center;}
+  @media print{body{padding:0;}@page{margin:16mm 15mm;size:A4;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="co-name">Intérieur Granit</div>
+    <div class="co-sub">
+      ${[adminUser.prenom, adminUser.nom].filter(Boolean).join(' ')}
+      ${adminUser.email ? '<br>' + adminUser.email : ''}
+      <br>Spécialiste plan de travail granit, quartz &amp; céramique
+    </div>
+  </div>
+  <div class="doc-meta">
+    <div class="doc-title">Devis</div>
+    <div class="doc-badge">Vente directe particulier</div>
+    <div class="doc-ref">Réf. ${ref} &nbsp;·&nbsp; Émis le ${today}</div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="party">
+    <div class="p-label">Client</div>
+    <div class="p-name">${clientName}</div>
+    <div class="p-detail">
+      ${q.client?.tel || ''}
+      ${q.client?.tel && q.client?.email ? '<br>' : ''}
+      ${q.client?.email || ''}
+      ${(q.client?.tel || q.client?.email) && q.client?.adresse ? '<br>' : ''}
+      ${q.client?.adresse || ''}
+      ${q.client?.adresse && (q.client?.cp || q.client?.ville) ? '<br>' : ''}
+      ${[q.client?.cp, q.client?.ville].filter(Boolean).join(' ')}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Chantier</div>
+    <div class="p-name">${q.client?.adresse || clientName}</div>
+    <div class="p-detail">
+      ${[q.client?.cp, q.client?.ville].filter(Boolean).join(' ')}
+      ${installDate ? '<br>Pose souhaitée : <strong>' + installDate + '</strong>' : ''}
+      ${q.livraison ? '<br>Accès : ' + (q.livraison === 'etage' ? 'Étage' : 'Rez-de-chaussée') : ''}
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Matériau</div>
+  <div class="mat-grid">
+    <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel||'—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris||'—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition||'—'}</div></div>
+    <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur+' mm' : '—'}</div></div>
+  </div>
+</div>
+
+${(plansRows || credRows) ? `<div class="sec">
+  <div class="sec-title">Dimensions</div>
+  <table class="det">${plansRows}${credRows}</table>
+</div>` : ''}
+
+${(optRows) ? `<div class="sec">
+  <div class="sec-title">Façonnage, options &amp; pose</div>
+  <table class="det">${optRows}</table>
+</div>` : ''}
+
+${q.commentaire ? `<div class="sec">
+  <div class="sec-title">Commentaire</div>
+  <p style="font-size:10px;color:#3d3830;line-height:1.65;">${q.commentaire}</p>
+</div>` : ''}
+
+${totalHT !== null ? `<div class="totals">
+  <table>
+    <tr><td style="color:#7a6f62;">Total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
+    <tr><td style="color:#7a6f62;">TVA ${tvaLabel}%</td><td>${tvaAmt !== null ? tvaAmt.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
+    <tr class="total-ttc"><td>Total TTC</td><td>${totalTTC !== null ? totalTTC.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
+  </table>
+</div>` : ''}
+
+<div class="mention-box">
+  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission.<br>
+  Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place.<br>
+  Délai de réalisation : environ 6 semaines après validation du dossier complet et disponibilité du matériau.
+</div>
+
+<div class="sigs">
+  <div class="sig-box">
+    <div class="sig-lbl">Intérieur Granit</div>
+    <div class="sig-mention">Bon pour accord</div>
+    <div class="sig-zone"></div>
+    <div class="sig-date">Date :&nbsp;<span></span></div>
+  </div>
+  <div class="sig-box">
+    <div class="sig-lbl">Client — Lu et approuvé</div>
+    <div class="sig-mention">Bon pour accord</div>
+    <div class="sig-zone"></div>
+    <div class="sig-date">Date :&nbsp;<span></span></div>
+  </div>
+</div>
+
+<div class="footer">
+  Intérieur Granit &nbsp;·&nbsp; Devis particulier &nbsp;·&nbsp; Réf. ${ref} &nbsp;·&nbsp; Émis le ${today}<br>
+  Les prix indiqués sont des prix de vente TTC, établis à titre indicatif et confirmés après visite.
+</div>
+
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { alert('Veuillez autoriser les pop-ups pour générer le devis PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GÉNÉRATION DE FACTURE CUISINISTE (PDF)
+// ═══════════════════════════════════════════════════════════════
+function genererFacture(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const s = getSociete();
+  const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const numFac = getNextFactureNum();
+
+  // Calcul date d'échéance
+  const condPay = pro.conditionsPaiement || '30 jours net';
+  let echeance = '—';
+  const daysMatch = condPay.match(/(\d+)\s*jours/);
+  if (daysMatch) {
+    const d = new Date(); d.setDate(d.getDate() + parseInt(daysMatch[1]));
+    if (condPay.includes('fin de mois')) { d.setMonth(d.getMonth()+1); d.setDate(0); }
+    echeance = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  } else if (condPay === 'Comptant à réception de facture') {
+    echeance = today;
+  }
+
+  // Adresse facturation cuisiniste
+  const addrFact = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join('<br>');
+  const addrSoc = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '—';
+
+  // Lignes de facturation
+  const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
+  let lignesRows = '';
+
+  // Matériau principal
+  const prixMat = q.totalHT && q.totalHT > 0 ? null : null; // on reconstruit depuis les lignes si possible
+  const matDesc = `Plan de travail ${q.materiauLabel||''} ${q.coloris||''} ${q.finition||''} ${q.epaisseur?q.epaisseur+' mm':''}`.trim();
+  lignesRows += `<tr><td class="li-desc">${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td></tr>`;
+
+  // Totaux
+  const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
+  const tvaRate = (q.tva || 20) / 100;
+  const tvaAmt = Math.round(totalHT * tvaRate);
+  const totalTTC = Math.round(totalHT + tvaAmt);
+
+  // Adresse société
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const socFooter = [
+    s.raisonSociale, s.formeJuridique ? s.formeJuridique + (s.capitalSocial ? ' au capital de ' + s.capitalSocial : '') : '',
+    s.siret ? 'SIRET : ' + s.siret : '',
+    s.naf ? 'NAF : ' + s.naf : '',
+    s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Facture ${numFac}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:10.5px;color:#1a1814;background:#fff;padding:30px 36px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;padding-bottom:18px;border-bottom:2.5px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:9px;color:#7a6f62;margin-top:4px;line-height:1.8;}
+  .doc-meta{text-align:right;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;}
+  .doc-num{font-size:11px;font-weight:500;color:#1a1814;margin-top:5px;}
+  .doc-date{font-size:9px;color:#7a6f62;margin-top:3px;}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:12px 14px;}
+  .p-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:#c9a84c;font-weight:600;margin-bottom:6px;}
+  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:9.5px;color:#3d3830;line-height:1.7;}
+  .p-legal{font-size:8.5px;color:#7a6f62;margin-top:4px;}
+  /* tableau lignes */
+  .li-table{width:100%;border-collapse:collapse;margin-bottom:0;font-size:10px;}
+  .li-table thead tr{background:#1a1814;color:#f5f0e8;}
+  .li-table thead td{padding:7px 9px;font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:500;}
+  .li-table tbody tr{border-bottom:1px solid #f0ebe0;}
+  .li-table tbody tr:last-child{border-bottom:none;}
+  .li-desc{padding:8px 9px;line-height:1.5;}
+  .li-detail{font-size:8.5px;color:#7a6f62;}
+  .li-qty,.li-pu,.li-total{padding:8px 9px;text-align:right;white-space:nowrap;}
+  .li-total{font-weight:500;}
+  /* totaux */
+  .totaux{display:flex;justify-content:flex-end;margin-top:0;}
+  .totaux table{border-collapse:collapse;min-width:260px;border:1px solid #ede6d6;border-radius:3px;overflow:hidden;}
+  .totaux td{padding:6px 12px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
+  .totaux td:last-child{text-align:right;font-weight:500;}
+  .totaux .row-tva td{color:#7a6f62;}
+  .totaux .row-ttc td{background:#1a1814;color:#f5f0e8;font-size:13px;border-bottom:none;}
+  .totaux .row-ttc td:last-child{font-family:'Cormorant Garamond',serif;font-size:17px;color:#c9a84c;}
+  /* paiement */
+  .paiement-box{border:1px solid #ede6d6;border-radius:3px;padding:12px 16px;margin-top:16px;}
+  .paiement-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;font-weight:600;margin-bottom:9px;}
+  .paiement-row{display:flex;gap:28px;flex-wrap:wrap;}
+  .paiement-item{font-size:9.5px;color:#3d3830;line-height:1.6;}
+  .paiement-item .lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.09em;color:#7a6f62;display:block;margin-bottom:2px;}
+  .rib{font-family:monospace;font-size:9px;letter-spacing:.04em;}
+  /* mentions */
+  .mentions{font-size:8px;color:#7a6f62;margin-top:14px;line-height:1.6;padding-top:10px;border-top:1px solid #ede6d6;}
+  .footer{margin-top:12px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
+  @media print{body{padding:0;}@page{margin:14mm 13mm;size:A4;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
+    <div class="co-sub">
+      ${socAddr || ''}
+      ${s.tel ? '<br>' + s.tel : ''}
+      ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
+      ${s.web ? '<br>' + s.web : ''}
+    </div>
+  </div>
+  <div class="doc-meta">
+    <div class="doc-title">Facture</div>
+    <div class="doc-num">${numFac}</div>
+    <div class="doc-date">Émise le ${today}</div>
+    <div class="doc-date" style="margin-top:3px;color:#c0392b;font-weight:500;">Échéance : ${echeance}</div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="party">
+    <div class="p-label">Vendeur</div>
+    <div class="p-name">${s.raisonSociale || 'Intérieur Granit'}</div>
+    <div class="p-detail">${socAddr || ''}</div>
+    <div class="p-legal">
+      ${s.siret ? 'SIRET : ' + s.siret : ''}
+      ${s.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + s.tvaIntra : ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Client (acheteur)</div>
+    <div class="p-name">${pro.raisonSociale || pro.societe || q.proSociete}</div>
+    <div class="p-detail">
+      ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
+      ${pro.email ? '<br>' + pro.email : ''}
+      ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
+      ${addrFact ? '<br>' + addrFact : ''}
+    </div>
+    <div class="p-legal">
+      ${pro.siret ? 'SIRET : ' + pro.siret : ''}
+      ${pro.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + pro.tvaIntra : ''}
+    </div>
+  </div>
+</div>
+
+<!-- TABLEAU PRESTATIONS -->
+<table class="li-table">
+  <thead><tr>
+    <td style="width:55%;">Désignation</td>
+    <td style="text-align:right;">Qté</td>
+    <td style="text-align:right;">PU HT</td>
+    <td style="text-align:right;">Total HT</td>
+  </tr></thead>
+  <tbody>
+    ${lignesRows}
+  </tbody>
+</table>
+
+<div class="totaux">
+  <table>
+    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
+    <tr class="row-tva"><td>TVA ${q.tva || 20}%</td><td>${tvaAmt.toLocaleString('fr-FR')} €</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC.toLocaleString('fr-FR')} €</td></tr>
+  </table>
+</div>
+
+<div class="paiement-box">
+  <div class="paiement-title">Règlement</div>
+  <div class="paiement-row">
+    <div class="paiement-item"><span class="lbl">Conditions</span>${condPay}</div>
+    <div class="paiement-item"><span class="lbl">Échéance</span>${echeance}</div>
+    ${s.iban ? `<div class="paiement-item"><span class="lbl">IBAN</span><span class="rib">${s.iban}</span></div>` : ''}
+    ${s.bic ? `<div class="paiement-item"><span class="lbl">BIC</span><span class="rib">${s.bic}</span></div>` : ''}
+    ${s.banque ? `<div class="paiement-item"><span class="lbl">Banque</span>${s.banque}</div>` : ''}
+  </div>
+</div>
+
+<div class="mentions">
+  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.<br>
+  TVA non applicable, art. 293 B du CGI — <em>à adapter selon votre régime TVA</em>.
+</div>
+
+<div class="footer">
+  ${socFooter}
+</div>
+
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { alert('Veuillez autoriser les pop-ups pour générer la facture.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FACTURE DEVIS PARTICULIER
+// ═══════════════════════════════════════════════════════════════
+function genererFactureDirecte(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const s = getSociete();
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const numFac = getNextFactureNum();
+
+  const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
+  const tvaRate = (q.tva || 20) / 100;
+  const tvaAmt = Math.round(totalHT * tvaRate);
+  const totalTTC = Math.round(totalHT + tvaAmt);
+  const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const addrClient = [[q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join('');
+  const socFooter = [s.raisonSociale, s.formeJuridique, s.siret?'SIRET : '+s.siret:'', s.naf?'NAF : '+s.naf:'', s.tvaIntra?'TVA : '+s.tvaIntra:''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const matDesc = `Fourniture et pose — ${q.materiauLabel||''} ${q.coloris||''} ${q.finition||''} ${q.epaisseur?q.epaisseur+' mm':''}`.trim();
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Facture ${numFac}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:10.5px;color:#1a1814;background:#fff;padding:30px 36px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;padding-bottom:18px;border-bottom:2.5px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:9px;color:#7a6f62;margin-top:4px;line-height:1.8;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;}
+  .doc-badge{display:inline-block;background:#c9a84c;color:#fff;font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;padding:2px 8px;border-radius:2px;margin-top:5px;}
+  .doc-num{font-size:10px;font-weight:500;margin-top:4px;}
+  .doc-date{font-size:9px;color:#7a6f62;margin-top:3px;}
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:12px 14px;}
+  .p-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:#c9a84c;font-weight:600;margin-bottom:6px;}
+  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:9.5px;color:#3d3830;line-height:1.7;}
+  .li-table{width:100%;border-collapse:collapse;margin-bottom:0;font-size:10px;}
+  .li-table thead tr{background:#1a1814;color:#f5f0e8;}
+  .li-table thead td{padding:7px 9px;font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;}
+  .li-table tbody tr{border-bottom:1px solid #f0ebe0;}
+  .li-desc{padding:9px;line-height:1.5;}
+  .li-detail{font-size:8.5px;color:#7a6f62;}
+  .li-right{padding:9px;text-align:right;white-space:nowrap;font-weight:500;}
+  .totaux{display:flex;justify-content:flex-end;margin-top:0;}
+  .totaux table{border-collapse:collapse;min-width:240px;border:1px solid #ede6d6;border-radius:3px;overflow:hidden;}
+  .totaux td{padding:6px 12px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
+  .totaux td:last-child{text-align:right;font-weight:500;}
+  .totaux .row-tva td{color:#7a6f62;}
+  .totaux .row-ttc td{background:#1a1814;color:#f5f0e8;font-size:13px;border-bottom:none;}
+  .totaux .row-ttc td:last-child{font-family:'Cormorant Garamond',serif;font-size:17px;color:#c9a84c;}
+  .rib-box{border:1px solid #ede6d6;border-radius:3px;padding:11px 14px;margin-top:14px;display:flex;gap:22px;flex-wrap:wrap;}
+  .rib-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;font-weight:600;width:100%;margin-bottom:6px;}
+  .rib-item{font-size:9.5px;color:#3d3830;}
+  .rib-item .lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;display:block;margin-bottom:2px;}
+  .rib-val{font-family:monospace;font-size:9px;}
+  .mentions{font-size:7.5px;color:#7a6f62;margin-top:12px;line-height:1.65;padding-top:10px;border-top:1px solid #ede6d6;}
+  .footer{margin-top:10px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
+  @media print{body{padding:0;}@page{margin:14mm 13mm;size:A4;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="co-name">${s.raisonSociale||'Intérieur Granit'}</div>
+    <div class="co-sub">${socAddr||''}${s.tel?'<br>'+s.tel:''}${s.email?' &nbsp;·&nbsp; '+s.email:''}</div>
+  </div>
+  <div style="text-align:right;">
+    <div class="doc-title">Facture</div>
+    <div class="doc-badge">Client particulier</div>
+    <div class="doc-num">${numFac}</div>
+    <div class="doc-date">Émise le ${today}</div>
+  </div>
+</div>
+<div class="parties">
+  <div class="party">
+    <div class="p-label">Vendeur</div>
+    <div class="p-name">${s.raisonSociale||'Intérieur Granit'}</div>
+    <div class="p-detail">${socAddr||''}</div>
+    <div class="p-detail" style="margin-top:3px;">${s.siret?'SIRET : '+s.siret:''} ${s.tvaIntra?'· TVA : '+s.tvaIntra:''}</div>
+  </div>
+  <div class="party">
+    <div class="p-label">Client</div>
+    <div class="p-name">${clientName}</div>
+    <div class="p-detail">
+      ${q.client?.tel||''}${q.client?.tel&&q.client?.email?'<br>':''}${q.client?.email||''}
+      ${addrClient?'<br>'+addrClient:''}
+    </div>
+  </div>
+</div>
+<table class="li-table">
+  <thead><tr>
+    <td style="width:60%;">Désignation</td>
+    <td style="text-align:right;">Qté</td>
+    <td style="text-align:right;">PU HT</td>
+    <td style="text-align:right;">Total HT</td>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td class="li-desc">${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²${q.client?.ref?' — Réf. '+q.client.ref:''}</span></td>
+      <td class="li-right">1</td>
+      <td class="li-right">—</td>
+      <td class="li-right">${totalHT.toLocaleString('fr-FR')} €</td>
+    </tr>
+  </tbody>
+</table>
+<div class="totaux">
+  <table>
+    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
+    <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${tvaAmt.toLocaleString('fr-FR')} €</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC.toLocaleString('fr-FR')} €</td></tr>
+  </table>
+</div>
+${(s.iban||s.bic||s.banque)?`<div class="rib-box">
+  <div class="rib-title">Règlement — Virement bancaire</div>
+  ${s.iban?`<div class="rib-item"><span class="lbl">IBAN</span><span class="rib-val">${s.iban}</span></div>`:''}
+  ${s.bic?`<div class="rib-item"><span class="lbl">BIC</span><span class="rib-val">${s.bic}</span></div>`:''}
+  ${s.banque?`<div class="rib-item"><span class="lbl">Banque</span>${s.banque}</div>`:''}
+</div>`:''}
+<div class="mentions">
+  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.
+</div>
+<div class="footer">${socFooter}</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=960,height=720');
+  if (!win) { alert('Veuillez autoriser les pop-ups pour générer la facture.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+// Initialisation asynchrone avec Supabase
+(async function() {
+  await initApp(); // Charge depuis Supabase si configuré
+  initCounterPrices();
+  console.log('✓ Application Intérieur Granit initialisée');
+})();
+
+// Fermer modals en cliquant hors
+document.getElementById('modal-new-client').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('modal-edit-client').addEventListener('cli
