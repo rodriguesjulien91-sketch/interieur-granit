@@ -1,45 +1,34 @@
-<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interieur Granit</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {/* Your Firebase config here */};
+        firebase.initializeApp(firebaseConfig);
+
+        const db = firebase.database();
+        const PRIX = {/* Your price data here */};
+        const COLORIS_DATA = {/* Your color data here */};
+
+        // JavaScript functions
+        function initializeApp() {
+            // Initialization code here
         }
-        header {
-            background: #35424a;
-            color: #ffffff;
-            padding: 20px 0;
-            text-align: center;
+
+        function fetchData() {
+            // Fetching data code here
         }
-        main {
-            padding: 20px;
-        }
-        footer {
-            text-align: center;
-            padding: 10px 0;
-            background: #35424a;
-            color: #ffffff;
-        }
-    </style>
+
+        // Call initialization functions
+        window.onload = initializeApp;
+    </script>
 </head>
 <body>
-    <header>
-        <h1>Welcome to Interieur Granit</h1>
-    </header>
-    <main>
-        <p>This is a sample HTML content with CSS styles and JavaScript.</p>
-        <script>
-            console.log('Welcome to Interieur Granit');
-        </script>
-    </main>
-    <footer>
-        <p>&copy; 2026 Interieur Granit. All Rights Reserved.</p>
-    </footer>
+    <h1>Welcome to Interieur Granit</h1>
+    <div id="admin-view"></div>
+    <div id="pro-view"></div>
+    <div id="form-view"></div>
 </body>
 </html>
