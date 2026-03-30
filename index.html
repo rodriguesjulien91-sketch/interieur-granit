@@ -766,6 +766,7 @@ textarea { resize: vertical; min-height: 80px; }
           <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
           <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
           <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
         </div>
       </div>
       <div class="section-block">
@@ -1077,6 +1078,7 @@ const PRIX = {
     'prise-plan':        { label: 'Prise électrique sur plan',      prix: 44 },
     'prise-credence':    { label: 'Prise électrique crédence',      prix: 23 },
     'poubelle':          { label: 'Poubelle encastrée',             prix: 63 },
+    'rainurage':         { label: 'Rainurage encastré',             prix: 168 },
     'prise-de-cote':     { label: 'Prise de cote / gabarit',        prix: 150 },
     'pose-installation': { label: 'Pose & installation',            prix: 472 },
   },
@@ -2969,7 +2971,7 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   // Étape 4 — Chant & options
   setV('chant', q.chant?.type);
   setV('chant-longueur', q.chant?.longueur||'');
-  const counterKeys = ['plaque-cuisson','evier-encastre','evier-sous-plan','percage-mitigeur','percage-bar','prise-plan','prise-credence','poubelle'];
+  const counterKeys = ['plaque-cuisson','evier-encastre','evier-sous-plan','percage-mitigeur','percage-bar','prise-plan','prise-credence','poubelle','rainurage'];
   document.querySelectorAll('#counters .counter-item').forEach((item, i) => {
     item.querySelector('.counter-val').textContent = q.options?.[counterKeys[i]] || 0;
   });
