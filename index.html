@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intérieur Granit — Espace Professionnel</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Firebase SDK (compat mode — pas besoin de build tool) -->
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 <style>
 /* ═══ VARIABLES ═══════════════════════════════════════════════════ */
 :root {
@@ -327,10 +331,10 @@ textarea { resize: vertical; min-height: 80px; }
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
                onkeydown="if(event.key==='Enter') doLogin()">
       </div>
-      <button class="btn btn-primary" style="width:100%;padding:14px;" onclick="doLogin()">Se connecter</button>
-      <div class="login-demo">
-        <strong>Espace réservé aux professionnels</strong><br>
-        Contactez Intérieur Granit pour obtenir vos identifiants.
+      <button id="login-btn" class="btn btn-primary" style="width:100%;padding:14px;" onclick="doLogin()">Se connecter</button>
+      <div class="login-demo" style="text-align:center;font-size:.78rem;color:var(--stone-light);">
+        Mot de passe oublié ?&nbsp;
+        <a href="#" onclick="sendPasswordReset(event)" style="color:var(--gold);text-decoration:none;">Réinitialiser par email</a>
       </div>
     </div>
   </div>
@@ -943,9 +947,10 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="field"><label>Email *</label><input type="email" id="edit-email"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="edit-tel"></div>
       <div class="field span-2">
-        <label>Nouveau mot de passe</label>
-        <input type="text" id="edit-password" placeholder="Laisser vide pour ne pas modifier">
-        <span class="field-hint">Le mot de passe actuel est conservé si ce champ est vide</span>
+        <label>Réinitialisation du mot de passe</label>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="sendResetForClient(document.getElementById('edit-email').value)">📧 Envoyer un email de réinitialisation</button>
+        <span class="field-hint">Le cuisiniste recevra un lien par email pour définir un nouveau mot de passe.</span>
+        <input type="hidden" id="edit-password" value="">
       </div>
     </div>
 
@@ -1036,21 +1041,7 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- ═══════════════════════════════════════════════════════════════
      JAVASCRIPT
 ═══════════════════════════════════════════════════════════════ -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  CONFIGURATION SUPABASE — À REMPLIR AVEC VOS IDENTIFIANTS
-// ═══════════════════════════════════════════════════════════════
-const SUPABASE_URL = 'VOTRE_URL_SUPABASE';  // Ex: https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'VOTRE_CLE_ANON'; // Clé anon/public
-
-// Initialisation Supabase (null si non configuré)
-let supabase = null;
-if (SUPABASE_URL !== 'VOTRE_URL_SUPABASE' && SUPABASE_ANON_KEY !== 'VOTRE_CLE_ANON') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  GRILLE TARIFAIRE — modifier ici pour mettre à jour les prix
 // ═══════════════════════════════════════════════════════════════
@@ -1058,588 +1049,588 @@ const PRIX = {
   // Prix d'achat cuisinistes — source : Tarif_vente_Tranches_Int_Granit_2026 avec marge 2.xlsx
   // Clés épaisseur = épaisseur en mm (chaîne), valeur = prix achat €/m²
   materiaux: {
-    'granit':                { label: 'Granit',                epaisseurs: { '20': 234, '30': 288 } },
-    'quartz-silestone':      { label: 'Quartz Silestone',      epaisseurs: { '12': 225, '20': 262, '30': 357 } },
-    'quartz-unistone':       { label: 'Quartz Unistone',       epaisseurs: { '12': 250, '20': 250, '30': 315 } },
-    'dekton':                { label: 'Dekton',                epaisseurs: { '8':  193, '12': 273, '20': 317 } },
-    'ceramique-laminam':     { label: 'Laminam',               epaisseurs: { '5':  132, '12': 229, '20': 299 } },
-    'ceramique-neolith':     { label: 'Neolith',               epaisseurs: { '6':  218, '12': 218, '20': 276 } },
-    'ceramique-abkstone':    { label: 'ABK-Materia',           epaisseurs: { '6':  149, '12': 258, '20': 346 } },
-    'ceramique-xstone':      { label: 'Xtone Porcelanosa',     epaisseurs: { '12': 245, '20': 382 } },
-    'ceramique-uniceramica': { label: 'Uniceramica',           epaisseurs: { '6':  216, '12': 216, '20': 342 } },
-    'marbre':                { label: 'Marbre',                epaisseurs: { '20': 336 } },
-    'pierre':                { label: 'Pierre',                epaisseurs: { '20': 164 } },
+    'granit':                { label: 'Granit',                epaisseurs: { '20': 246, '30': 302 } },
+    'quartz-silestone':      { label: 'Quartz Silestone',      epaisseurs: { '12': 236, '20': 275, '30': 375 } },
+    'quartz-unistone':       { label: 'Quartz Unistone',       epaisseurs: { '12': 263, '20': 263, '30': 331 } },
+    'dekton':                { label: 'Dekton',                epaisseurs: { '8':  203, '12': 287, '20': 333 } },
+    'ceramique-laminam':     { label: 'Laminam',               epaisseurs: { '5':  139, '12': 240, '20': 314 } },
+    'ceramique-neolith':     { label: 'Neolith',               epaisseurs: { '6':  229, '12': 229, '20': 290 } },
+    'ceramique-abkstone':    { label: 'ABK-Materia',           epaisseurs: { '6':  156, '12': 271, '20': 363 } },
+    'ceramique-xstone':      { label: 'Xtone Porcelanosa',     epaisseurs: { '12': 257, '20': 401 } },
+    'ceramique-uniceramica': { label: 'Uniceramica',           epaisseurs: { '6':  227, '12': 227, '20': 359 } },
+    'marbre':                { label: 'Marbre',                epaisseurs: { '20': 353 } },
+    'pierre':                { label: 'Pierre',                epaisseurs: { '20': 172 } },
     // ── Gamme Courte Intérieur Granit (PV Int. Granit = tarif IG aux cuisinistes) ─
-    'gc-granit':      { label: 'Granit — Gamme Courte IG',          epaisseurs: { '20': 234, '30': 288 } },
-    'gc-quartz':      { label: 'Quartz Unistone — Gamme Courte IG', epaisseurs: { '12': 252, '20': 252, '30': 318 } },
-    'gc-uniceramica': { label: 'Uniceramica — Gamme Courte IG',     epaisseurs: { '12': 252, '20': 396 } },
-    'gc-neolith':     { label: 'Neolith — Gamme Courte IG',         epaisseurs: { '12': 300, '20': 420 } },
-    'gc-laminam':     { label: 'Laminam — Gamme Courte IG',         epaisseurs: { '20': 268 } },
+    'gc-granit':      { label: 'Granit — Gamme Courte IG',          epaisseurs: { '20': 246, '30': 302 } },
+    'gc-quartz':      { label: 'Quartz Unistone — Gamme Courte IG', epaisseurs: { '12': 265, '20': 265, '30': 334 } },
+    'gc-uniceramica': { label: 'Uniceramica — Gamme Courte IG',     epaisseurs: { '12': 265, '20': 416 } },
+    'gc-neolith':     { label: 'Neolith — Gamme Courte IG',         epaisseurs: { '12': 315, '20': 441 } },
+    'gc-laminam':     { label: 'Laminam — Gamme Courte IG',         epaisseurs: { '20': 281 } },
   },
   credences: { facteur: 1.0 },
   options: {
-    'plaque-cuisson':    { label: 'Découpe plaque de cuisson',      prix: 84 },
-    'evier-encastre':    { label: 'Évier encastré sur plan',        prix: 84 },
-    'evier-sous-plan':   { label: 'Bac évier collé sous plan',      prix: 150 },
-    'percage-mitigeur':  { label: 'Perçage mitigeur / bonde',       prix:  19 },
-    'percage-bar':       { label: 'Perçage bar / snack',            prix:  28 },
-    'prise-plan':        { label: 'Prise électrique sur plan',      prix:  42 },
-    'prise-credence':    { label: 'Prise électrique crédence',      prix:  22 },
-    'poubelle':          { label: 'Poubelle encastrée',             prix:  60 },
+    'plaque-cuisson':    { label: 'Découpe plaque de cuisson',      prix: 88 },
+    'evier-encastre':    { label: 'Évier encastré sur plan',        prix: 88 },
+    'evier-sous-plan':   { label: 'Bac évier collé sous plan',      prix: 158 },
+    'percage-mitigeur':  { label: 'Perçage mitigeur / bonde',       prix: 20 },
+    'percage-bar':       { label: 'Perçage bar / snack',            prix: 29 },
+    'prise-plan':        { label: 'Prise électrique sur plan',      prix: 44 },
+    'prise-credence':    { label: 'Prise électrique crédence',      prix: 23 },
+    'poubelle':          { label: 'Poubelle encastrée',             prix: 63 },
     'prise-de-cote':     { label: 'Prise de cote / gabarit',        prix: 150 },
     'pose-installation': { label: 'Pose & installation',            prix: 472 },
   },
   chants: {
-    'Droit chanfreiné':                  24,
-    'Arrondi 1/4 de rond':               32,
-    'Arrondi 1/2 rond':                  40,
-    "Droit 4 à 10 cm coupe d'onglet":   52,
-    'Droit 4 à 10 cm rapporté':          60,
-    'Droit 2 + 2 cm chanfreiné':         48,
-    "Aile d'avion":                      68,
-    'Rainurage encastré':               160,
+    'Droit chanfreiné':                  25,
+    'Arrondi 1/4 de rond':               34,
+    'Arrondi 1/2 rond':                  42,
+    "Droit 4 à 10 cm coupe d'onglet":   55,
+    'Droit 4 à 10 cm rapporté':          63,
+    'Droit 2 + 2 cm chanfreiné':         50,
+    "Aile d'avion":                      71,
+    'Rainurage encastré':               168,
   },
   pose: { rdc: 195, etage: 395 }
 };
 
 const COLORIS_DATA = {
   'ceramique-abkstone': {
-    'ANIMA BEIGE': [{"f": "NAT", "e": {"12": 277.2, "20": 366.3}}],
-    'ANIMA GRIGIO': [{"f": "NAT", "e": {"12": 277.2, "20": 366.3}}],
-    'ANTIQUE WHITE': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'BELJIAN BLUE': [{"f": "NAT", "e": {"12": 277.2}}],
-    'BIANCO VAGLI': [{"f": "SOFT - LUX", "e": {"12": 386.1, "20": 594}}],
-    'BLACK': [{"f": "SOFT", "e": {"6": 168.3, "12": 306.9, "20": 415.8}}],
-    'BLACK TAURUS': [{"f": "SOFT - LUX", "e": {"6": 158.4, "12": 326.7}}],
-    'BLANC DU BLANC': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7}}],
-    'BLEU DE SAVOIE': [{"f": "NAT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'BRECCIA IMPERIALE': [{"f": "SOFT - LUX", "e": {"12": 326.7}}],
-    'CALACATTA EMERALD': [{"f": "SOFT - LUX", "e": {"12": 326.7}}],
-    'CALACATTA EXTRA': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'CALACATTA GRIS': [{"f": "SOFT - LUX", "e": {"12": 326.7, "20": 455.4}}],
-    'CALACATTA MAGNIFICO': [{"f": "SOFT - LUX", "e": {"20": 594}}],
-    'CEPPO DI GRE': [{"f": "NAT", "e": {"6": 148.5, "12": 277.2, "20": 366.3}}],
-    'CLASSIC MARQUINA': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'CORCHIA GOLD': [{"f": "SOFT - LUX", "e": {"12": 326.7, "20": 455.4}}],
-    'CRISTALLO AMBER': [{"f": "SOFT - LUX", "e": {"12": 326.7}}],
-    'DARK STONE': [{"f": "NAT", "e": {"12": 257.4}}],
-    'EMERALD GREEN': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7}}],
-    'FOUR SEASONS HONEY': [{"f": "NAT", "e": {"12": 257.4}}],
-    'GREY GRAFITE': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'GREY SOAPSTONE': [{"f": "NAT", "e": {"12": 277.2}}],
-    'GREYLAC PLATINUM': [{"f": "SOFT 3D - LUX", "e": {"12": 326.7}}],
-    'HYPER SILVER': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4}}],
-    'HYPER WHITE': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4, "20": 346.5}}],
-    'INVISIBLE SELECT': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 386.1}}],
-    'LASA SAPPHIRE': [{"f": "SOFT 3D - LUX", "e": {"12": 326.7}}],
-    'MONTBLANC': [{"f": "SOFT 3D - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'NOIR LAURENT': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 386.1}}],
-    'NORDIK STONE BLACK': [{"f": "NAT", "e": {"6": 148.5, "12": 277.2, "20": 366.3}}],
-    'NORDIK WOOD GOLD': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4, "20": 346.5}}],
-    'PULPIS IVORY': [{"f": "NAT - LUX", "e": {"12": 326.7}}],
-    'QUARZITE LUNA': [{"f": "SOFT 3D - LUX", "e": {"12": 326.7, "20": 415.8}}],
-    'RE TOUR FOG': [{"f": "NAT", "e": {"12": 277.2, "20": 366.3}}],
-    'REBEL BRONZE': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4}}],
-    'REBEL NIGHT': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4}}],
-    'REBEL SILVER': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4}}],
-    'RESIN SMOKE': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4, "20": 346.5}}],
-    'RESIN WHITE': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4, "20": 346.5}}],
-    'ROCKY DESERT': [{"f": "NAT", "e": {"12": 277.2, "20": 366.3}}],
-    'STATUARIO SELECT': [{"f": "SOFT - LUX", "e": {"12": 386.1, "20": 594}}],
-    'STATUARIO SUPERIOR': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7, "20": 455.4}}],
-    'STILL NO W SAND': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4, "20": 346.5}}],
-    'SUPER WHITE': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 326.7}}],
-    'TRAVERTINO NOVANA BONE': [{"f": "NAT", "e": {"12": 257.4}}],
-    'TRAVERTINO NOVANA HONEY': [{"f": "NAT", "e": {"6": 148.5, "12": 257.4}}],
-    'WHITE': [{"f": "SOFT - LUX", "e": {"6": 178.2, "12": 346.5, "20": 495}}],
+    'ANIMA BEIGE': [{"f": "NAT", "e": {"12": 291.06, "20": 384.62}}],
+    'ANIMA GRIGIO': [{"f": "NAT", "e": {"12": 291.06, "20": 384.62}}],
+    'ANTIQUE WHITE': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'BELJIAN BLUE': [{"f": "NAT", "e": {"12": 291.06}}],
+    'BIANCO VAGLI': [{"f": "SOFT - LUX", "e": {"12": 405.41, "20": 623.7}}],
+    'BLACK': [{"f": "SOFT", "e": {"6": 176.72, "12": 322.25, "20": 436.59}}],
+    'BLACK TAURUS': [{"f": "SOFT - LUX", "e": {"6": 166.32, "12": 343.04}}],
+    'BLANC DU BLANC': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04}}],
+    'BLEU DE SAVOIE': [{"f": "NAT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'BRECCIA IMPERIALE': [{"f": "SOFT - LUX", "e": {"12": 343.04}}],
+    'CALACATTA EMERALD': [{"f": "SOFT - LUX", "e": {"12": 343.04}}],
+    'CALACATTA EXTRA': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'CALACATTA GRIS': [{"f": "SOFT - LUX", "e": {"12": 343.04, "20": 478.17}}],
+    'CALACATTA MAGNIFICO': [{"f": "SOFT - LUX", "e": {"20": 623.7}}],
+    'CEPPO DI GRE': [{"f": "NAT", "e": {"6": 155.93, "12": 291.06, "20": 384.62}}],
+    'CLASSIC MARQUINA': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'CORCHIA GOLD': [{"f": "SOFT - LUX", "e": {"12": 343.04, "20": 478.17}}],
+    'CRISTALLO AMBER': [{"f": "SOFT - LUX", "e": {"12": 343.04}}],
+    'DARK STONE': [{"f": "NAT", "e": {"12": 270.27}}],
+    'EMERALD GREEN': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04}}],
+    'FOUR SEASONS HONEY': [{"f": "NAT", "e": {"12": 270.27}}],
+    'GREY GRAFITE': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'GREY SOAPSTONE': [{"f": "NAT", "e": {"12": 291.06}}],
+    'GREYLAC PLATINUM': [{"f": "SOFT 3D - LUX", "e": {"12": 343.04}}],
+    'HYPER SILVER': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27}}],
+    'HYPER WHITE': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27, "20": 363.82}}],
+    'INVISIBLE SELECT': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 405.41}}],
+    'LASA SAPPHIRE': [{"f": "SOFT 3D - LUX", "e": {"12": 343.04}}],
+    'MONTBLANC': [{"f": "SOFT 3D - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'NOIR LAURENT': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 405.41}}],
+    'NORDIK STONE BLACK': [{"f": "NAT", "e": {"6": 155.93, "12": 291.06, "20": 384.62}}],
+    'NORDIK WOOD GOLD': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27, "20": 363.82}}],
+    'PULPIS IVORY': [{"f": "NAT - LUX", "e": {"12": 343.04}}],
+    'QUARZITE LUNA': [{"f": "SOFT 3D - LUX", "e": {"12": 343.04, "20": 436.59}}],
+    'RE TOUR FOG': [{"f": "NAT", "e": {"12": 291.06, "20": 384.62}}],
+    'REBEL BRONZE': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27}}],
+    'REBEL NIGHT': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27}}],
+    'REBEL SILVER': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27}}],
+    'RESIN SMOKE': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27, "20": 363.82}}],
+    'RESIN WHITE': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27, "20": 363.82}}],
+    'ROCKY DESERT': [{"f": "NAT", "e": {"12": 291.06, "20": 384.62}}],
+    'STATUARIO SELECT': [{"f": "SOFT - LUX", "e": {"12": 405.41, "20": 623.7}}],
+    'STATUARIO SUPERIOR': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04, "20": 478.17}}],
+    'STILL NO W SAND': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27, "20": 363.82}}],
+    'SUPER WHITE': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 343.04}}],
+    'TRAVERTINO NOVANA BONE': [{"f": "NAT", "e": {"12": 270.27}}],
+    'TRAVERTINO NOVANA HONEY': [{"f": "NAT", "e": {"6": 155.93, "12": 270.27}}],
+    'WHITE': [{"f": "SOFT - LUX", "e": {"6": 187.11, "12": 363.82, "20": 519.75}}],
   },
   'ceramique-laminam': {
-    'ARDESIA BIANCO A SPACCO': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'ARDESIA NERA A SPACCO': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'BIANCO': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'BIANCO ASSOLUTO': [{"f": "MATE", "e": {"5": 187.1, "12": 304.92, "20": 386.6}}],
-    'BIANCO ASSOLUTO LUCIDATO': [{"f": "POLI", "e": {"5": 200.97, "12": 345.77}}],
-    'BIANCO LASA': [{"f": "MATE", "e": {"12": 255.92, "20": 326.7}}],
-    'BIANCO LASA LUCIDATO': [{"f": "MATE", "e": {"12": 304.92}}],
-    'BLU LUCIDATO': [{"f": "POLI", "e": {"12": 536.34}}],
-    'BRUNO': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'CALACATTA BLACK BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'CALACATTA BLACK LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77}}],
-    'CALACATTA MEDICEO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77, "20": 430.16}}],
-    'CALACATTA MICHELANGELO BOOK MATCH': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'CALACATTA MICHELANGELO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77, "20": 430.16}}],
-    'CALACATTA MICHELANGELO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'CALACATTA ORO VENATO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"5": 200.97, "12": 345.77}}],
-    'CALACATTA ORO VENATO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'CALACATTA PURO LUCIDATO': [{"f": "POLI", "e": {"12": 304.92}}],
-    'CALACATTA PURO NATURALE': [{"f": "MATE", "e": {"12": 283.14}}],
-    'CRISTRALLO GOLD CARESS BOOK MATCH': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'CRISTRALLO GOLD LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77}}],
-    'DIAMOND CREAM': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'DIAMOND CREAM LUCIDATO': [{"f": "POLI", "e": {"5": 187.1, "12": 304.92, "20": 386.6}}],
-    'FUSION WHITE': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'GRAFITE': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'MARBLE GOLD': [{"f": "MATE", "e": {"12": 255.92, "20": 326.7}}],
-    'NERO': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'NERO ASSOLUTO': [{"f": "MATE", "e": {"5": 187.1, "12": 304.92, "20": 386.6}}],
-    'NERO GRECO': [{"f": "MATE", "e": {"5": 166.32, "12": 283.14, "20": 359.37}}],
-    'NERO GRECO LUCIDATO': [{"f": "POLI", "e": {"5": 200.97, "12": 345.77}}],
-    'NERO MARQUINA EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'NOIR DESIR': [{"f": "MATE", "e": {"5": 166.32, "12": 283.14, "20": 359.37}}],
-    'NOIR DESIR LUCIDATO': [{"f": "POLI", "e": {"5": 200.97, "12": 345.77, "20": 430.16}}],
-    'PATAGONIA CARESS BOOK MATCH': [{"f": "MATE", "e": {"20": 359.37}}],
-    'PATAGONIA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"20": 386.6}}],
-    'PIETRA DI CARDOSO NERO NATURALE': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'PIETRA DI SAVOIE ANTHRACITE BOCCIARDATA': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'PIETRA DI SAVOIE GRIGIA BOCCIARDATA': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'PIETRA DI SAVOIE PERLA BOCCIARDATA': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92, "20": 326.7}}],
-    'PIETRA GREY': [{"f": "MATE", "e": {"5": 166.32, "12": 283.14, "20": 359.37}}],
-    'PIETRA PIASENTINA GRIGIO': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'PIETRA PIASENTINA TAUPE': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'PIOMBO': [{"f": "MATE", "e": {"5": 131.66, "12": 228.69, "20": 299.48}}],
-    'PORFIDO MARRONE NATURALE': [{"f": "MATE", "e": {"12": 304.92, "20": 386.6}}],
-    'ROCCIA': [{"f": "MATE", "e": {"5": 131.66, "12": 228.69, "20": 299.48}}],
-    'SABBIA': [{"f": "MATE", "e": {"12": 255.92}}],
-    'SAHARA NOIR EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'SALE': [{"f": "MATE", "e": {"5": 131.66, "12": 228.69, "20": 299.48}}],
-    'STATUARIO ALTISSIMA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77, "20": 430.16}}],
-    'STATUARIO ALTISSIMO BOOK MATCH': [{"f": "MATE", "e": {"12": 283.14, "20": 359.37}}],
-    'TALCO': [{"f": "MATE", "e": {"5": 145.53, "12": 255.92}}],
-    'TERRA': [{"f": "MATE", "e": {"5": 131.66, "12": 228.69, "20": 299.48}}],
-    'TERRA DI MATERA NATURALE': [{"f": "MATE", "e": {"12": 304.92}}],
-    'VERDE ALPI BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 283.14}}],
-    'VERDE ALPI LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 345.77}}],
-    'VERDERAME': [{"f": "MATE", "e": {"12": 255.92}}],
+    'ARDESIA BIANCO A SPACCO': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'ARDESIA NERA A SPACCO': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'BIANCO': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'BIANCO ASSOLUTO': [{"f": "MATE", "e": {"5": 196.46, "12": 320.17, "20": 405.93}}],
+    'BIANCO ASSOLUTO LUCIDATO': [{"f": "POLI", "e": {"5": 211.02, "12": 363.06}}],
+    'BIANCO LASA': [{"f": "MATE", "e": {"12": 268.72, "20": 343.04}}],
+    'BIANCO LASA LUCIDATO': [{"f": "MATE", "e": {"12": 320.17}}],
+    'BLU LUCIDATO': [{"f": "POLI", "e": {"12": 563.16}}],
+    'BRUNO': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'CALACATTA BLACK BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'CALACATTA BLACK LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06}}],
+    'CALACATTA MEDICEO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06, "20": 451.67}}],
+    'CALACATTA MICHELANGELO BOOK MATCH': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'CALACATTA MICHELANGELO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06, "20": 451.67}}],
+    'CALACATTA MICHELANGELO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'CALACATTA ORO VENATO LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"5": 211.02, "12": 363.06}}],
+    'CALACATTA ORO VENATO SOFT TOUCH BOOK MATCH': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'CALACATTA PURO LUCIDATO': [{"f": "POLI", "e": {"12": 320.17}}],
+    'CALACATTA PURO NATURALE': [{"f": "MATE", "e": {"12": 297.3}}],
+    'CRISTRALLO GOLD CARESS BOOK MATCH': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'CRISTRALLO GOLD LUCIDATO STARLIT BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06}}],
+    'DIAMOND CREAM': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'DIAMOND CREAM LUCIDATO': [{"f": "POLI", "e": {"5": 196.46, "12": 320.17, "20": 405.93}}],
+    'FUSION WHITE': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'GRAFITE': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'MARBLE GOLD': [{"f": "MATE", "e": {"12": 268.72, "20": 343.04}}],
+    'NERO': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'NERO ASSOLUTO': [{"f": "MATE", "e": {"5": 196.46, "12": 320.17, "20": 405.93}}],
+    'NERO GRECO': [{"f": "MATE", "e": {"5": 174.64, "12": 297.3, "20": 377.34}}],
+    'NERO GRECO LUCIDATO': [{"f": "POLI", "e": {"5": 211.02, "12": 363.06}}],
+    'NERO MARQUINA EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'NOIR DESIR': [{"f": "MATE", "e": {"5": 174.64, "12": 297.3, "20": 377.34}}],
+    'NOIR DESIR LUCIDATO': [{"f": "POLI", "e": {"5": 211.02, "12": 363.06, "20": 451.67}}],
+    'PATAGONIA CARESS BOOK MATCH': [{"f": "MATE", "e": {"20": 377.34}}],
+    'PATAGONIA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"20": 405.93}}],
+    'PIETRA DI CARDOSO NERO NATURALE': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'PIETRA DI SAVOIE ANTHRACITE BOCCIARDATA': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'PIETRA DI SAVOIE GRIGIA BOCCIARDATA': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'PIETRA DI SAVOIE PERLA BOCCIARDATA': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72, "20": 343.04}}],
+    'PIETRA GREY': [{"f": "MATE", "e": {"5": 174.64, "12": 297.3, "20": 377.34}}],
+    'PIETRA PIASENTINA GRIGIO': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'PIETRA PIASENTINA TAUPE': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'PIOMBO': [{"f": "MATE", "e": {"5": 138.24, "12": 240.12, "20": 314.45}}],
+    'PORFIDO MARRONE NATURALE': [{"f": "MATE", "e": {"12": 320.17, "20": 405.93}}],
+    'ROCCIA': [{"f": "MATE", "e": {"5": 138.24, "12": 240.12, "20": 314.45}}],
+    'SABBIA': [{"f": "MATE", "e": {"12": 268.72}}],
+    'SAHARA NOIR EXTRA BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'SALE': [{"f": "MATE", "e": {"5": 138.24, "12": 240.12, "20": 314.45}}],
+    'STATUARIO ALTISSIMA LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06, "20": 451.67}}],
+    'STATUARIO ALTISSIMO BOOK MATCH': [{"f": "MATE", "e": {"12": 297.3, "20": 377.34}}],
+    'TALCO': [{"f": "MATE", "e": {"5": 152.81, "12": 268.72}}],
+    'TERRA': [{"f": "MATE", "e": {"5": 138.24, "12": 240.12, "20": 314.45}}],
+    'TERRA DI MATERA NATURALE': [{"f": "MATE", "e": {"12": 320.17}}],
+    'VERDE ALPI BOCCIARDATO BOOK MATCH': [{"f": "MATE", "e": {"12": 297.3}}],
+    'VERDE ALPI LUCIDATO BOOK MATCH': [{"f": "POLI", "e": {"12": 363.06}}],
+    'VERDERAME': [{"f": "MATE", "e": {"12": 268.72}}],
   },
   'ceramique-neolith': {
-    'ABU DHABI': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "POLI", "e": {"6": 408, "12": 408}}],
-    'AMAZONICO': [{"f": "SLATE", "e": {"6": 318, "12": 318}}],
-    'ARABESQUE': [{"f": "SILK", "e": {"6": 336, "12": 336}}],
-    'ARENA': [{"f": "SATIN", "e": {"6": 240, "12": 240}}],
-    'ARTIC WHITE': [{"f": "SILK", "e": {"6": 318, "12": 318, "20": 384}}],
-    'ARTISAN': [{"f": "SILK", "e": {"6": 240, "12": 240, "20": 288}}],
-    'ASPEN GREY': [{"f": "SILK", "e": {"6": 288, "12": 288}}],
-    'BARRO': [{"f": "SATIN", "e": {"6": 218.4, "12": 218.4, "20": 276}}],
-    'BASALT BLACK': [{"f": "SATIN", "e": {"6": 288, "12": 288, "20": 360}}],
-    'BASALT GREY': [{"f": "SATIN", "e": {"6": 288, "12": 288}}],
-    'BETON': [{"f": "SILK", "e": {"6": 288, "12": 288, "20": 360}}],
-    'BLACK OBSESSION': [{"f": "SILK", "e": {"6": 318, "12": 318, "20": 384}}],
-    'CALACATTA': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"12": 408, "20": 498}}, {"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'CALACATTA GOLD': [{"f": "SILK", "e": {"6": 336, "12": 336}}, {"f": "ULTRASOFT", "e": {"12": 408}}, {"f": "POLISHED", "e": {"12": 408}}],
-    'CALACATTA LUXE': [{"f": "ULTRASOFT", "e": {"6": 408, "12": 408}}, {"f": "POLISHED", "e": {"6": 408, "12": 408}}],
-    'CALACATTA ROMA': [{"f": "SILK", "e": {"6": 240, "12": 240, "20": 288}}],
-    'CALACATTA ROYALE': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"6": 408, "12": 408}}, {"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'CALATORAO': [{"f": "SILK", "e": {"6": 288, "12": 288, "20": 360}}],
-    'CALISTA': [{"f": "ULTRASOFT", "e": {"6": 360, "12": 360}}, {"f": "POLISHED", "e": {"6": 360, "12": 360}}],
-    'CAPADOCCIA SUNSET': [{"f": "SILK", "e": {"6": 288, "12": 288, "20": 360}}],
-    'CEMENT': [{"f": "SATIN", "e": {"6": 218.4, "12": 218.4}}],
-    'COLORADO DUNES': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"6": 408, "12": 408, "20": 498}}, {"f": "POLISHED", "e": {"12": 408, "20": 498}}],
-    'ESTATUARIO': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"12": 408}}, {"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'EVEREST SUNRISE': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"6": 408, "12": 408, "20": 498}}, {"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'HIMALAYA CRISTAL': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}, {"f": "ULTRASOFT", "e": {"6": 408, "12": 408, "20": 498}}, {"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'IGNEA': [{"f": "RIVERWASHED", "e": {"6": 240, "12": 240, "20": 288}}],
-    'IRON COPPER': [{"f": "SATIN", "e": {"6": 288, "12": 288}}],
-    'IRON CORTEN': [{"f": "SATIN", "e": {"6": 288, "12": 288, "20": 360}}],
-    'IRON FROST': [{"f": "SATIN", "e": {"6": 288, "12": 288}}],
-    'IRON GREY': [{"f": "SATIN", "e": {"6": 288, "12": 288, "20": 360}}],
-    'JUST WHITE': [{"f": "SILK", "e": {"6": 218.4, "12": 218.4, "20": 276}}],
-    'KRATER': [{"f": "RIVERWASHED", "e": {"6": 240, "12": 240}}],
-    'LA BOHEME': [{"f": "SATIN", "e": {"12": 288}}],
-    'LAYLA': [{"f": "SLATE", "e": {"6": 288, "12": 288, "20": 360}}, {"f": "POLISHED", "e": {"6": 288, "12": 288}}],
-    'LUX': [{"f": "POLISHED", "e": {"6": 408, "12": 408, "20": 498}}],
-    'METROPOLITAN': [{"f": "STEEL TOUCH", "e": {"6": 318, "12": 318, "20": 384}}],
-    'MONT BLANC': [{"f": "SILK", "e": {"6": 336, "12": 336, "20": 420}}],
-    'NERO': [{"f": "SATIN", "e": {"6": 288, "12": 288, "20": 360}}],
-    'NERO ZIMBABWE': [{"f": "RIVERWASH", "e": {"6": 288, "12": 288, "20": 360}}],
-    'NEW YORK - NEW YORK': [{"f": "SILK", "e": {"6": 288, "12": 288, "20": 360}}],
-    'NIAGARA': [{"f": "SILK", "e": {"6": 318, "12": 318}}, {"f": "POLISHED", "e": {"6": 360, "12": 360}}],
-    'PIETRA DI LUNA': [{"f": "SILK", "e": {"6": 218.4, "12": 218.4, "20": 276}}],
-    'PIETRA DI OSSO': [{"f": "SILK", "e": {"6": 218.4, "12": 218.4, "20": 276}}],
-    'PIETRA DI PLOMBO': [{"f": "SILK", "e": {"6": 218.4, "12": 218.4, "20": 276}}],
-    'PIETRA GREY': [{"f": "SILK", "e": {"6": 288, "12": 288}}],
-    'PULPIS': [{"f": "SILK", "e": {"6": 288, "12": 288}}],
-    'RAPOLANO': [{"f": "NATURAL TOUCH", "e": {"6": 288, "12": 288, "20": 360}}],
-    'RETROSTONE': [{"f": "SILK", "e": {"6": 240, "12": 240, "20": 288}}],
-    'SAN SIMONE': [{"f": "SILK", "e": {"12": 336, "20": 420}}],
-    'SHILIN': [{"f": "SLATE", "e": {"6": 240, "12": 240, "20": 288}}],
-    'STRATA ARGENTUM': [{"f": "RIVERWASH", "e": {"6": 318, "12": 318}}],
-    'SUMMER DALA': [{"f": "SILK", "e": {"6": 240, "12": 240}}],
-    'TERRAZO CEPPO': [{"f": "SILK", "e": {"6": 240, "12": 240}}],
-    'WHITESANDS': [{"f": "NATURAL TOUCH", "e": {"12": 336, "20": 420}}],
-    'WULONG': [{"f": "SLATE", "e": {"6": 240, "12": 240, "20": 288}}],
-    'ZAHA STONE': [{"f": "SILK", "e": {"6": 240, "12": 240, "20": 288}}],
+    'ABU DHABI': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "POLI", "e": {"6": 428.4, "12": 428.4}}],
+    'AMAZONICO': [{"f": "SLATE", "e": {"6": 333.9, "12": 333.9}}],
+    'ARABESQUE': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8}}],
+    'ARENA': [{"f": "SATIN", "e": {"6": 252, "12": 252}}],
+    'ARTIC WHITE': [{"f": "SILK", "e": {"6": 333.9, "12": 333.9, "20": 403.2}}],
+    'ARTISAN': [{"f": "SILK", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'ASPEN GREY': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4}}],
+    'BARRO': [{"f": "SATIN", "e": {"6": 229.32, "12": 229.32, "20": 289.8}}],
+    'BASALT BLACK': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'BASALT GREY': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4}}],
+    'BETON': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'BLACK OBSESSION': [{"f": "SILK", "e": {"6": 333.9, "12": 333.9, "20": 403.2}}],
+    'CALACATTA': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"12": 428.4, "20": 522.9}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'CALACATTA GOLD': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8}}, {"f": "ULTRASOFT", "e": {"12": 428.4}}, {"f": "POLISHED", "e": {"12": 428.4}}],
+    'CALACATTA LUXE': [{"f": "ULTRASOFT", "e": {"6": 428.4, "12": 428.4}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4}}],
+    'CALACATTA ROMA': [{"f": "SILK", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'CALACATTA ROYALE': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"6": 428.4, "12": 428.4}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'CALATORAO': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'CALISTA': [{"f": "ULTRASOFT", "e": {"6": 378, "12": 378}}, {"f": "POLISHED", "e": {"6": 378, "12": 378}}],
+    'CAPADOCCIA SUNSET': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'CEMENT': [{"f": "SATIN", "e": {"6": 229.32, "12": 229.32}}],
+    'COLORADO DUNES': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}, {"f": "POLISHED", "e": {"12": 428.4, "20": 522.9}}],
+    'ESTATUARIO': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"12": 428.4}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'EVEREST SUNRISE': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'HIMALAYA CRISTAL': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}, {"f": "ULTRASOFT", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}, {"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'IGNEA': [{"f": "RIVERWASHED", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'IRON COPPER': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4}}],
+    'IRON CORTEN': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'IRON FROST': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4}}],
+    'IRON GREY': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'JUST WHITE': [{"f": "SILK", "e": {"6": 229.32, "12": 229.32, "20": 289.8}}],
+    'KRATER': [{"f": "RIVERWASHED", "e": {"6": 252, "12": 252}}],
+    'LA BOHEME': [{"f": "SATIN", "e": {"12": 302.4}}],
+    'LAYLA': [{"f": "SLATE", "e": {"6": 302.4, "12": 302.4, "20": 378}}, {"f": "POLISHED", "e": {"6": 302.4, "12": 302.4}}],
+    'LUX': [{"f": "POLISHED", "e": {"6": 428.4, "12": 428.4, "20": 522.9}}],
+    'METROPOLITAN': [{"f": "STEEL TOUCH", "e": {"6": 333.9, "12": 333.9, "20": 403.2}}],
+    'MONT BLANC': [{"f": "SILK", "e": {"6": 352.8, "12": 352.8, "20": 441}}],
+    'NERO': [{"f": "SATIN", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'NERO ZIMBABWE': [{"f": "RIVERWASH", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'NEW YORK - NEW YORK': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'NIAGARA': [{"f": "SILK", "e": {"6": 333.9, "12": 333.9}}, {"f": "POLISHED", "e": {"6": 378, "12": 378}}],
+    'PIETRA DI LUNA': [{"f": "SILK", "e": {"6": 229.32, "12": 229.32, "20": 289.8}}],
+    'PIETRA DI OSSO': [{"f": "SILK", "e": {"6": 229.32, "12": 229.32, "20": 289.8}}],
+    'PIETRA DI PLOMBO': [{"f": "SILK", "e": {"6": 229.32, "12": 229.32, "20": 289.8}}],
+    'PIETRA GREY': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4}}],
+    'PULPIS': [{"f": "SILK", "e": {"6": 302.4, "12": 302.4}}],
+    'RAPOLANO': [{"f": "NATURAL TOUCH", "e": {"6": 302.4, "12": 302.4, "20": 378}}],
+    'RETROSTONE': [{"f": "SILK", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'SAN SIMONE': [{"f": "SILK", "e": {"12": 352.8, "20": 441}}],
+    'SHILIN': [{"f": "SLATE", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'STRATA ARGENTUM': [{"f": "RIVERWASH", "e": {"6": 333.9, "12": 333.9}}],
+    'SUMMER DALA': [{"f": "SILK", "e": {"6": 252, "12": 252}}],
+    'TERRAZO CEPPO': [{"f": "SILK", "e": {"6": 252, "12": 252}}],
+    'WHITESANDS': [{"f": "NATURAL TOUCH", "e": {"12": 352.8, "20": 441}}],
+    'WULONG': [{"f": "SLATE", "e": {"6": 252, "12": 252, "20": 302.4}}],
+    'ZAHA STONE': [{"f": "SILK", "e": {"6": 252, "12": 252, "20": 302.4}}],
   },
   'ceramique-uniceramica': {
-    'ARABESCATO CALACATTA': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'ARABESCATO OROBICO': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'ARABESCATO VAGLI': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'ARDESIA AUTUMN': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'ARDESIA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'BASALTO GRIGIO': [{"f": "BOCCIARDATA", "e": {"12": 216, "20": 342}}],
-    'BASALTO NERO': [{"f": "BOCCIARDATA", "e": {"12": 216, "20": 342}}],
-    'BIANCO ASSOLUTO': [{"f": "SOFT TOUCH", "e": {"12": 216, "20": 342}}],
-    'BRECCIA AURORA': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'BRECCIA TAUPE': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'CALACATTA ORO': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'CALACATTA ROYAL': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'CALIZA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'CALIZA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'CAPRIA': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'CEPPO DI GRE': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'CRYSTALLO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'FIOR DI BOSCO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'JADE GREEN': [{"f": "NATURALE", "e": {"12": 216}}, {"f": "LUCIDATO", "e": {"12": 300}}],
-    'JET BLACK': [{"f": "SOFT TOUCH", "e": {"6": 216, "12": 216, "20": 342}}],
-    'JURA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'LINCOLN DORATO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'MARMO ANTICO': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'NERO ASSOLUTO': [{"f": "BOCCIARDATA", "e": {"12": 216, "20": 342}}],
-    'PATAGONIA': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'PERLA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 216, "20": 342}}],
-    'PORTORO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'SAHARA GREY': [{"f": "NATURALE", "e": {"12": 216}}],
-    'SAHARA NOIR': [{"f": "NATURALE", "e": {"12": 216}}],
-    'SINAI PEARL': [{"f": "NATURALE", "e": {"6": 216, "12": 216, "20": 342}}],
-    'STATUARIO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}, {"f": "LUCIDATO", "e": {"12": 336, "20": 468}}],
-    'TRAVERTINO ARGENTO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'TRAVERTINO BIANCO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'TRAVERTINO CLASSICO': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'TRAVERTINO LIGHT': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
-    'TRAVERTINO NAVONA': [{"f": "NATURALE", "e": {"12": 216, "20": 342}}],
+    'ARABESCATO CALACATTA': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'ARABESCATO OROBICO': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'ARABESCATO VAGLI': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'ARDESIA AUTUMN': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'ARDESIA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'BASALTO GRIGIO': [{"f": "BOCCIARDATA", "e": {"12": 226.8, "20": 359.1}}],
+    'BASALTO NERO': [{"f": "BOCCIARDATA", "e": {"12": 226.8, "20": 359.1}}],
+    'BIANCO ASSOLUTO': [{"f": "SOFT TOUCH", "e": {"12": 226.8, "20": 359.1}}],
+    'BRECCIA AURORA': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'BRECCIA TAUPE': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'CALACATTA ORO': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'CALACATTA ROYAL': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'CALIZA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'CALIZA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'CAPRIA': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'CEPPO DI GRE': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'CRYSTALLO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'FIOR DI BOSCO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'JADE GREEN': [{"f": "NATURALE", "e": {"12": 226.8}}, {"f": "LUCIDATO", "e": {"12": 315}}],
+    'JET BLACK': [{"f": "SOFT TOUCH", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'JURA BEIGE': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'LINCOLN DORATO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'MARMO ANTICO': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'NERO ASSOLUTO': [{"f": "BOCCIARDATA", "e": {"12": 226.8, "20": 359.1}}],
+    'PATAGONIA': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'PERLA AVORIO': [{"f": "STUTTURATTA", "e": {"12": 226.8, "20": 359.1}}],
+    'PORTORO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'SAHARA GREY': [{"f": "NATURALE", "e": {"12": 226.8}}],
+    'SAHARA NOIR': [{"f": "NATURALE", "e": {"12": 226.8}}],
+    'SINAI PEARL': [{"f": "NATURALE", "e": {"6": 226.8, "12": 226.8, "20": 359.1}}],
+    'STATUARIO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}, {"f": "LUCIDATO", "e": {"12": 352.8, "20": 491.4}}],
+    'TRAVERTINO ARGENTO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'TRAVERTINO BIANCO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'TRAVERTINO CLASSICO': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'TRAVERTINO LIGHT': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
+    'TRAVERTINO NAVONA': [{"f": "NATURALE", "e": {"12": 226.8, "20": 359.1}}],
   },
   'ceramique-xstone': {
-    'AGED CLAY': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'AGED DARK': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'ALPI VERDE': [{"f": "POLISHED", "e": {"12": 395.64}}],
-    'ALPINUS WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 395.64}}],
-    'ARGOS BLACK NATURE': [{"f": "NATURE", "e": {"12": 346.29}}],
-    'ARGOS BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 395.64}}],
-    'ARIA WHITE NATURE': [{"f": "NATURE", "e": {"12": 333.98, "20": 382.64}}],
-    'ARIA WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 383.59, "20": 472.65}}],
-    'ARS BEIGE NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'ARS BEIGE POLISH': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'ASTANA GREY NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'ASTANA GREY POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'BIANCO LASA': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'BLUE ROMA': [{"f": "SILK - POLISHED", "e": {"12": 395.64}}],
-    'BOTEGA CALIZA': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'BOTTEGA ACERO': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'BOTTEGA ANTHACITA': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'CALACATTA ANTICO NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'CALACATTA ANTICO POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'CALACATTA GOLD NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'CALACATTA GOLD POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'CALACATTA GREEN': [{"f": "SILK - POLISHED", "e": {"12": 395.64}}],
-    'CALATORAO': [{"f": "NATURE", "e": {"12": 346.29}}],
-    'EWOOD CAMEL': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'FIORI DI BOSCO NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'FIORI DI BOSCO POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'GLEM WHITE NATURE': [{"f": "NATURE", "e": {"12": 333.98, "20": 382.64}}],
-    'GLEM WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 383.59, "20": 472.65}}],
-    'INVISIBLE WHITE NATURE': [{"f": "NATURE", "e": {"12": 346.29}}],
-    'INVISIBLE WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 395.64}}],
-    'LIEM BLACK NATURE': [{"f": "NATURE", "e": {"12": 346.29}}],
-    'LIEM BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 395.64}}],
-    'LIEM DARK NATURE': [{"f": "NATURE", "e": {"12": 333.98, "20": 382.64}}],
-    'LIEM DARK POLISHED': [{"f": "POLISHED", "e": {"12": 383.59, "20": 472.65}}],
-    'LIEM GREY NATURE': [{"f": "NATURE", "e": {"12": 333.98}}],
-    'LIEM GREY POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'MONTREAL WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 333.98}}],
-    'MOON WHITE NATURE': [{"f": "NATURE", "e": {"12": 333.98, "20": 382.64}}],
-    'MOON WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 383.59}}],
-    'NEDA': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'OROBICO DARK NATURE': [{"f": "NATURE", "e": {"12": 346.29}}],
-    'OROBICO DARK POLISHED': [{"f": "POLISHED", "e": {"12": 395.64}}],
-    'OXIDE BROWN': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'PAONAZZO': [{"f": "SILK - POLISHED", "e": {"12": 395.64}}],
-    'PIETRA SICILIA': [{"f": "TEXTURE", "e": {"12": 306.78}}],
-    'SOLO BLACK': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'SOLO DOVE': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'SOLO WARM': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'SOLO WHITE': [{"f": "NATURE", "e": {"12": 245.18}}],
-    'TAJ MAHAL': [{"f": "SILK - POLISHED", "e": {"12": 395.64}}],
-    'TERRE GREIGE': [{"f": "NATURE", "e": {"12": 306.78}}],
-    'TERRE NERO': [{"f": "TEXTURE", "e": {"12": 306.78}}],
-    'TURA': [{"f": "TEXTURE", "e": {"12": 333.98}}],
+    'AGED CLAY': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'AGED DARK': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'ALPI VERDE': [{"f": "POLISHED", "e": {"12": 415.42}}],
+    'ALPINUS WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 415.42}}],
+    'ARGOS BLACK NATURE': [{"f": "NATURE", "e": {"12": 363.6}}],
+    'ARGOS BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 415.42}}],
+    'ARIA WHITE NATURE': [{"f": "NATURE", "e": {"12": 350.68, "20": 401.77}}],
+    'ARIA WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 402.77, "20": 496.28}}],
+    'ARS BEIGE NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'ARS BEIGE POLISH': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'ASTANA GREY NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'ASTANA GREY POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'BIANCO LASA': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'BLUE ROMA': [{"f": "SILK - POLISHED", "e": {"12": 415.42}}],
+    'BOTEGA CALIZA': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'BOTTEGA ACERO': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'BOTTEGA ANTHACITA': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'CALACATTA ANTICO NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'CALACATTA ANTICO POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'CALACATTA GOLD NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'CALACATTA GOLD POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'CALACATTA GREEN': [{"f": "SILK - POLISHED", "e": {"12": 415.42}}],
+    'CALATORAO': [{"f": "NATURE", "e": {"12": 363.6}}],
+    'EWOOD CAMEL': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'FIORI DI BOSCO NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'FIORI DI BOSCO POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'GLEM WHITE NATURE': [{"f": "NATURE", "e": {"12": 350.68, "20": 401.77}}],
+    'GLEM WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 402.77, "20": 496.28}}],
+    'INVISIBLE WHITE NATURE': [{"f": "NATURE", "e": {"12": 363.6}}],
+    'INVISIBLE WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 415.42}}],
+    'LIEM BLACK NATURE': [{"f": "NATURE", "e": {"12": 363.6}}],
+    'LIEM BLACK POLISHED': [{"f": "POLISHED", "e": {"12": 415.42}}],
+    'LIEM DARK NATURE': [{"f": "NATURE", "e": {"12": 350.68, "20": 401.77}}],
+    'LIEM DARK POLISHED': [{"f": "POLISHED", "e": {"12": 402.77, "20": 496.28}}],
+    'LIEM GREY NATURE': [{"f": "NATURE", "e": {"12": 350.68}}],
+    'LIEM GREY POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'MONTREAL WHITE': [{"f": "NATURE / TEXTURED", "e": {"12": 350.68}}],
+    'MOON WHITE NATURE': [{"f": "NATURE", "e": {"12": 350.68, "20": 401.77}}],
+    'MOON WHITE POLISHED': [{"f": "POLISHED", "e": {"12": 402.77}}],
+    'NEDA': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'OROBICO DARK NATURE': [{"f": "NATURE", "e": {"12": 363.6}}],
+    'OROBICO DARK POLISHED': [{"f": "POLISHED", "e": {"12": 415.42}}],
+    'OXIDE BROWN': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'PAONAZZO': [{"f": "SILK - POLISHED", "e": {"12": 415.42}}],
+    'PIETRA SICILIA': [{"f": "TEXTURE", "e": {"12": 322.12}}],
+    'SOLO BLACK': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'SOLO DOVE': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'SOLO WARM': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'SOLO WHITE': [{"f": "NATURE", "e": {"12": 257.44}}],
+    'TAJ MAHAL': [{"f": "SILK - POLISHED", "e": {"12": 415.42}}],
+    'TERRE GREIGE': [{"f": "NATURE", "e": {"12": 322.12}}],
+    'TERRE NERO': [{"f": "TEXTURE", "e": {"12": 322.12}}],
+    'TURA': [{"f": "TEXTURE", "e": {"12": 350.68}}],
   },
   'dekton': {
-    'AERIS': [{"f": "MATE", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'ALBARIUM 22': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'ARGA': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'ARGENTIUM': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'AURA 22': [{"f": "MATE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'AWAKE': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'BERGEN': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'BROMO': [{"f": "MATE TEXTUREE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'DANAE': [{"f": "MATE", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'DAZE': [{"f": "VELVET", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'DOMOOS': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'DUNNA': [{"f": "POLI", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'ENTZO': [{"f": "MATE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'ETER': [{"f": "MATE", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'FOSSIL': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'GK07 CEPPO': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'HALO': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'HELENA 22': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'KAIROS 22': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'KELYA': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'KEON': [{"f": "MATE", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'KHALO': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'KIRA': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'KOVIK': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'KRETA': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'KURO': [{"f": "MATE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'LAGUNA': [{"f": "VELVET", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'LAOS': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'LAURENT': [{"f": "MATE TEXTUREE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'LIMBO': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'LUCID': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'LUNAR 22': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'MALIBU': [{"f": "POLI", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'MARINA': [{"f": "VELVET", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'MICRON': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'MOONE': [{"f": "MATE", "e": {"8": 192.46, "12": 272.65, "20": 317.19}}],
-    'MORPHEUS': [{"f": "VELVET", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'NACRE': [{"f": "VELVET TEXTUREE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'NATURA 22': [{"f": "POLI", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'NEURAL': [{"f": "VELVET TEXTUREE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'NILIUM 22': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'OPERA': [{"f": "VELVET", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'REM': [{"f": "VELVET TEXTUREE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'REVERIE': [{"f": "VELVET", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'SALINA': [{"f": "POLI", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'SASEA': [{"f": "MATE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'SIRIUS': [{"f": "MATE TEXTUREE", "e": {"8": 238.79, "12": 342.14, "20": 397.39}}],
-    'SOKE': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'SOMNIA': [{"f": "MATE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'TAGA': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'TK05 SABBIA': [{"f": "MATE TEXTUREE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'TK06 MARMARIO': [{"f": "MATE TEXTUREE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'TRANCE': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'TRILIUM': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'UMBER': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'UYUNI': [{"f": "MATE", "e": {"8": 320.76, "12": 463.32, "20": 543.5}}],
-    'VIGIL': [{"f": "POLI", "e": {"8": 384.91, "12": 554.2, "20": 650.42}}],
-    'VK01 NEBBIA': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'VK02 AVARIO': [{"f": "MATE TEXTUREE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'VK03 GRIGIO': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'VK04 GRAFITE': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
-    'ZENITH': [{"f": "MATE", "e": {"8": 276.21, "12": 399.17, "20": 470.45}}],
+    'AERIS': [{"f": "MATE", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'ALBARIUM 22': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'ARGA': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'ARGENTIUM': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'AURA 22': [{"f": "MATE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'AWAKE': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'BERGEN': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'BROMO': [{"f": "MATE TEXTUREE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'DANAE': [{"f": "MATE", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'DAZE': [{"f": "VELVET", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'DOMOOS': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'DUNNA': [{"f": "POLI", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'ENTZO': [{"f": "MATE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'ETER': [{"f": "MATE", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'FOSSIL': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'GK07 CEPPO': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'HALO': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'HELENA 22': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'KAIROS 22': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'KELYA': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'KEON': [{"f": "MATE", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'KHALO': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'KIRA': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'KOVIK': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'KRETA': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'KURO': [{"f": "MATE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'LAGUNA': [{"f": "VELVET", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'LAOS': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'LAURENT': [{"f": "MATE TEXTUREE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'LIMBO': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'LUCID': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'LUNAR 22': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'MALIBU': [{"f": "POLI", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'MARINA': [{"f": "VELVET", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'MICRON': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'MOONE': [{"f": "MATE", "e": {"8": 202.08, "12": 286.28, "20": 333.05}}],
+    'MORPHEUS': [{"f": "VELVET", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'NACRE': [{"f": "VELVET TEXTUREE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'NATURA 22': [{"f": "POLI", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'NEURAL': [{"f": "VELVET TEXTUREE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'NILIUM 22': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'OPERA': [{"f": "VELVET", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'REM': [{"f": "VELVET TEXTUREE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'REVERIE': [{"f": "VELVET", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'SALINA': [{"f": "POLI", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'SASEA': [{"f": "MATE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'SIRIUS': [{"f": "MATE TEXTUREE", "e": {"8": 250.73, "12": 359.25, "20": 417.26}}],
+    'SOKE': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'SOMNIA': [{"f": "MATE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'TAGA': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'TK05 SABBIA': [{"f": "MATE TEXTUREE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'TK06 MARMARIO': [{"f": "MATE TEXTUREE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'TRANCE': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'TRILIUM': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'UMBER': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'UYUNI': [{"f": "MATE", "e": {"8": 336.8, "12": 486.49, "20": 570.68}}],
+    'VIGIL': [{"f": "POLI", "e": {"8": 404.16, "12": 581.91, "20": 682.94}}],
+    'VK01 NEBBIA': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'VK02 AVARIO': [{"f": "MATE TEXTUREE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'VK03 GRIGIO': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'VK04 GRAFITE': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
+    'ZENITH': [{"f": "MATE", "e": {"8": 290.02, "12": 419.13, "20": 493.97}}],
   },
   'granit': {
-    'ABSOLUTE BLACK (NOIR FIN INDE)': [{"f": "CUIR", "e": {"20": 334.8, "30": 432}}, {"f": "POLI", "e": {"20": 324, "30": 421.2}}],
-    'ANDROMEDA': [{"f": "POLI", "e": {"20": 280.8, "30": 345.6}}],
-    'ANTHRACITE ELEGANT': [{"f": "CUIR", "e": {"20": 313.2, "30": 410.4}}, {"f": "POLI", "e": {"20": 302.4, "30": 399.6}}],
-    'ASPEN WHITE (BIANCO ANTICO)': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'AZUL ARAN': [{"f": "POLI", "e": {"20": 432, "30": 583.2}}],
-    'BALMORAL GE': [{"f": "POLI", "e": {"20": 183.6, "30": 237.6}}],
-    'BALTIC BRUN': [{"f": "POLI", "e": {"20": 172.8, "30": 205.2}}],
-    'BIANCO PIRACEMA': [{"f": "POLI", "e": {"20": 226.8, "30": 302.4}}],
-    'BIANCO VICTORIA/ PITAYA': [{"f": "POLI", "e": {"20": 324, "30": 421.2}}],
-    'BLACK FUSION GOLD/BLACK TAURUS': [{"f": "POLI", "e": {"20": 432, "30": 572.4}}, {"f": "CUIR", "e": {"20": 442.8, "30": 583.2}}],
-    'BLACK ICE': [{"f": "CUIR", "e": {"20": 259.2, "30": 345.6}}],
-    'BLACK R': [{"f": "CUIR", "e": {"20": 162, "30": 0}}],
-    'BLACK SILK': [{"f": "CUIR", "e": {"20": 270, "30": 356.4}}, {"f": "POLI", "e": {"20": 259.2, "30": 345.6}}],
-    'BLANC BERROCAL': [{"f": "POLI", "e": {"20": 140.4, "30": 162}}],
-    'BLANC CRISTAL': [{"f": "POLI", "e": {"20": 162, "30": 205.2}}],
-    'BLUE NIGHT': [{"f": "POLI", "e": {"20": 194.4, "30": 226.8}}],
-    'BROWN ANTIQUE': [{"f": "POLI", "e": {"20": 280.8, "30": 345.6}}, {"f": "CARESSE", "e": {"20": 302.4, "30": 367.2}}, {"f": "CUIR", "e": {"20": 291.6, "30": 356.4}}],
-    'BROWN SILK': [{"f": "POLI", "e": {"20": 302.4, "30": 367.2}}, {"f": "CUIR", "e": {"20": 313.2, "30": 378}}],
-    'CAFE IMPERIAL': [{"f": "POLI", "e": {"20": 270, "30": 378}}, {"f": "CUIR", "e": {"20": 280.8, "30": 388.8}}],
-    'CHEYENNE': [{"f": "CUIR", "e": {"20": 259.2, "30": 324}}, {"f": "POLI", "e": {"20": 248.4, "30": 313.2}}],
-    'COLONIAL GOLD': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'COLONIAL WHITE': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'COSMIC BLACK': [{"f": "POLI", "e": {"20": 291.6, "30": 367.2}}, {"f": "CUIR", "e": {"20": 302.4, "30": 378}}],
-    'COSMIC BLACK GOLD': [{"f": "POLI", "e": {"20": 291.6, "30": 367.2}}, {"f": "CUIR", "e": {"20": 302.4, "30": 378}}],
-    'FLASH BLUE': [{"f": "CROCO", "e": {"20": 183.6, "30": 216}}],
-    'GALAXY BLACK': [{"f": "POLI", "e": {"20": 259.2, "30": 324}}],
-    'GIALLO VENEZIANO': [{"f": "POLI", "e": {"20": 216, "30": 270}}],
-    'HIMALAYA BLUE': [{"f": "POLI", "e": {"20": 226.8, "30": 280.8}}],
-    'INDIAN JUPARANA': [{"f": "POLI", "e": {"20": 226.8, "30": 280.8}}],
-    'IVORY CREAM': [{"f": "POLI", "e": {"20": 248.4, "30": 302.4}}],
-    'JUPARANA COLOMBO': [{"f": "POLI", "e": {"20": 226.8, "30": 280.8}}],
-    'JUPARANA FLORENZA': [{"f": "POLI", "e": {"20": 183.6, "30": 237.6}}],
-    'KASHMIR GOLD': [{"f": "POLI", "e": {"20": 205.2, "30": 259.2}}],
-    'KASHMIR WHITE BRAZIL': [{"f": "POLI", "e": {"20": 205.2, "30": 259.2}}],
-    'KASHMIR WHITE INDE': [{"f": "POLI", "e": {"20": 205.2, "30": 259.2}}],
-    'KINAWA RAISSA': [{"f": "POLI", "e": {"20": 216, "30": 270}}],
-    'KUROKA CLASSIC': [{"f": "POLI", "e": {"20": 345.6, "30": 453.6}}, {"f": "CUIR", "e": {"20": 356.4, "30": 464.4}}],
-    'KUROKA EXTRA': [{"f": "POLI", "e": {"20": 388.8, "30": 518.4}}, {"f": "CUIR", "e": {"20": 399.6, "30": 529.2}}],
-    'LABRADOR BLEU HQ': [{"f": "POLI", "e": {"20": 280.8, "30": 378}}],
-    'LABRADOR BROWN': [{"f": "POLI", "e": {"20": 345.6, "30": 442.8}}],
-    'LABRADOR VERT': [{"f": "POLI", "e": {"20": 259.2, "30": 334.8}}],
-    'LEMON ICE': [{"f": "POLI", "e": {"20": 248.4, "30": 302.4}}],
-    'MADURA GOLD': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'MARINACE BLACK': [{"f": "POLI", "e": {"20": 280.8, "30": 334.8}}],
-    'MARINACE ROUGE': [{"f": "POLI", "e": {"20": 324, "30": 410.4}}],
-    'MULTICOLOR RED': [{"f": "POLI", "e": {"20": 216, "30": 248.4}}],
-    'MYSTIC GREY': [{"f": "CUIR", "e": {"20": 259.2, "30": 334.8}}],
-    'NERO RUSTENBURG MD': [{"f": "POLI", "e": {"20": 162, "30": 216}}],
-    'NEW LILLET': [{"f": "POLI", "e": {"20": 183.6, "30": 226.8}}],
-    'NOIR ANGOLA': [{"f": "CUIR", "e": {"20": 162, "30": 216}}],
-    'NOIR SAN GABRIEL': [{"f": "CUIR", "e": {"20": 140.4, "30": 194.4}}],
-    'PARADISO': [{"f": "POLI", "e": {"20": 226.8, "30": 280.8}}],
-    'ROSA BELLA': [{"f": "POLI", "e": {"20": 194.4, "30": 248.4}}],
-    'ROSE CLARTE': [{"f": "POLI", "e": {"20": 237.6, "30": 270}}],
-    'ROSE DALVA': [{"f": "POLI", "e": {"20": 280.8, "30": 345.6}}],
-    'ROSE PORRINO': [{"f": "POLI", "e": {"20": 86.4, "30": 108}}],
-    'SHIVAKASHI': [{"f": "POLI", "e": {"20": 248.4, "30": 313.2}}],
-    'STARGATE': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'STEEL GREY': [{"f": "CROCO", "e": {"20": 183.6, "30": 216}}, {"f": "CUIR", "e": {"20": 183.6, "30": 216}}],
-    'TAN BROWN': [{"f": "CROCO", "e": {"20": 194.4, "30": 226.8}}, {"f": "POLI", "e": {"20": 183.6, "30": 216}}],
-    'TARN FIN GRAIN (MOYEN)': [{"f": "POLI", "e": {"20": 129.6, "30": 140.4}}],
-    'TARN GROS GRAIN (ST SALVY)': [{"f": "CUIR", "e": {"20": 140.4, "30": 151.2}}, {"f": "POLI", "e": {"20": 129.6, "30": 140.4}}],
-    'TROPICAL ABRICOT': [{"f": "POLI", "e": {"20": 205.2, "30": 259.2}}],
-    'TROPICAL FASHION': [{"f": "POLI", "e": {"20": 334.8, "30": 0}}],
-    'VERT OLIVE': [{"f": "POLI", "e": {"20": 194.4, "30": 270}}],
-    'VERT TROPICAL': [{"f": "POLI", "e": {"20": 248.4, "30": 324}}],
-    'VIA LACTEA': [{"f": "POLI", "e": {"20": 237.6, "30": 302.4}}],
-    'VISAG BLUE': [{"f": "POLI", "e": {"20": 216, "30": 248.4}}],
-    'VOLGA BLUE': [{"f": "POLI", "e": {"20": 280.8, "30": 378}}],
-    'WISKONT WHITE': [{"f": "POLI", "e": {"20": 205.2, "30": 248.4}}],
-    'ZIMBABWE CLASSIQUE': [{"f": "VIEILLI", "e": {"20": 318, "30": 384}}, {"f": "CUIR", "e": {"20": 234, "30": 294}}, {"f": "ADOUCI/POLI", "e": {"20": 300, "30": 360}}],
-    'ZIMBABWE EXTRA (MEMORIAL)': [{"f": "WOOD", "e": {"20": 348, "30": 420}}, {"f": "TRANCHE", "e": {"20": 348, "30": 420}}],
+    'ABSOLUTE BLACK (NOIR FIN INDE)': [{"f": "CUIR", "e": {"20": 351.54, "30": 453.6}}, {"f": "POLI", "e": {"20": 340.2, "30": 442.26}}],
+    'ANDROMEDA': [{"f": "POLI", "e": {"20": 294.84, "30": 362.88}}],
+    'ANTHRACITE ELEGANT': [{"f": "CUIR", "e": {"20": 328.86, "30": 430.92}}, {"f": "POLI", "e": {"20": 317.52, "30": 419.58}}],
+    'ASPEN WHITE (BIANCO ANTICO)': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'AZUL ARAN': [{"f": "POLI", "e": {"20": 453.6, "30": 612.36}}],
+    'BALMORAL GE': [{"f": "POLI", "e": {"20": 192.78, "30": 249.48}}],
+    'BALTIC BRUN': [{"f": "POLI", "e": {"20": 181.44, "30": 215.46}}],
+    'BIANCO PIRACEMA': [{"f": "POLI", "e": {"20": 238.14, "30": 317.52}}],
+    'BIANCO VICTORIA/ PITAYA': [{"f": "POLI", "e": {"20": 340.2, "30": 442.26}}],
+    'BLACK FUSION GOLD/BLACK TAURUS': [{"f": "POLI", "e": {"20": 453.6, "30": 601.02}}, {"f": "CUIR", "e": {"20": 464.94, "30": 612.36}}],
+    'BLACK ICE': [{"f": "CUIR", "e": {"20": 272.16, "30": 362.88}}],
+    'BLACK R': [{"f": "CUIR", "e": {"20": 170.1, "30": 0}}],
+    'BLACK SILK': [{"f": "CUIR", "e": {"20": 283.5, "30": 374.22}}, {"f": "POLI", "e": {"20": 272.16, "30": 362.88}}],
+    'BLANC BERROCAL': [{"f": "POLI", "e": {"20": 147.42, "30": 170.1}}],
+    'BLANC CRISTAL': [{"f": "POLI", "e": {"20": 170.1, "30": 215.46}}],
+    'BLUE NIGHT': [{"f": "POLI", "e": {"20": 204.12, "30": 238.14}}],
+    'BROWN ANTIQUE': [{"f": "POLI", "e": {"20": 294.84, "30": 362.88}}, {"f": "CARESSE", "e": {"20": 317.52, "30": 385.56}}, {"f": "CUIR", "e": {"20": 306.18, "30": 374.22}}],
+    'BROWN SILK': [{"f": "POLI", "e": {"20": 317.52, "30": 385.56}}, {"f": "CUIR", "e": {"20": 328.86, "30": 396.9}}],
+    'CAFE IMPERIAL': [{"f": "POLI", "e": {"20": 283.5, "30": 396.9}}, {"f": "CUIR", "e": {"20": 294.84, "30": 408.24}}],
+    'CHEYENNE': [{"f": "CUIR", "e": {"20": 272.16, "30": 340.2}}, {"f": "POLI", "e": {"20": 260.82, "30": 328.86}}],
+    'COLONIAL GOLD': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'COLONIAL WHITE': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'COSMIC BLACK': [{"f": "POLI", "e": {"20": 306.18, "30": 385.56}}, {"f": "CUIR", "e": {"20": 317.52, "30": 396.9}}],
+    'COSMIC BLACK GOLD': [{"f": "POLI", "e": {"20": 306.18, "30": 385.56}}, {"f": "CUIR", "e": {"20": 317.52, "30": 396.9}}],
+    'FLASH BLUE': [{"f": "CROCO", "e": {"20": 192.78, "30": 226.8}}],
+    'GALAXY BLACK': [{"f": "POLI", "e": {"20": 272.16, "30": 340.2}}],
+    'GIALLO VENEZIANO': [{"f": "POLI", "e": {"20": 226.8, "30": 283.5}}],
+    'HIMALAYA BLUE': [{"f": "POLI", "e": {"20": 238.14, "30": 294.84}}],
+    'INDIAN JUPARANA': [{"f": "POLI", "e": {"20": 238.14, "30": 294.84}}],
+    'IVORY CREAM': [{"f": "POLI", "e": {"20": 260.82, "30": 317.52}}],
+    'JUPARANA COLOMBO': [{"f": "POLI", "e": {"20": 238.14, "30": 294.84}}],
+    'JUPARANA FLORENZA': [{"f": "POLI", "e": {"20": 192.78, "30": 249.48}}],
+    'KASHMIR GOLD': [{"f": "POLI", "e": {"20": 215.46, "30": 272.16}}],
+    'KASHMIR WHITE BRAZIL': [{"f": "POLI", "e": {"20": 215.46, "30": 272.16}}],
+    'KASHMIR WHITE INDE': [{"f": "POLI", "e": {"20": 215.46, "30": 272.16}}],
+    'KINAWA RAISSA': [{"f": "POLI", "e": {"20": 226.8, "30": 283.5}}],
+    'KUROKA CLASSIC': [{"f": "POLI", "e": {"20": 362.88, "30": 476.28}}, {"f": "CUIR", "e": {"20": 374.22, "30": 487.62}}],
+    'KUROKA EXTRA': [{"f": "POLI", "e": {"20": 408.24, "30": 544.32}}, {"f": "CUIR", "e": {"20": 419.58, "30": 555.66}}],
+    'LABRADOR BLEU HQ': [{"f": "POLI", "e": {"20": 294.84, "30": 396.9}}],
+    'LABRADOR BROWN': [{"f": "POLI", "e": {"20": 362.88, "30": 464.94}}],
+    'LABRADOR VERT': [{"f": "POLI", "e": {"20": 272.16, "30": 351.54}}],
+    'LEMON ICE': [{"f": "POLI", "e": {"20": 260.82, "30": 317.52}}],
+    'MADURA GOLD': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'MARINACE BLACK': [{"f": "POLI", "e": {"20": 294.84, "30": 351.54}}],
+    'MARINACE ROUGE': [{"f": "POLI", "e": {"20": 340.2, "30": 430.92}}],
+    'MULTICOLOR RED': [{"f": "POLI", "e": {"20": 226.8, "30": 260.82}}],
+    'MYSTIC GREY': [{"f": "CUIR", "e": {"20": 272.16, "30": 351.54}}],
+    'NERO RUSTENBURG MD': [{"f": "POLI", "e": {"20": 170.1, "30": 226.8}}],
+    'NEW LILLET': [{"f": "POLI", "e": {"20": 192.78, "30": 238.14}}],
+    'NOIR ANGOLA': [{"f": "CUIR", "e": {"20": 170.1, "30": 226.8}}],
+    'NOIR SAN GABRIEL': [{"f": "CUIR", "e": {"20": 147.42, "30": 204.12}}],
+    'PARADISO': [{"f": "POLI", "e": {"20": 238.14, "30": 294.84}}],
+    'ROSA BELLA': [{"f": "POLI", "e": {"20": 204.12, "30": 260.82}}],
+    'ROSE CLARTE': [{"f": "POLI", "e": {"20": 249.48, "30": 283.5}}],
+    'ROSE DALVA': [{"f": "POLI", "e": {"20": 294.84, "30": 362.88}}],
+    'ROSE PORRINO': [{"f": "POLI", "e": {"20": 90.72, "30": 113.4}}],
+    'SHIVAKASHI': [{"f": "POLI", "e": {"20": 260.82, "30": 328.86}}],
+    'STARGATE': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'STEEL GREY': [{"f": "CROCO", "e": {"20": 192.78, "30": 226.8}}, {"f": "CUIR", "e": {"20": 192.78, "30": 226.8}}],
+    'TAN BROWN': [{"f": "CROCO", "e": {"20": 204.12, "30": 238.14}}, {"f": "POLI", "e": {"20": 192.78, "30": 226.8}}],
+    'TARN FIN GRAIN (MOYEN)': [{"f": "POLI", "e": {"20": 136.08, "30": 147.42}}],
+    'TARN GROS GRAIN (ST SALVY)': [{"f": "CUIR", "e": {"20": 147.42, "30": 158.76}}, {"f": "POLI", "e": {"20": 136.08, "30": 147.42}}],
+    'TROPICAL ABRICOT': [{"f": "POLI", "e": {"20": 215.46, "30": 272.16}}],
+    'TROPICAL FASHION': [{"f": "POLI", "e": {"20": 351.54, "30": 0}}],
+    'VERT OLIVE': [{"f": "POLI", "e": {"20": 204.12, "30": 283.5}}],
+    'VERT TROPICAL': [{"f": "POLI", "e": {"20": 260.82, "30": 340.2}}],
+    'VIA LACTEA': [{"f": "POLI", "e": {"20": 249.48, "30": 317.52}}],
+    'VISAG BLUE': [{"f": "POLI", "e": {"20": 226.8, "30": 260.82}}],
+    'VOLGA BLUE': [{"f": "POLI", "e": {"20": 294.84, "30": 396.9}}],
+    'WISKONT WHITE': [{"f": "POLI", "e": {"20": 215.46, "30": 260.82}}],
+    'ZIMBABWE CLASSIQUE': [{"f": "VIEILLI", "e": {"20": 333.9, "30": 403.2}}, {"f": "CUIR", "e": {"20": 245.7, "30": 308.7}}, {"f": "ADOUCI/POLI", "e": {"20": 315, "30": 378}}],
+    'ZIMBABWE EXTRA (MEMORIAL)': [{"f": "WOOD", "e": {"20": 365.4, "30": 441}}, {"f": "TRANCHE", "e": {"20": 365.4, "30": 441}}],
   },
   'marbre': {
-    'CARRARE C': [{"f": "ADOUCI", "e": {"20": 194.4, "30": 259.2}}, {"f": "POLI", "e": {"20": 194.4, "30": 259.2}}],
-    'CARRARE EXTRA': [{"f": "ADOUCI", "e": {"20": 248.4, "30": 324}}, {"f": "POLI", "e": {"20": 248.4, "30": 324}}],
-    'CREMA MARFIL': [{"f": "POLI", "e": {"20": 216, "30": 291.6}}],
-    'GLACIERS': [{"f": "POLI", "e": {"20": 399.6}}],
-    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'STRIATO OLIMPICO': [{"f": "POLI", "e": {"20": 216, "30": 280.8}}],
-    'VERDE GUATEMALA': [{"f": "POLI", "e": {"20": 162, "30": 216}}],
+    'CARRARE C': [{"f": "ADOUCI", "e": {"20": 204.12, "30": 272.16}}, {"f": "POLI", "e": {"20": 204.12, "30": 272.16}}],
+    'CARRARE EXTRA': [{"f": "ADOUCI", "e": {"20": 260.82, "30": 340.2}}, {"f": "POLI", "e": {"20": 260.82, "30": 340.2}}],
+    'CREMA MARFIL': [{"f": "POLI", "e": {"20": 226.8, "30": 306.18}}],
+    'GLACIERS': [{"f": "POLI", "e": {"20": 419.58}}],
+    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'STRIATO OLIMPICO': [{"f": "POLI", "e": {"20": 226.8, "30": 294.84}}],
+    'VERDE GUATEMALA': [{"f": "POLI", "e": {"20": 170.1, "30": 226.8}}],
   },
   'pierre': {
-    'ATLANTIC BEIGE': [{"f": "ADOUCIE", "e": {"20": 129.6, "30": 151.2}}],
-    'ATLANTIC GRIGIO': [{"f": "ADOUCI", "e": {"20": 129.6, "30": 151.2}}],
-    'AZUL GRIGIO LAGOS BLUE': [{"f": "ADOUCI", "e": {"20": 129.6, "30": 151.2}}],
-    'GRIGO OCEANO': [{"f": "ADOUCI", "e": {"20": 194.4, "30": 237.6}}],
-    'JURA BEIGE': [{"f": "ADOUCI", "e": {"20": 151.2, "30": 194.4}}],
-    'JURA GRIS': [{"f": "ADOUCI", "e": {"20": 151.2, "30": 194.4}}],
-    'PIERRE BLEU BELGE': [{"f": "CUIR", "e": {"20": 237.6, "30": 270}}],
-    'PIERRE DE FONTENAY': [{"f": "FLAMME/VIEILLI", "e": {"20": 162, "30": 216}}, {"f": "POLI", "e": {"20": 162, "30": 216}}],
-    'PIETRA GRIGIO': [{"f": "ADOUCI", "e": {"20": 172.8, "30": 205.2}}, {"f": "FLAMMEE", "e": {"20": 172.8, "30": 205.2}}, {"f": "POLI", "e": {"20": 172.8, "30": 205.2}}],
-    'PORTO BEIGE': [{"f": "ADOUCIE", "e": {"20": 129.6, "30": 151.2}}],
-    'THALA BEIGE': [{"f": "ADOUCI", "e": {"20": 151.2, "30": 205.2}}],
-    'TRIESTA BEIGE': [{"f": "ADOUCI", "e": {"20": 151.2, "30": 205.2}}],
+    'ATLANTIC BEIGE': [{"f": "ADOUCIE", "e": {"20": 136.08, "30": 158.76}}],
+    'ATLANTIC GRIGIO': [{"f": "ADOUCI", "e": {"20": 136.08, "30": 158.76}}],
+    'AZUL GRIGIO LAGOS BLUE': [{"f": "ADOUCI", "e": {"20": 136.08, "30": 158.76}}],
+    'GRIGO OCEANO': [{"f": "ADOUCI", "e": {"20": 204.12, "30": 249.48}}],
+    'JURA BEIGE': [{"f": "ADOUCI", "e": {"20": 158.76, "30": 204.12}}],
+    'JURA GRIS': [{"f": "ADOUCI", "e": {"20": 158.76, "30": 204.12}}],
+    'PIERRE BLEU BELGE': [{"f": "CUIR", "e": {"20": 249.48, "30": 283.5}}],
+    'PIERRE DE FONTENAY': [{"f": "FLAMME/VIEILLI", "e": {"20": 170.1, "30": 226.8}}, {"f": "POLI", "e": {"20": 170.1, "30": 226.8}}],
+    'PIETRA GRIGIO': [{"f": "ADOUCI", "e": {"20": 181.44, "30": 215.46}}, {"f": "FLAMMEE", "e": {"20": 181.44, "30": 215.46}}, {"f": "POLI", "e": {"20": 181.44, "30": 215.46}}],
+    'PORTO BEIGE': [{"f": "ADOUCIE", "e": {"20": 136.08, "30": 158.76}}],
+    'THALA BEIGE': [{"f": "ADOUCI", "e": {"20": 158.76, "30": 215.46}}],
+    'TRIESTA BEIGE': [{"f": "ADOUCI", "e": {"20": 158.76, "30": 215.46}}],
   },
   'quartz-silestone': {
-    'ARDEN BLUE': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'ARIEL': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'BLANCO MAPLE 14': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'BLANCO NORTE 14': [{"f": "POLI - SUEDE", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'BLANCO STELLAR 13': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'BLANCO ZEUS': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'BOHEMIAN FLAME': [{"f": "POLI - SUEDE", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'BRASH RELISH': [{"f": "SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'CALYPSO': [{"f": "POLI - SUEDE", "e": {"12": 379.57, "20": 507.86, "30": 712.8}}],
-    'CAMDEN': [{"f": "SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'CEMENTO SPA': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'CHARCOAL SOAPSTONE': [{"f": "POLI - SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'CINCEL GREY': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'CINDER CRAZE': [{"f": "SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'CONCRETE PULSE': [{"f": "SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'CORAL CLAY COLOUR': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'CORKTOWN': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'DESERT SILVER': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'ECLECTIC PEARL': [{"f": "POLI - SUEDE", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'ET. CALACATTA GOLD': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'ET. MARQUINA': [{"f": "POLI - SUEDE", "e": {"12": 379.57, "20": 507.86, "30": 712.8}}],
-    'ET. NOIR': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'ET. SERENA': [{"f": "POLI - SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'ET. STATUARIO': [{"f": "POLI - SUEDE", "e": {"12": 379.57, "20": 507.86, "30": 712.8}}],
-    'ETHEREAL DUSK': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'ETHEREAL GLOW': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'ETHEREAL HAZE': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'ETHEREAL NOCTIS': [{"f": "POLI - SUEDE", "e": {"12": 459.75, "20": 614.78, "30": 864.26}}],
-    'FARO WHITE': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'GRIS EXPO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'ICONIC WHITE': [{"f": "POLI - SUEDE", "e": {"12": 379.57, "20": 507.86, "30": 712.8}}],
-    'KENSHO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'LAGOON': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'LIME DELIGHT': [{"f": "SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'MARENGO': [{"f": "POLI - SUEDE", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'MIAMI VENA': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'MIAMI WHITE 17': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'NEGRO STELLAR': [{"f": "POLI", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'NEGRO TEBAS 18': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'NOKA': [{"f": "POLI - SUEDE", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'NOLITA 23': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'PARISIEN BLEU': [{"f": "POLI", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'POBLENOU': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'ROMANTIC ASH': [{"f": "POLI - SUEDE", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'ROUGUI': [{"f": "POLI - SUEDE", "e": {"12": 224.53, "20": 261.95, "30": 356.4}}],
-    'ROYAL REEF': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'SEAPORT': [{"f": "SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'SNOWY IBIZA': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
-    'VERSAILLES IVORY': [{"f": "POLI", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'VICTORIAN SILVER': [{"f": "POLI", "e": {"12": 518.56, "20": 691.42, "30": 972.97}}],
-    'WHITE ARABESQUE': [{"f": "POLI - SUEDE", "e": {"12": 345.71, "20": 461.54, "30": 648.65}}],
-    'WHITE STORM 14': [{"f": "POLI - SUEDE", "e": {"12": 258.38, "20": 301.16, "30": 409.86}}],
-    'YUKON': [{"f": "POLI - SUEDE", "e": {"12": 283.34, "20": 329.66, "30": 449.06}}],
+    'ARDEN BLUE': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'ARIEL': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'BLANCO MAPLE 14': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'BLANCO NORTE 14': [{"f": "POLI - SUEDE", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'BLANCO STELLAR 13': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'BLANCO ZEUS': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'BOHEMIAN FLAME': [{"f": "POLI - SUEDE", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'BRASH RELISH': [{"f": "SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'CALYPSO': [{"f": "POLI - SUEDE", "e": {"12": 398.55, "20": 533.25, "30": 748.44}}],
+    'CAMDEN': [{"f": "SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'CEMENTO SPA': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'CHARCOAL SOAPSTONE': [{"f": "POLI - SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'CINCEL GREY': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'CINDER CRAZE': [{"f": "SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'CONCRETE PULSE': [{"f": "SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'CORAL CLAY COLOUR': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'CORKTOWN': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'DESERT SILVER': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'ECLECTIC PEARL': [{"f": "POLI - SUEDE", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'ET. CALACATTA GOLD': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'ET. MARQUINA': [{"f": "POLI - SUEDE", "e": {"12": 398.55, "20": 533.25, "30": 748.44}}],
+    'ET. NOIR': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'ET. SERENA': [{"f": "POLI - SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'ET. STATUARIO': [{"f": "POLI - SUEDE", "e": {"12": 398.55, "20": 533.25, "30": 748.44}}],
+    'ETHEREAL DUSK': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'ETHEREAL GLOW': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'ETHEREAL HAZE': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'ETHEREAL NOCTIS': [{"f": "POLI - SUEDE", "e": {"12": 482.74, "20": 645.52, "30": 907.47}}],
+    'FARO WHITE': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'GRIS EXPO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'ICONIC WHITE': [{"f": "POLI - SUEDE", "e": {"12": 398.55, "20": 533.25, "30": 748.44}}],
+    'KENSHO': [{"f": "POLI - SUEDE - VOLCANO", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'LAGOON': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'LIME DELIGHT': [{"f": "SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'MARENGO': [{"f": "POLI - SUEDE", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'MIAMI VENA': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'MIAMI WHITE 17': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'NEGRO STELLAR': [{"f": "POLI", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'NEGRO TEBAS 18': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'NOKA': [{"f": "POLI - SUEDE", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'NOLITA 23': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'PARISIEN BLEU': [{"f": "POLI", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'POBLENOU': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'ROMANTIC ASH': [{"f": "POLI - SUEDE", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'ROUGUI': [{"f": "POLI - SUEDE", "e": {"12": 235.76, "20": 275.05, "30": 374.22}}],
+    'ROYAL REEF': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'SEAPORT': [{"f": "SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'SNOWY IBIZA': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
+    'VERSAILLES IVORY': [{"f": "POLI", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'VICTORIAN SILVER': [{"f": "POLI", "e": {"12": 544.49, "20": 725.99, "30": 1021.62}}],
+    'WHITE ARABESQUE': [{"f": "POLI - SUEDE", "e": {"12": 363, "20": 484.62, "30": 681.08}}],
+    'WHITE STORM 14': [{"f": "POLI - SUEDE", "e": {"12": 271.3, "20": 316.22, "30": 430.35}}],
+    'YUKON': [{"f": "POLI - SUEDE", "e": {"12": 297.51, "20": 346.14, "30": 471.51}}],
   },
   'quartz-unistone': {
-    'ALASKA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 348, "30": 420}}],
-    'ARABESCATO VAGLI': [{"f": "POLI/VELLUTO", "e": {"20": 348, "30": 420}}],
-    'ARABESCATO VIOLA': [{"f": "POLI/VELLUTO", "e": {"12": 348, "20": 348, "30": 420}}],
-    'BELGIAN BLUE': [{"f": "POLI/VELLUTO", "e": {"12": 288, "20": 288, "30": 360}}],
-    'BIANCO CRISTAL': [{"f": "POLI/VELLUTO", "e": {"20": 249.6, "30": 315}}],
-    'BIANCO EXTRA': [{"f": "POLI/VELLUTO", "e": {"20": 249.6, "30": 315}}],
-    'BIANCO EXTREME': [{"f": "POLI/VELLUTO", "e": {"12": 348, "20": 348, "30": 420}}],
-    'BLACK CRYSTAL': [{"f": "POLI", "e": {"20": 288, "30": 360}}],
-    'BOTTICINO GREY': [{"f": "VELLUTO", "e": {"20": 348, "30": 420}}],
-    'CALACATTA VAGLI ORO': [{"f": "POLI/VELLUTO", "e": {"20": 450, "30": 564}}],
-    'CALACATTA VICENTE': [{"f": "POLI/VELLUTO", "e": {"12": 450, "20": 450, "30": 564}}],
-    'CARRARA VENATINO': [{"f": "POLI/VELLUTO", "e": {"12": 450, "20": 450, "30": 564}}],
-    'CEMENTO': [{"f": "POLI/VELLUTO", "e": {"12": 249.6, "20": 249.6, "30": 315}}],
-    'CENDRE': [{"f": "POLI/VELLUTO", "e": {"12": 288, "20": 288, "30": 360}}],
-    'CEPPO': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'CONCRETO': [{"f": "ADOUCI", "e": {"12": 324, "20": 324, "30": 372}}],
-    'CRYSTALLO BEIGE': [{"f": "POLI/VELLUTO", "e": {"20": 450, "30": 564}}],
-    'DIAMANT': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'EMANATO': [{"f": "POLI/VELLUTO", "e": {"20": 450, "30": 564}}],
-    'ERAMOSA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'GREY SAVOYE': [{"f": "POLI/VELLUTO", "e": {"20": 324, "30": 372}}],
-    'GRIGIO PALOMA': [{"f": "ADOUCI", "e": {"20": 249.6, "30": 315}}],
-    'JAVA BLACK': [{"f": "POLI", "e": {"20": 348, "30": 420}}],
-    'JURA GREY': [{"f": "POLI/VELLUTO", "e": {"12": 288, "20": 288, "30": 360}}],
-    'NAXOS': [{"f": "ADOUCI", "e": {"20": 324, "30": 372}}],
-    'NERO ASSOLUTO': [{"f": "POLI", "e": {"20": 348, "30": 420}}],
-    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 408, "30": 504}}],
-    'OLYMPUS WHITE': [{"f": "ADOUCI", "e": {"20": 324, "30": 372}}],
-    'POLARIS': [{"f": "POLI/VELLUTO", "e": {"20": 288, "30": 360}}],
-    'SINAI PEARL': [{"f": "ADOUCI", "e": {"12": 324, "20": 324, "30": 372}}],
-    'STATUARIO': [{"f": "POLI/VELLUTO", "e": {"12": 450, "20": 450, "30": 564}}],
-    'TARTUFO': [{"f": "ADOUCI", "e": {"20": 324, "30": 372}}],
-    'TERRENO': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'THUNDER BLUE': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'TRAONIX': [{"f": "POLI/VELLUTO", "e": {"12": 450, "20": 450, "30": 564}}],
-    'ULIANO': [{"f": "POLI/VELLUTO", "e": {"20": 324, "30": 372}}],
-    'VENA ORO': [{"f": "POLI/VELLUTO", "e": {"20": 408, "30": 504}}],
-    'VITORIA REGIA': [{"f": "POLI/VELLUTO", "e": {"20": 450, "30": 564}}],
+    'ALASKA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 365.4, "30": 441}}],
+    'ARABESCATO VAGLI': [{"f": "POLI/VELLUTO", "e": {"20": 365.4, "30": 441}}],
+    'ARABESCATO VIOLA': [{"f": "POLI/VELLUTO", "e": {"12": 365.4, "20": 365.4, "30": 441}}],
+    'BELGIAN BLUE': [{"f": "POLI/VELLUTO", "e": {"12": 302.4, "20": 302.4, "30": 378}}],
+    'BIANCO CRISTAL': [{"f": "POLI/VELLUTO", "e": {"20": 262.08, "30": 330.75}}],
+    'BIANCO EXTRA': [{"f": "POLI/VELLUTO", "e": {"20": 262.08, "30": 330.75}}],
+    'BIANCO EXTREME': [{"f": "POLI/VELLUTO", "e": {"12": 365.4, "20": 365.4, "30": 441}}],
+    'BLACK CRYSTAL': [{"f": "POLI", "e": {"20": 302.4, "30": 378}}],
+    'BOTTICINO GREY': [{"f": "VELLUTO", "e": {"20": 365.4, "30": 441}}],
+    'CALACATTA VAGLI ORO': [{"f": "POLI/VELLUTO", "e": {"20": 472.5, "30": 592.2}}],
+    'CALACATTA VICENTE': [{"f": "POLI/VELLUTO", "e": {"12": 472.5, "20": 472.5, "30": 592.2}}],
+    'CARRARA VENATINO': [{"f": "POLI/VELLUTO", "e": {"12": 472.5, "20": 472.5, "30": 592.2}}],
+    'CEMENTO': [{"f": "POLI/VELLUTO", "e": {"12": 262.08, "20": 262.08, "30": 330.75}}],
+    'CENDRE': [{"f": "POLI/VELLUTO", "e": {"12": 302.4, "20": 302.4, "30": 378}}],
+    'CEPPO': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'CONCRETO': [{"f": "ADOUCI", "e": {"12": 340.2, "20": 340.2, "30": 390.6}}],
+    'CRYSTALLO BEIGE': [{"f": "POLI/VELLUTO", "e": {"20": 472.5, "30": 592.2}}],
+    'DIAMANT': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'EMANATO': [{"f": "POLI/VELLUTO", "e": {"20": 472.5, "30": 592.2}}],
+    'ERAMOSA WHITE': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'GREY SAVOYE': [{"f": "POLI/VELLUTO", "e": {"20": 340.2, "30": 390.6}}],
+    'GRIGIO PALOMA': [{"f": "ADOUCI", "e": {"20": 262.08, "30": 330.75}}],
+    'JAVA BLACK': [{"f": "POLI", "e": {"20": 365.4, "30": 441}}],
+    'JURA GREY': [{"f": "POLI/VELLUTO", "e": {"12": 302.4, "20": 302.4, "30": 378}}],
+    'NAXOS': [{"f": "ADOUCI", "e": {"20": 340.2, "30": 390.6}}],
+    'NERO ASSOLUTO': [{"f": "POLI", "e": {"20": 365.4, "30": 441}}],
+    'NERO MARQUINA': [{"f": "POLI", "e": {"20": 428.4, "30": 529.2}}],
+    'OLYMPUS WHITE': [{"f": "ADOUCI", "e": {"20": 340.2, "30": 390.6}}],
+    'POLARIS': [{"f": "POLI/VELLUTO", "e": {"20": 302.4, "30": 378}}],
+    'SINAI PEARL': [{"f": "ADOUCI", "e": {"12": 340.2, "20": 340.2, "30": 390.6}}],
+    'STATUARIO': [{"f": "POLI/VELLUTO", "e": {"12": 472.5, "20": 472.5, "30": 592.2}}],
+    'TARTUFO': [{"f": "ADOUCI", "e": {"20": 340.2, "30": 390.6}}],
+    'TERRENO': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'THUNDER BLUE': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'TRAONIX': [{"f": "POLI/VELLUTO", "e": {"12": 472.5, "20": 472.5, "30": 592.2}}],
+    'ULIANO': [{"f": "POLI/VELLUTO", "e": {"20": 340.2, "30": 390.6}}],
+    'VENA ORO': [{"f": "POLI/VELLUTO", "e": {"20": 428.4, "30": 529.2}}],
+    'VITORIA REGIA': [{"f": "POLI/VELLUTO", "e": {"20": 472.5, "30": 592.2}}],
   },
   'gc-granit': {
-    'ZIMBABWE CLASSIQUE': [{"f": "CUIR", "e": {"20": 234, "30": 288}}],
+    'ZIMBABWE CLASSIQUE': [{"f": "CUIR", "e": {"20": 245.7, "30": 302.4}}],
   },
   'gc-neolith': {
-    'AZURE': [{"f": "SILK", "e": {"12": 300, "20": 420}}],
-    'CREME': [{"f": "SILK", "e": {"12": 300, "20": 420}}],
-    'MAMBA': [{"f": "SILK", "e": {"12": 300, "20": 420}}],
-    'TAJ MAHAL': [{"f": "SILK", "e": {"12": 300, "20": 420}}],
+    'AZURE': [{"f": "SILK", "e": {"12": 315, "20": 441}}],
+    'CREME': [{"f": "SILK", "e": {"12": 315, "20": 441}}],
+    'MAMBA': [{"f": "SILK", "e": {"12": 315, "20": 441}}],
+    'TAJ MAHAL': [{"f": "SILK", "e": {"12": 315, "20": 441}}],
   },
   'gc-quartz': {
-    'BIANCO': [{"f": "POLI / LETANO", "e": {"12": 252, "20": 252, "30": 318}}],
-    'BIANCO ASSOLUTO': [{"f": "POLI / LETANO", "e": {"12": 264, "20": 264, "30": 330}}],
-    'CARRARA MISTERIO': [{"f": "POLI / LETANO", "e": {"12": 312, "20": 312, "30": 384}}],
-    'MISTERIO GOLD': [{"f": "POLI / LETANO", "e": {"12": 312, "20": 312, "30": 384}}],
-    'TAJ MAHAL': [{"f": "POLI / LETANO", "e": {"12": 312, "20": 312, "30": 384}}],
+    'BIANCO': [{"f": "POLI / LETANO", "e": {"12": 264.6, "20": 264.6, "30": 333.9}}],
+    'BIANCO ASSOLUTO': [{"f": "POLI / LETANO", "e": {"12": 277.2, "20": 277.2, "30": 346.5}}],
+    'CARRARA MISTERIO': [{"f": "POLI / LETANO", "e": {"12": 327.6, "20": 327.6, "30": 403.2}}],
+    'MISTERIO GOLD': [{"f": "POLI / LETANO", "e": {"12": 327.6, "20": 327.6, "30": 403.2}}],
+    'TAJ MAHAL': [{"f": "POLI / LETANO", "e": {"12": 327.6, "20": 327.6, "30": 403.2}}],
   },
   'gc-uniceramica': {
-    'CALACATTA VIOLA': [{"f": "MATE", "e": {"12": 252, "20": 396}}],
-    'MARMO ANTICO': [{"f": "MATE", "e": {"12": 252, "20": 396}}],
-    'ORO FANTASTICO': [{"f": "MATE", "e": {"12": 252, "20": 396}}],
-    'STATUARIO EXTRA': [{"f": "MATE", "e": {"12": 252, "20": 396}}],
-    'TAJ MAHAL': [{"f": "MATE", "e": {"12": 252, "20": 396}}],
+    'CALACATTA VIOLA': [{"f": "MATE", "e": {"12": 264.6, "20": 415.8}}],
+    'MARMO ANTICO': [{"f": "MATE", "e": {"12": 264.6, "20": 415.8}}],
+    'ORO FANTASTICO': [{"f": "MATE", "e": {"12": 264.6, "20": 415.8}}],
+    'STATUARIO EXTRA': [{"f": "MATE", "e": {"12": 264.6, "20": 415.8}}],
+    'TAJ MAHAL': [{"f": "MATE", "e": {"12": 264.6, "20": 415.8}}],
   },
 };
 
@@ -1684,36 +1675,25 @@ function getAvailableEpaisseurs(mat, coloris, finition) {
 
 // Prix par coloris en mode direct (prix cuisiniste × coefficient de vente)
 function getCoeffDirect() {
-  // Priorité au cache Supabase si disponible
-  if (settingsCache.coeff !== null) return settingsCache.coeff;
-  const v = parseFloat(localStorage.getItem(COEFF_KEY));
-  return (!isNaN(v) && v >= 1) ? v : 1.00;
+  return (typeof appCache._coeff === 'number' && appCache._coeff >= 1) ? appCache._coeff : 1.00;
 }
 
 function saveCoeffDirectValue(v) {
-  settingsCache.coeff = v;
-  localStorage.setItem(COEFF_KEY, String(v));
-  saveSettingToSupabase('coeff_direct', v); // Sync Supabase
+  appCache._coeff = v;
+  fbDb.collection('settings').doc('app').set({ coeff: v }, { merge: true }).catch(console.error);
 }
 
 // ─── Profil société (Intérieur Granit) ─────────────────────────────────────
 function getSociete() {
-  // Priorité au cache Supabase si disponible
-  if (settingsCache.societe) return settingsCache.societe;
-  try {
-    const raw = localStorage.getItem(SOCIETE_KEY);
-    return raw ? JSON.parse(raw) : {
-      raisonSociale:'Intérieur Granit', formeJuridique:'', siret:'', naf:'',
-      tvaIntra:'', adresse:'', cp:'', ville:'', tel:'',
-      email:'admin@interieur-granit.fr', web:'',
-      iban:'', bic:'', banque:'', capitalSocial:''
-    };
-  } catch(e) { return { raisonSociale:'Intérieur Granit' }; }
+  return appCache._societe || {
+    raisonSociale:'Intérieur Granit', formeJuridique:'', siret:'', naf:'',
+    tvaIntra:'', adresse:'', cp:'', ville:'', tel:'',
+    email:'', web:'', iban:'', bic:'', banque:'', capitalSocial:''
+  };
 }
-function saveSociete(data) { 
-  settingsCache.societe = data;
-  localStorage.setItem(SOCIETE_KEY, JSON.stringify(data)); 
-  saveSettingToSupabase('societe', data); // Sync Supabase
+function saveSociete(data) {
+  appCache._societe = data;
+  fbDb.collection('settings').doc('app').set({ societe: data }, { merge: true }).catch(console.error);
 }
 
 // ─── Profil cuisiniste (pro) ────────────────────────────────────────────────
@@ -1760,6 +1740,8 @@ function saveProProfilModal() {
   u.siret    = getV('pp-siret');
   u.web      = getV('pp-web');
   saveDB(db);
+  // Persister dans Firestore
+  fbDb.collection('users').doc(currentUser.email).update(u).catch(console.error);
   // Mettre à jour currentUser en mémoire
   currentUser = { ...currentUser, ...u };
   // Rafraîchir le nom affiché dans le header
@@ -1799,11 +1781,14 @@ function saveSocieteModal() {
 }
 
 // ─── Numérotation automatique des factures ─────────────────────────────────
-function getNextFactureNum() {
-  const data = JSON.parse(localStorage.getItem(FACTURES_KEY) || '{"counter":0,"year":0}');
+async function getNextFactureNum() {
   const year = new Date().getFullYear();
-  const counter = (data.year === year) ? data.counter + 1 : 1;
-  localStorage.setItem(FACTURES_KEY, JSON.stringify({ counter, year }));
+  const fac  = appCache._factures || { counter: 0, year: 0 };
+  const counter = (fac.year === year) ? fac.counter + 1 : 1;
+  appCache._factures = { counter, year };
+  await fbDb.collection('settings').doc('app').set(
+    { factureCounter: counter, factureYear: year }, { merge: true }
+  );
   return `FAC-${year}-${String(counter).padStart(4,'0')}`;
 }
 
@@ -1816,189 +1801,173 @@ function getColorisPrixDirect(mat, coloris, ep, finition) {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  BASE DE DONNÉES (Supabase + localStorage fallback)
+//  FIREBASE — CONFIGURATION
+//  ┌─────────────────────────────────────────────────────────┐
+//  │  ÉTAPES DE CONFIGURATION :                              │
+//  │  1. Créez un projet sur https://console.firebase.google.com
+//  │  2. Activez Authentication → Connexion par e-mail/MDP  │
+//  │  3. Activez Firestore Database (mode production)        │
+//  │  4. Dans Règles Firestore, copiez les règles ci-dessous │
+//  │  5. Remplacez les valeurs VOTRE_... ci-dessous          │
+//  │  6. Créez le compte admin manuellement dans             │
+//  │     Authentication → Utilisateurs, puis ajoutez le doc  │
+//  │     dans Firestore → users → (email admin) :            │
+//  │     { role:"admin", nom:"Rodrigues", prenom:"Julien",   │
+//  │       email:"votre@email.fr", createdAt:"..." }         │
+//  └─────────────────────────────────────────────────────────┘
+//
+//  RÈGLES FIRESTORE RECOMMANDÉES :
+//  rules_version = '2';
+//  service cloud.firestore {
+//    match /databases/{database}/documents {
+//      match /users/{userId} {
+//        allow read, write: if request.auth != null;
+//      }
+//      match /quotes/{quoteId} {
+//        allow read, write: if request.auth != null;
+//      }
+//      match /settings/{doc} {
+//        allow read, write: if request.auth != null;
+//      }
+//    }
+//  }
 // ═══════════════════════════════════════════════════════════════
-const DB_KEY = 'ig_app_v3';
-const COEFF_KEY = 'ig_coeff_direct_v1';
-const SOCIETE_KEY = 'ig_societe_v1';
-const FACTURES_KEY = 'ig_factures_v1';
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyCoaUpaDDXKOQ0ry2JjQlZW4mETn3ocIBM",
+  authDomain:        "interieur-granit.firebaseapp.com",
+  projectId:         "interieur-granit",
+  storageBucket:     "interieur-granit.firebasestorage.app",
+  messagingSenderId: "814433650393",
+  appId:             "1:814433650393:web:e5963ac4b7bf60c59b60c8",
+  measurementId:     "G-7PP3KFNMDK"
+};
 
-// Cache local pour les données
-let dbCache = null;
-let settingsCache = { coeff: null, societe: null, factures: null };
+// Initialisation Firebase (app principale)
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDb   = firebase.firestore();
+
+// La création de comptes cuisinistes utilise l'API REST Firebase Auth
+// (pas besoin d'app secondaire — la session admin reste intacte)
+
+// ─── Cache en mémoire ──────────────────────────────────────────
+// Toutes les fonctions lisent/écrivent de façon synchrone dans
+// ce cache. Chaque mutation propage aussi vers Firestore.
+let appCache = { users: {}, quotes: [] };
 
 // Retourne la grille de prix de base (cuisiniste)
-function getCurrentPrix() {
-  return PRIX;
-}
+function getCurrentPrix() { return PRIX; }
 
-// ─── Fonctions Supabase ────────────────────────────────────────────────────
-
-async function loadFromSupabase() {
-  if (!supabase) return null;
-  try {
-    // Charger users
-    const { data: users, error: usersErr } = await supabase.from('users').select('*');
-    if (usersErr) throw usersErr;
-    
-    // Charger quotes
-    const { data: quotes, error: quotesErr } = await supabase.from('quotes').select('*');
-    if (quotesErr) throw quotesErr;
-    
-    // Charger settings
-    const { data: settings, error: settingsErr } = await supabase.from('settings').select('*');
-    if (settingsErr) throw settingsErr;
-    
-    // Convertir users en objet indexé par email
-    const usersObj = {};
-    (users || []).forEach(u => { usersObj[u.email] = u; });
-    
-    // Convertir quotes (parsing JSON si nécessaire)
-    const quotesArr = (quotes || []).map(q => ({
-      ...q,
-      client: typeof q.client === 'string' ? JSON.parse(q.client) : q.client,
-      chant: typeof q.chant === 'string' ? JSON.parse(q.chant) : q.chant,
-      options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-      plans: typeof q.plans === 'string' ? JSON.parse(q.plans) : q.plans,
-      credences: typeof q.credences === 'string' ? JSON.parse(q.credences) : q.credences,
-    }));
-    
-    // Extraire settings
-    const settingsObj = {};
-    (settings || []).forEach(s => { settingsObj[s.key] = s.value; });
-    
-    settingsCache.coeff = settingsObj.coeff_direct ? parseFloat(settingsObj.coeff_direct) : 1.0;
-    settingsCache.societe = settingsObj.societe ? JSON.parse(settingsObj.societe) : null;
-    settingsCache.factures = settingsObj.factures ? JSON.parse(settingsObj.factures) : null;
-    
-    return { users: usersObj, quotes: quotesArr };
-  } catch (e) {
-    console.warn('Supabase load failed, using localStorage:', e);
-    return null;
-  }
-}
-
-async function saveUserToSupabase(user) {
-  if (!supabase) return;
-  try {
-    await supabase.from('users').upsert(user, { onConflict: 'email' });
-  } catch (e) { console.warn('Supabase user save failed:', e); }
-}
-
-async function deleteUserFromSupabase(email) {
-  if (!supabase) return;
-  try {
-    await supabase.from('users').delete().eq('email', email);
-  } catch (e) { console.warn('Supabase user delete failed:', e); }
-}
-
-async function saveQuoteToSupabase(quote) {
-  if (!supabase) return;
-  try {
-    const q = {
-      ...quote,
-      client: JSON.stringify(quote.client),
-      chant: JSON.stringify(quote.chant),
-      options: JSON.stringify(quote.options),
-      plans: quote.plans ? JSON.stringify(quote.plans) : null,
-      credences: quote.credences ? JSON.stringify(quote.credences) : null,
-    };
-    await supabase.from('quotes').upsert(q, { onConflict: 'id' });
-  } catch (e) { console.warn('Supabase quote save failed:', e); }
-}
-
-async function deleteQuoteFromSupabase(id) {
-  if (!supabase) return;
-  try {
-    await supabase.from('quotes').delete().eq('id', id);
-  } catch (e) { console.warn('Supabase quote delete failed:', e); }
-}
-
-async function saveSettingToSupabase(key, value) {
-  if (!supabase) return;
-  try {
-    await supabase.from('settings').upsert({ key, value: typeof value === 'object' ? JSON.stringify(value) : String(value) }, { onConflict: 'key' });
-  } catch (e) { console.warn('Supabase setting save failed:', e); }
-}
-
-// ─── Fonctions DB principales (avec sync Supabase) ─────────────────────────
-
-async function initApp() {
-  // Essayer de charger depuis Supabase d'abord
-  const remoteData = await loadFromSupabase();
-  if (remoteData) {
-    dbCache = remoteData;
-    saveDB(remoteData); // Sync vers localStorage
-    console.log('✓ Données chargées depuis Supabase');
-  } else {
-    dbCache = getDB();
-    console.log('✓ Données chargées depuis localStorage');
-  }
-}
-
-function getDB() {
-  if (dbCache) return dbCache;
-  const raw = localStorage.getItem(DB_KEY);
-  if (raw) {
-    dbCache = JSON.parse(raw);
-    return dbCache;
-  }
-  return initDB();
-}
-
-function saveDB(db) {
-  dbCache = db;
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-}
+function getDB()    { return appCache; }
+function saveDB(db) { appCache = db; }  // écriture locale ; les mutations écrivent aussi Firestore
 
 function genId(prefix) {
   return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
 }
 
-function initDB() {
-  const db = {
-    users: {
-      'admin@interieur-granit.fr': {
-        id: 'admin_001', role: 'admin',
-        nom: 'Rodrigues', prenom: 'Julien',
-        email: 'admin@interieur-granit.fr', password: 'admin2024',
-        createdAt: '2024-01-01T00:00:00Z'
-      }
-    },
-    quotes: []
-  };
-  saveDB(db);
-  // Sync initial vers Supabase
-  if (supabase) {
-    saveUserToSupabase(db.users['admin@interieur-granit.fr']);
+// ─── Chargement initial depuis Firestore ───────────────────────
+async function loadAppData() {
+  const [usersSnap, quotesSnap, settSnap] = await Promise.all([
+    fbDb.collection('users').get(),
+    fbDb.collection('quotes').get(),
+    fbDb.collection('settings').doc('app').get()
+  ]);
+
+  const users = {};
+  usersSnap.forEach(doc => { users[doc.id] = { ...doc.data(), email: doc.id }; });
+
+  const quotes = [];
+  quotesSnap.forEach(doc => { quotes.push({ id: doc.id, ...doc.data() }); });
+  quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  appCache = { users, quotes };
+
+  if (settSnap.exists) {
+    const s = settSnap.data();
+    appCache._coeff    = (typeof s.coeff === 'number' && s.coeff >= 1) ? s.coeff : 1.00;
+    appCache._societe  = s.societe  ?? { raisonSociale: 'Intérieur Granit' };
+    appCache._factures = { counter: s.factureCounter ?? 0, year: s.factureYear ?? 0 };
+  } else {
+    appCache._coeff    = 1.00;
+    appCache._societe  = { raisonSociale: 'Intérieur Granit' };
+    appCache._factures = { counter: 0, year: 0 };
   }
-  return db;
+}
+
+// ─── Listener temps réel (admin uniquement) ────────────────────
+let unsubQuotes = null;
+function setupRealtimeListeners() {
+  if (unsubQuotes) unsubQuotes();
+  unsubQuotes = fbDb.collection('quotes').onSnapshot(snap => {
+    const quotes = [];
+    snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
+    quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    appCache.quotes = quotes;
+    if (document.getElementById('view-admin')?.classList.contains('active')) {
+      renderAdminDashboard();
+    }
+  }, err => console.warn('onSnapshot error:', err));
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  AUTHENTIFICATION
+//  AUTHENTIFICATION (Firebase Auth)
 // ═══════════════════════════════════════════════════════════════
 let currentUser = null;
 
 function doLogin() {
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const email    = document.getElementById('login-email').value.trim().toLowerCase();
   const password = document.getElementById('login-password').value;
-  const db = getDB();
-  const user = db.users[email];
-  if (!user || user.password !== password) {
-    document.getElementById('login-error').style.display = 'block';
-    return;
-  }
-  currentUser = user;
-  document.getElementById('login-error').style.display = 'none';
-  if (user.role === 'admin') showAdminView();
-  else showProView();
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Connexion…'; }
+
+  fbAuth.signInWithEmailAndPassword(email, password)
+    .then(async () => {
+      await loadAppData();
+      const user = appCache.users[email];
+      if (!user) {
+        errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
+        errEl.style.display = 'block';
+        fbAuth.signOut();
+        return;
+      }
+      currentUser = user;
+      if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); }
+      else showProView();
+    })
+    .catch(() => {
+      errEl.textContent = 'Email ou mot de passe incorrect.';
+      errEl.style.display = 'block';
+    })
+    .finally(() => {
+      if (btn) { btn.disabled = false; btn.textContent = 'Se connecter'; }
+    });
+}
+
+function sendPasswordReset(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) { alert('Entrez votre adresse email dans le champ ci-dessus, puis cliquez sur ce lien.'); return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(() => alert('Un email de réinitialisation a été envoyé à ' + email))
+    .catch(() => alert('Impossible d\'envoyer l\'email. Vérifiez que l\'adresse est correcte.'));
+}
+
+function sendResetForClient(email) {
+  if (!email) { alert('Sauvegardez d\'abord l\'email du cuisiniste.'); return; }
+  fbAuth.sendPasswordResetEmail(email.trim().toLowerCase())
+    .then(() => alert('Email de réinitialisation envoyé à ' + email))
+    .catch(() => alert('Impossible d\'envoyer l\'email. Vérifiez que l\'adresse est enregistrée dans Firebase Auth.'));
 }
 
 function doLogout() {
+  if (unsubQuotes) { unsubQuotes(); unsubQuotes = null; }
+  fbAuth.signOut().catch(() => {});
   currentUser = null;
+  appCache = { users: {}, quotes: [] };
   showView('view-login');
-  document.getElementById('login-email').value = '';
+  document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
 }
 
@@ -2188,12 +2157,12 @@ function showQuoteDetail(id) {
 function updateQuoteStatus(id, status) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
-  if (q) { 
-    q.status = status; 
-    saveDB(db); 
-    saveQuoteToSupabase(q); // Sync Supabase
-    renderQuotesTable(); 
-    renderAdminDashboard(); 
+  if (q) {
+    q.status = status;
+    saveDB(db);
+    fbDb.collection('quotes').doc(id).update({ status }).catch(console.error);
+    renderQuotesTable();
+    renderAdminDashboard();
   }
 }
 
@@ -2433,23 +2402,78 @@ function closeModal() {
   document.getElementById('modal-new-client').classList.remove('active');
 }
 
-function createClient() {
-  const societe = document.getElementById('new-societe').value.trim();
-  const nom = document.getElementById('new-nom').value.trim();
-  const prenom = document.getElementById('new-prenom').value.trim();
-  const email = document.getElementById('new-email').value.trim().toLowerCase();
-  const tel = document.getElementById('new-tel').value.trim();
+async function createClient() {
+  const societe  = document.getElementById('new-societe').value.trim();
+  const nom      = document.getElementById('new-nom').value.trim();
+  const prenom   = document.getElementById('new-prenom').value.trim();
+  const email    = document.getElementById('new-email').value.trim().toLowerCase();
+  const tel      = document.getElementById('new-tel').value.trim();
   const password = document.getElementById('new-password').value.trim();
-  const errEl = document.getElementById('modal-error');
-  if (!societe || !nom || !email || !password) { errEl.textContent='Veuillez remplir tous les champs obligatoires.'; errEl.style.display='block'; return; }
+  const errEl    = document.getElementById('modal-error');
+  const saveBtn  = document.querySelector('#modal-new-client .btn-gold');
+
+  if (!societe || !nom || !email || !password) {
+    errEl.textContent = 'Veuillez remplir tous les champs obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Mot de passe trop court (6 caractères minimum).';
+    errEl.style.display = 'block';
+    return;
+  }
   const db = getDB();
-  if (db.users[email]) { errEl.textContent='Cet email est déjà utilisé.'; errEl.style.display='block'; return; }
-  const newUser = { id: genId('pro'), role:'pro', societe, nom, prenom, tel, email, password, createdAt: new Date().toISOString() };
-  db.users[email] = newUser;
-  saveDB(db);
-  saveUserToSupabase(newUser); // Sync Supabase
-  closeModal();
-  renderAdminDashboard();
+  if (db.users[email]) {
+    errEl.textContent = 'Cet email est déjà utilisé.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Création…'; }
+  errEl.style.display = 'none';
+
+  try {
+    // Créer le compte Firebase Auth via l'API REST
+    // (pas de secondaryApp — la session admin reste intacte)
+    const apiKey = FIREBASE_CONFIG.apiKey;
+    const authRes = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: false })
+      }
+    );
+    if (!authRes.ok) {
+      const data = await authRes.json();
+      const code = data.error?.message || 'UNKNOWN';
+      if (code === 'EMAIL_EXISTS')             throw { code: 'auth/email-already-in-use' };
+      if (code.includes('WEAK_PASSWORD'))      throw { code: 'auth/weak-password' };
+      if (code === 'INVALID_EMAIL')            throw { code: 'auth/invalid-email' };
+      throw new Error(code);
+    }
+
+    const userData = {
+      id: genId('pro'), role: 'pro',
+      societe, nom, prenom, tel, email,
+      createdAt: new Date().toISOString()
+    };
+    db.users[email] = userData;
+    saveDB(db);
+    await fbDb.collection('users').doc(email).set(userData);
+    closeModal();
+    renderAdminDashboard();
+  } catch(err) {
+    let msg = 'Erreur lors de la création du compte.';
+    if (err.code === 'auth/email-already-in-use') msg = 'Cet email est déjà utilisé.';
+    if (err.code === 'auth/weak-password')        msg = 'Mot de passe trop court (6 caractères minimum).';
+    if (err.code === 'auth/invalid-email')        msg = 'Adresse email invalide.';
+    if (err.message && !err.code)                 msg = 'Erreur : ' + err.message;
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Créer le compte'; }
+  }
 }
 
 function openEditClientModal(email) {
@@ -2516,18 +2540,19 @@ function saveEditClient() {
   // Si email changé : re-clé + MAJ des devis
   if (newEmail !== origEmail) {
     delete db.users[origEmail];
-    deleteUserFromSupabase(origEmail); // Sync Supabase
-    db.quotes.forEach(q => { 
-      if (q.proEmail === origEmail) {
-        q.proEmail = newEmail;
-        saveQuoteToSupabase(q); // Sync Supabase
-      }
+    db.quotes.forEach(q => { if (q.proEmail === origEmail) q.proEmail = newEmail; });
+    // Firestore : supprimer l'ancien doc user, mettre à jour les devis concernés
+    fbDb.collection('users').doc(origEmail).delete().catch(console.error);
+    db.quotes.filter(q => q.proEmail === newEmail).forEach(q => {
+      fbDb.collection('quotes').doc(q.id).update({ proEmail: newEmail }).catch(console.error);
     });
   }
   db.users[newEmail] = updated;
-  saveUserToSupabase(updated); // Sync Supabase
 
   saveDB(db);
+  // Persister le profil mis à jour dans Firestore
+  const { password: _pw, ...userDataToSave } = updated; // ne pas stocker le mot de passe en clair
+  fbDb.collection('users').doc(newEmail).set(userDataToSave).catch(console.error);
   closeEditModal();
   renderAdminDashboard();
 }
@@ -2536,8 +2561,8 @@ function deleteClient(email) {
   if (!confirm(`Supprimer le compte de ${email} ? Les chiffrages associés seront conservés.`)) return;
   const db = getDB();
   delete db.users[email];
-  deleteUserFromSupabase(email); // Sync Supabase
   saveDB(db);
+  fbDb.collection('users').doc(email).delete().catch(console.error);
   renderAdminDashboard();
 }
 
@@ -2549,7 +2574,7 @@ function deleteQuote(quoteId, source) {
   if (!confirm(`Supprimer définitivement le devis de ${clientName} ? Cette action est irréversible.`)) return;
   db.quotes = db.quotes.filter(x => x.id !== quoteId);
   saveDB(db);
-  deleteQuoteFromSupabase(quoteId); // Sync Supabase
+  fbDb.collection('quotes').doc(quoteId).delete().catch(console.error);
   if (source === 'admin') {
     document.getElementById('quote-detail').classList.remove('active');
     renderAdminDashboard();
@@ -2565,11 +2590,11 @@ function deleteQuote(quoteId, source) {
 function updateDirectQuoteStatus(quoteId, newStatus) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
-  if (q) { 
-    q.status = newStatus; 
-    saveDB(db); 
-    saveQuoteToSupabase(q); // Sync Supabase
-    renderDevisDirectTab(); 
+  if (q) {
+    q.status = newStatus;
+    saveDB(db);
+    fbDb.collection('quotes').doc(quoteId).update({ status: newStatus }).catch(console.error);
+    renderDevisDirectTab();
   }
 }
 
@@ -2797,7 +2822,11 @@ function confirmCommande() {
     createdAt: new Date().toISOString()
   };
   pendingFiles = { plan: null, devis: null };
+  const savedQuote = db.quotes[idx];
   saveDB(db);
+  // Persister dans Firestore
+  const { id: _qid, ...commandeData } = savedQuote;
+  fbDb.collection('quotes').doc(savedQuote.id).set(commandeData).catch(console.error);
   closeCommandeModal();
   renderProQuotes();
   // Fermer le panneau de détail et le ré-ouvrir pour afficher l'état mis à jour
@@ -3364,21 +3393,28 @@ function submitQuote(action) {
     type: (quoteMode === 'direct' || document.getElementById('form-back-btn')?.textContent?.includes('particuliers')) ? 'direct' : 'pro'
   };
 
-  let savedQuote;
+  let savedQuoteId;
   if (currentEditingQuoteId) {
     // Mise à jour d'un devis existant
     const idx = db.quotes.findIndex(x => x.id === currentEditingQuoteId);
     if (idx !== -1) {
       db.quotes[idx] = { ...db.quotes[idx], ...quoteData };
-      savedQuote = db.quotes[idx];
+      savedQuoteId = currentEditingQuoteId;
     }
   } else {
     // Nouveau devis
-    savedQuote = { id: genId('q'), ...quoteData, createdAt: new Date().toISOString() };
-    db.quotes.unshift(savedQuote);
+    savedQuoteId = genId('q');
+    db.quotes.unshift({ id: savedQuoteId, ...quoteData, createdAt: new Date().toISOString() });
   }
   saveDB(db);
-  if (savedQuote) saveQuoteToSupabase(savedQuote); // Sync Supabase
+  // Persister dans Firestore
+  if (savedQuoteId) {
+    const q = db.quotes.find(x => x.id === savedQuoteId);
+    if (q) {
+      const { id: _id, ...qData } = q;
+      fbDb.collection('quotes').doc(savedQuoteId).set(qData).catch(console.error);
+    }
+  }
 
   // Écran de confirmation
   const isEdit = !!currentEditingQuoteId;
@@ -3875,7 +3911,7 @@ ${totalHT !== null ? `<div class="totals">
 // ═══════════════════════════════════════════════════════════════
 //  GÉNÉRATION DE FACTURE CUISINISTE (PDF)
 // ═══════════════════════════════════════════════════════════════
-function genererFacture(quoteId) {
+async function genererFacture(quoteId) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -3883,7 +3919,7 @@ function genererFacture(quoteId) {
   const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const numFac = getNextFactureNum();
+  const numFac = await getNextFactureNum();
 
   // Calcul date d'échéance
   const condPay = pro.conditionsPaiement || '30 jours net';
@@ -4078,14 +4114,14 @@ function genererFacture(quoteId) {
 // ═══════════════════════════════════════════════════════════════
 //  FACTURE DEVIS PARTICULIER
 // ═══════════════════════════════════════════════════════════════
-function genererFactureDirecte(quoteId) {
+async function genererFactureDirecte(quoteId) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
   const s = getSociete();
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const numFac = getNextFactureNum();
+  const numFac = await getNextFactureNum();
 
   const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
   const tvaRate = (q.tva || 20) / 100;
@@ -4216,15 +4252,25 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
-// Initialisation asynchrone avec Supabase
-(async function() {
-  await initApp(); // Charge depuis Supabase si configuré
-  initCounterPrices();
-  console.log('✓ Application Intérieur Granit initialisée');
-})();
+getDB(); // initialise la DB si vide
+initCounterPrices();
 
 // Fermer modals en cliquant hors
 document.getElementById('modal-new-client').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
-document.getElementById('modal-edit-client').addEventListener('cli
+document.getElementById('modal-edit-client').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+document.getElementById('modal-commande').addEventListener('click', function(e) {
+  if (e.target === this) closeCommandeModal();
+});
+document.getElementById('modal-societe').addEventListener('click', function(e) {
+  if (e.target === this) closeSocieteModal();
+});
+document.getElementById('modal-pro-profil').addEventListener('click', function(e) {
+  if (e.target === this) closeProProfilModal();
+});
+</script>
+</body>
+</html>
