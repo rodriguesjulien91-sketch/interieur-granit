@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1860,6 +1861,20 @@ let appCache = { users: {}, quotes: [] };
 // Retourne la grille de prix de base (cuisiniste)
 function getCurrentPrix() { return PRIX; }
 
+// Nettoie récursivement les valeurs undefined (incompatibles avec Firestore)
+function cleanForFirestore(obj) {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(cleanForFirestore);
+  const clean = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) clean[k] = null;
+    else if (typeof v === 'object' && v !== null) clean[k] = cleanForFirestore(v);
+    else clean[k] = v;
+  }
+  return clean;
+}
+
 function getDB()    { return appCache; }
 function saveDB(db) { appCache = db; }  // écriture locale ; les mutations écrivent aussi Firestore
 
@@ -2339,6 +2354,7 @@ function buildDirectQuoteDetail(quoteId) {
           <option value="cloture" ${q.status==='cloture'?'selected':''}>Clôturée</option>
         </select>
         <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+        ${q.status !== 'commande' && q.status !== 'facture' ? `<button class="btn btn-commande btn-sm" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>` : ''}
         ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis définitivement ?')) deleteQuote('${q.id}','direct')">🗑</button>
         <button class="btn btn-secondary btn-sm" onclick="toggleDirectQuoteDetail('${q.id}')">× Fermer</button>
@@ -2801,48 +2817,63 @@ function handleFileSelect(input, dropZoneId, labelId) {
 }
 
 function confirmCommande() {
-  const quoteId = document.getElementById('commande-quote-id').value;
-  const dateInstall = document.getElementById('commande-date-install').value;
-  const notes = document.getElementById('commande-notes').value.trim();
-  const errEl = document.getElementById('modal-commande-error');
+  try {
+    const quoteId = document.getElementById('commande-quote-id').value;
+    const dateInstall = document.getElementById('commande-date-install').value;
+    const notes = document.getElementById('commande-notes').value.trim();
+    const errEl = document.getElementById('modal-commande-error');
 
-  if (!dateInstall) { errEl.textContent = 'Veuillez indiquer une date d\'installation souhaitée.'; errEl.style.display = 'block'; return; }
+    if (!dateInstall) { errEl.textContent = 'Veuillez indiquer une date d\'installation souhaitée.'; errEl.style.display = 'block'; return; }
 
-  // Vérifier que les fichiers sélectionnés ont bien fini de se charger
-  const planInputHasFile = document.getElementById('file-plan').files.length > 0;
-  const devisInputHasFile = document.getElementById('file-devis').files.length > 0;
-  if ((planInputHasFile && !pendingFiles.plan) || (devisInputHasFile && !pendingFiles.devis)) {
-    errEl.textContent = 'Les fichiers sont encore en cours de chargement, veuillez patienter un instant.';
-    errEl.style.display = 'block';
-    return;
+    // Vérifier que les fichiers sélectionnés ont bien fini de se charger
+    const planInputHasFile = document.getElementById('file-plan').files.length > 0;
+    const devisInputHasFile = document.getElementById('file-devis').files.length > 0;
+    if ((planInputHasFile && !pendingFiles.plan) || (devisInputHasFile && !pendingFiles.devis)) {
+      errEl.textContent = 'Les fichiers sont encore en cours de chargement, veuillez patienter un instant.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const db = getDB();
+    const idx = db.quotes.findIndex(x => x.id === quoteId);
+    if (idx === -1) { alert('Devis introuvable.'); return; }
+
+    const isDirectQuote = db.quotes[idx].type === 'direct';
+
+    db.quotes[idx].status = 'commande';
+    db.quotes[idx].commande = {
+      dateInstall,
+      notes,
+      planFile:      pendingFiles.plan  ? pendingFiles.plan.name    : null,
+      planFileData:  pendingFiles.plan  ? pendingFiles.plan.dataUrl : null,
+      devisFile:     pendingFiles.devis ? pendingFiles.devis.name   : null,
+      devisFileData: pendingFiles.devis ? pendingFiles.devis.dataUrl: null,
+      createdAt: new Date().toISOString()
+    };
+    pendingFiles = { plan: null, devis: null };
+
+    saveDB(db);
+    // Persister dans Firestore
+    const savedQuote = db.quotes[idx];
+    const { id: _qid, ...commandeData } = savedQuote;
+    fbDb.collection('quotes').doc(quoteId).set(cleanForFirestore(commandeData)).catch(console.error);
+
+    closeCommandeModal();
+
+    if (isDirectQuote) {
+      renderDevisDirectTab();
+      showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
+    } else {
+      renderProQuotes();
+      const panel = document.getElementById('pro-quote-detail');
+      if (panel) { panel.classList.remove('active'); panel.dataset.openId = ''; }
+      setTimeout(() => showProQuoteDetail(quoteId), 150);
+      showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
+    }
+  } catch(e) {
+    console.error('Erreur confirmCommande:', e);
+    alert('Erreur lors du passage en commande : ' + e.message);
   }
-
-  const db = getDB();
-  const idx = db.quotes.findIndex(x => x.id === quoteId);
-  if (idx === -1) return;
-  db.quotes[idx].status = 'commande';
-  db.quotes[idx].commande = {
-    dateInstall,
-    notes,
-    planFile:      pendingFiles.plan  ? pendingFiles.plan.name    : null,
-    planFileData:  pendingFiles.plan  ? pendingFiles.plan.dataUrl : null,
-    devisFile:     pendingFiles.devis ? pendingFiles.devis.name   : null,
-    devisFileData: pendingFiles.devis ? pendingFiles.devis.dataUrl: null,
-    createdAt: new Date().toISOString()
-  };
-  pendingFiles = { plan: null, devis: null };
-  const savedQuote = db.quotes[idx];
-  saveDB(db);
-  // Persister dans Firestore
-  const { id: _qid, ...commandeData } = savedQuote;
-  fbDb.collection('quotes').doc(savedQuote.id).set(commandeData).catch(console.error);
-  closeCommandeModal();
-  renderProQuotes();
-  // Fermer le panneau de détail et le ré-ouvrir pour afficher l'état mis à jour
-  const panel = document.getElementById('pro-quote-detail');
-  panel.classList.remove('active');
-  panel.dataset.openId = '';
-  setTimeout(() => showProQuoteDetail(quoteId), 100);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3351,105 +3382,108 @@ function buildSummary() {
 }
 
 function submitQuote(action) {
-  const P = getCurrentPrix();
-  const mat = document.getElementById('materiau').value;
-  const matLabel = mat ? (PRIX.materiaux[mat]?.label || mat) : mat;
-  const { lines, totalHT, tva, surfacePlans, surfaceCred } = computePrice();
-  const totalTTC = totalHT !== null ? totalHT * (1 + tva) : null;
-  const datePose = document.getElementById('date-pose').value;
-  const newStatus = action === 'commande' ? 'commande' : 'devise';
+  try {
+    const P = getCurrentPrix();
+    const mat = document.getElementById('materiau').value;
+    const matLabel = mat ? (PRIX.materiaux[mat]?.label || mat) : mat;
+    const { lines, totalHT, tva, surfacePlans, surfaceCred } = computePrice();
+    const totalTTC = totalHT !== null ? totalHT * (1 + tva) : null;
+    const datePose = document.getElementById('date-pose').value;
+    const newStatus = action === 'commande' ? 'commande' : 'devise';
 
-  const db = getDB();
+    const db = getDB();
+    const isEdit = !!currentEditingQuoteId;
+    const isDirect = quoteMode === 'direct';
 
-  const quoteData = {
-    proEmail: currentUser.email,
-    proSociete: currentUser.societe,
-    client: {
-      civilite: document.getElementById('civilite').value,
-      nom: document.getElementById('nom-client').value,
-      prenom: document.getElementById('prenom-client').value,
-      tel: document.getElementById('tel-client').value,
-      email: document.getElementById('email-client').value,
-      adresse: document.getElementById('adresse').value,
-      cp: document.getElementById('cp').value,
-      ville: document.getElementById('ville').value,
-      datePose: datePose || '',
-      ref: document.getElementById('ref-chantier').value
-    },
-    materiau: mat, materiauLabel: matLabel,
-    coloris: document.getElementById('coloris').value,
-    finition: document.getElementById('finition').value,
-    epaisseur: document.getElementById('epaisseur').value,
-    surfacePlans, surfaceCred,
-    plans: getPlansData(),
-    credences: getCredencesData(),
-    chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
-    options: getCounters(),
-    tva: Math.round(tva*100),
-    livraison: document.querySelector('input[name="livraison"]:checked')?.value,
-    commentaire: document.getElementById('commentaire').value,
-    totalHT: totalHT ? Math.round(totalHT) : null,
-    totalTTC: totalTTC ? Math.round(totalTTC) : null,
-    status: newStatus,
-    // Détection fiable du mode : quoteMode + vérification via le texte du bouton retour
-    type: (quoteMode === 'direct' || document.getElementById('form-back-btn')?.textContent?.includes('particuliers')) ? 'direct' : 'pro'
-  };
+    const quoteData = {
+      proEmail: currentUser.email,
+      proSociete: currentUser.societe || '',
+      client: {
+        civilite: document.getElementById('civilite').value,
+        nom: document.getElementById('nom-client').value,
+        prenom: document.getElementById('prenom-client').value,
+        tel: document.getElementById('tel-client').value,
+        email: document.getElementById('email-client').value,
+        adresse: document.getElementById('adresse').value,
+        cp: document.getElementById('cp').value,
+        ville: document.getElementById('ville').value,
+        datePose: datePose || '',
+        ref: document.getElementById('ref-chantier').value
+      },
+      materiau: mat, materiauLabel: matLabel,
+      coloris: document.getElementById('coloris').value,
+      finition: document.getElementById('finition').value,
+      epaisseur: document.getElementById('epaisseur').value,
+      surfacePlans, surfaceCred,
+      plans: getPlansData(),
+      credences: getCredencesData(),
+      chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
+      options: getCounters(),
+      tva: Math.round(tva*100),
+      livraison: document.querySelector('input[name="livraison"]:checked')?.value,
+      commentaire: document.getElementById('commentaire').value,
+      totalHT: totalHT ? Math.round(totalHT) : null,
+      totalTTC: totalTTC ? Math.round(totalTTC) : null,
+      status: newStatus,
+      type: isDirect ? 'direct' : 'pro'
+    };
 
-  let savedQuoteId;
-  if (currentEditingQuoteId) {
-    // Mise à jour d'un devis existant
-    const idx = db.quotes.findIndex(x => x.id === currentEditingQuoteId);
-    if (idx !== -1) {
-      db.quotes[idx] = { ...db.quotes[idx], ...quoteData };
-      savedQuoteId = currentEditingQuoteId;
+    let savedQuoteId;
+    if (currentEditingQuoteId) {
+      const idx = db.quotes.findIndex(x => x.id === currentEditingQuoteId);
+      if (idx !== -1) {
+        db.quotes[idx] = { ...db.quotes[idx], ...quoteData };
+        savedQuoteId = currentEditingQuoteId;
+      }
+    } else {
+      savedQuoteId = genId('q');
+      db.quotes.unshift({ id: savedQuoteId, ...quoteData, createdAt: new Date().toISOString() });
     }
-  } else {
-    // Nouveau devis
-    savedQuoteId = genId('q');
-    db.quotes.unshift({ id: savedQuoteId, ...quoteData, createdAt: new Date().toISOString() });
-  }
-  saveDB(db);
-  // Persister dans Firestore
-  if (savedQuoteId) {
-    const q = db.quotes.find(x => x.id === savedQuoteId);
-    if (q) {
-      const { id: _id, ...qData } = q;
-      fbDb.collection('quotes').doc(savedQuoteId).set(qData).catch(console.error);
+    saveDB(db);
+    if (savedQuoteId) {
+      const q = db.quotes.find(x => x.id === savedQuoteId);
+      if (q) {
+        const { id: _id, ...qData } = q;
+        fbDb.collection('quotes').doc(savedQuoteId).set(cleanForFirestore(qData)).catch(console.error);
+      }
     }
-  }
 
-  // Écran de confirmation
-  const isEdit = !!currentEditingQuoteId;
-  const isDirect = quoteMode === 'direct';
-  if (isDirect) {
-    document.getElementById('success-title').textContent = isEdit ? 'Devis mis à jour !' : 'Devis particulier enregistré !';
-    document.getElementById('success-msg').textContent = isEdit ? 'Le devis a été modifié et enregistré.' : 'Le devis vente directe a été enregistré.';
-  } else {
-    document.getElementById('success-title').textContent = action === 'commande' ? 'Commande passée !' : (isEdit ? 'Devis mis à jour !' : 'Devis validé !');
-    document.getElementById('success-msg').textContent = action === 'commande'
-      ? 'Votre commande a été transmise à Intérieur Granit. Vous serez recontacté rapidement.'
-      : (isEdit ? 'Le devis a été modifié et enregistré.' : 'Votre devis a été enregistré. Intérieur Granit en prendra connaissance.');
-  }
-  currentEditingQuoteId = null;
+    currentEditingQuoteId = null;
 
-  // Adapter les boutons de l'écran de confirmation selon le mode
-  const successBtns = document.querySelector('#form-success .btn-row-success, #form-success div[style]');
-  if (quoteMode === 'direct') {
-    document.getElementById('success-btn-new').textContent = '+ Nouveau devis particulier';
-    document.getElementById('success-btn-new').onclick = startDirectQuote;
-    document.getElementById('success-btn-back').textContent = '← Devis particuliers';
-    document.getElementById('success-btn-back').onclick = function() { backFromForm(); };
-  } else {
-    document.getElementById('success-btn-new').textContent = 'Nouveau chiffrage';
-    document.getElementById('success-btn-new').onclick = startNewQuote;
-    document.getElementById('success-btn-back').textContent = 'Mes chiffrages';
-    document.getElementById('success-btn-back').onclick = backToPro;
+    // Naviguer vers la bonne vue
+    if (isDirect) {
+      showView('view-admin');
+      renderAdminDashboard();
+      switchTab('direct');
+      showToast(isEdit ? '✓ Devis mis à jour' : '✓ Devis enregistré');
+    } else if (currentUser.role === 'admin') {
+      showView('view-admin');
+      renderAdminDashboard();
+      switchTab('quotes');
+      showToast(isEdit ? '✓ Devis mis à jour' : '✓ Devis validé');
+    } else {
+      showProView();
+      showToast(isEdit ? '✓ Devis mis à jour' : '✓ Devis validé');
+    }
+  } catch(e) {
+    console.error('Erreur submitQuote:', e);
+    alert('Erreur lors de la sauvegarde : ' + e.message);
   }
-
-  document.querySelector('#view-form .form-main').style.display = 'none';
-  document.getElementById('form-success').style.display = 'block';
-  document.querySelector('#view-form .progress-wrapper').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Toast de confirmation temporaire
+function showToast(msg) {
+  let toast = document.getElementById('global-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'global-toast';
+    toast.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--stone);color:var(--cream);padding:14px 28px;border-radius:6px;font-size:.88rem;font-family:"DM Sans",sans-serif;opacity:0;transition:opacity .4s;z-index:99999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.25);';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3950,14 +3984,114 @@ async function genererFacture(quoteId) {
   const addrFact = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join('<br>');
   const addrSoc = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '—';
 
-  // Lignes de facturation
-  const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
+  // Lignes de facturation détaillées
   let lignesRows = '';
+  let ligneNum = 0;
 
-  // Matériau principal
-  const prixMat = q.totalHT && q.totalHT > 0 ? null : null; // on reconstruit depuis les lignes si possible
-  const matDesc = `Plan de travail ${q.materiauLabel||''} ${q.coloris||''} ${q.finition||''} ${q.epaisseur?q.epaisseur+' mm':''}`.trim();
-  lignesRows += `<tr><td class="li-desc">${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td></tr>`;
+  // 1. Plans de travail (surface × prix/m²)
+  const mat = q.materiau;
+  const ep = q.epaisseur;
+  const coloris = q.coloris || '';
+  const finition = q.finition || '';
+  const matLabel = q.materiauLabel || mat || '';
+  const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
+
+  let prixMat = getColorisPrice(mat, coloris, ep, finition);
+  if (q.surfacePlans > 0 && prixMat !== null) {
+    const htPlans = Math.round(q.surfacePlans * prixMat);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
+      <td class="li-qty">${q.surfacePlans.toFixed(2)} m²</td>
+      <td class="li-pu">${Math.round(prixMat).toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${htPlans.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 2. Crédences
+  if (q.surfaceCred > 0 && prixMat !== null) {
+    const prixCred = prixMat * (PRIX.credences?.facteur || 1);
+    const htCred = Math.round(q.surfaceCred * prixCred);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
+      <td class="li-qty">${q.surfaceCred.toFixed(2)} m²</td>
+      <td class="li-pu">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${htCred.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 3. Chant
+  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+    const ml = q.chant.longueur / 1000;
+    const puChant = PRIX.chants[q.chant.type];
+    const htChant = Math.round(ml * puChant);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Chant — ${q.chant.type}</td>
+      <td class="li-qty">${ml.toFixed(2)} ml</td>
+      <td class="li-pu">${puChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${htChant.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 4. Options (évidements, perçages, découpes)
+  if (q.options) {
+    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
+      if (k === 'coupe-onglet-ml') {
+        const opt = PRIX.options['coupe-onglet'];
+        if (opt) {
+          const ml = (v / 1000).toFixed(2);
+          const ht = Math.round(ml * opt.prix);
+          ligneNum++;
+          lignesRows += `<tr>
+            <td class="li-desc">Coupe d'onglet</td>
+            <td class="li-qty">${ml} ml</td>
+            <td class="li-pu">${opt.prix.toLocaleString('fr-FR')} €</td>
+            <td class="li-total">${ht.toLocaleString('fr-FR')} €</td>
+          </tr>`;
+        }
+        return;
+      }
+      const opt = PRIX.options[k];
+      if (opt) {
+        const puOpt = opt.prix;
+        const htOpt = Math.round(puOpt * v);
+        ligneNum++;
+        lignesRows += `<tr>
+          <td class="li-desc">${opt.label}</td>
+          <td class="li-qty">${v}</td>
+          <td class="li-pu">${puOpt.toLocaleString('fr-FR')} €</td>
+          <td class="li-total">${htOpt.toLocaleString('fr-FR')} €</td>
+        </tr>`;
+      }
+    });
+  }
+
+  // 5. Livraison
+  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Rez-de-chaussée</td>
+      <td class="li-qty">1</td>
+      <td class="li-pu">${PRIX.pose.rdc.toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${PRIX.pose.rdc.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Étage / Paris</td>
+      <td class="li-qty">1</td>
+      <td class="li-pu">${PRIX.pose.etage.toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${PRIX.pose.etage.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // Fallback : si aucune ligne détaillée n'a pu être générée, afficher une ligne globale
+  if (ligneNum === 0) {
+    const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
+    lignesRows = `<tr><td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td></tr>`;
+  }
 
   // Totaux
   const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
@@ -4136,15 +4270,133 @@ async function genererFactureDirecte(quoteId) {
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
   const numFac = await getNextFactureNum();
 
+  const coeff = getCoeffDirect();
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const addrClient = [[q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join('');
+  const socFooter = [s.raisonSociale, s.formeJuridique, s.siret?'SIRET : '+s.siret:'', s.naf?'NAF : '+s.naf:'', s.tvaIntra?'TVA : '+s.tvaIntra:''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+
+  // Construction des lignes détaillées
+  let lignesRows = '';
+  let ligneNum = 0;
+  const mat = q.materiau;
+  const ep = q.epaisseur;
+  const coloris = q.coloris || '';
+  const finition = q.finition || '';
+  const matLabel = q.materiauLabel || mat || '';
+  const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
+
+  // Prix de vente particulier (via coefficient)
+  let prixMat = getColorisPrixDirect(mat, coloris, ep, finition);
+
+  // 1. Plans de travail
+  if (q.surfacePlans > 0 && prixMat !== null) {
+    const htPlans = Math.round(q.surfacePlans * prixMat);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
+      <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
+      <td class="li-right">${Math.round(prixMat).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${htPlans.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 2. Crédences
+  if (q.surfaceCred > 0 && prixMat !== null) {
+    const prixCred = prixMat * (PRIX.credences?.facteur || 1);
+    const htCred = Math.round(q.surfaceCred * prixCred);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
+      <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
+      <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 3. Chant
+  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+    const ml = q.chant.longueur / 1000;
+    const puChant = Math.round(PRIX.chants[q.chant.type] * coeff);
+    const htChant = Math.round(ml * puChant);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Chant — ${q.chant.type}</td>
+      <td class="li-right">${ml.toFixed(2)} ml</td>
+      <td class="li-right">${puChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${htChant.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 4. Options
+  if (q.options) {
+    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
+      if (k === 'coupe-onglet-ml') {
+        const opt = PRIX.options['coupe-onglet'];
+        if (opt) {
+          const ml = (v / 1000).toFixed(2);
+          const pu = Math.round(opt.prix * coeff);
+          const ht = Math.round(ml * pu);
+          ligneNum++;
+          lignesRows += `<tr>
+            <td class="li-desc">Coupe d'onglet</td>
+            <td class="li-right">${ml} ml</td>
+            <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+            <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+          </tr>`;
+        }
+        return;
+      }
+      const opt = PRIX.options[k];
+      if (opt) {
+        const pu = Math.round(opt.prix * coeff);
+        const ht = Math.round(pu * v);
+        ligneNum++;
+        lignesRows += `<tr>
+          <td class="li-desc">${opt.label}</td>
+          <td class="li-right">${v}</td>
+          <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+        </tr>`;
+      }
+    });
+  }
+
+  // 5. Livraison
+  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
+    const pu = Math.round(PRIX.pose.rdc * coeff);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Rez-de-chaussée</td>
+      <td class="li-right">1</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
+    const pu = Math.round(PRIX.pose.etage * coeff);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Étage / Paris</td>
+      <td class="li-right">1</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // Fallback
+  if (ligneNum === 0) {
+    const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    lignesRows = `<tr>
+      <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
+      <td class="li-right">1</td>
+      <td class="li-right">—</td>
+      <td class="li-right">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td>
+    </tr>`;
+  }
+
   const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
   const tvaRate = (q.tva || 20) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate);
   const totalTTC = Math.round(totalHT + tvaAmt);
-  const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
-  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const addrClient = [[q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join('');
-  const socFooter = [s.raisonSociale, s.formeJuridique, s.siret?'SIRET : '+s.siret:'', s.naf?'NAF : '+s.naf:'', s.tvaIntra?'TVA : '+s.tvaIntra:''].filter(Boolean).join(' &nbsp;·&nbsp; ');
-  const matDesc = `Fourniture et pose — ${q.materiauLabel||''} ${q.coloris||''} ${q.finition||''} ${q.epaisseur?q.epaisseur+' mm':''}`.trim();
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -4222,18 +4474,13 @@ async function genererFactureDirecte(quoteId) {
 </div>
 <table class="li-table">
   <thead><tr>
-    <td style="width:60%;">Désignation</td>
+    <td style="width:50%;">Désignation</td>
     <td style="text-align:right;">Qté</td>
     <td style="text-align:right;">PU HT</td>
     <td style="text-align:right;">Total HT</td>
   </tr></thead>
   <tbody>
-    <tr>
-      <td class="li-desc">${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²${q.client?.ref?' — Réf. '+q.client.ref:''}</span></td>
-      <td class="li-right">1</td>
-      <td class="li-right">—</td>
-      <td class="li-right">${totalHT.toLocaleString('fr-FR')} €</td>
-    </tr>
+    ${lignesRows}
   </tbody>
 </table>
 <div class="totaux">
