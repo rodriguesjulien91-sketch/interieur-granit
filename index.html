@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -927,6 +926,23 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="field"><label>Banque</label><input type="text" id="soc-banque" placeholder="BNP Paribas"></div>
     </div>
 
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Logo (apparaîtra sur factures et devis)</div>
+    <div class="form-grid full">
+      <div class="field span-2">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div id="soc-logo-preview" style="width:110px;height:110px;border:1px dashed var(--cream-dark);border-radius:4px;display:flex;align-items:center;justify-content:center;background:var(--white);flex-shrink:0;overflow:hidden;">
+            <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
+          </div>
+          <div style="flex:1;">
+            <input type="file" id="soc-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'soc-logo-preview','soc-logo-data')" style="font-size:.82rem;">
+            <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · format carré ou rectangulaire recommandé</span>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('soc-logo-preview','soc-logo-data','soc-logo-file')">Supprimer le logo</button>
+          </div>
+        </div>
+        <input type="hidden" id="soc-logo-data" value="">
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeSocieteModal()">Annuler</button>
       <button class="btn btn-gold" onclick="saveSocieteModal()">💾 Enregistrer</button>
@@ -973,6 +989,23 @@ textarea { resize: vertical; min-height: 80px; }
           <option value="45 jours fin de mois">45 jours fin de mois</option>
           <option value="60 jours net">60 jours net</option>
         </select>
+      </div>
+    </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Logo de la société (apparaîtra sur les bons de commande)</div>
+    <div class="form-grid full">
+      <div class="field span-2">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div id="edit-logo-preview" style="width:110px;height:110px;border:1px dashed var(--cream-dark);border-radius:4px;display:flex;align-items:center;justify-content:center;background:var(--white);flex-shrink:0;overflow:hidden;">
+            <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
+          </div>
+          <div style="flex:1;">
+            <input type="file" id="edit-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'edit-logo-preview','edit-logo-data')" style="font-size:.82rem;">
+            <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · le logo apparaîtra en en-tête des bons de commande émis par ce cuisiniste</span>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('edit-logo-preview','edit-logo-data','edit-logo-file')">Supprimer le logo</button>
+          </div>
+        </div>
+        <input type="hidden" id="edit-logo-data" value="">
       </div>
     </div>
 
@@ -1754,6 +1787,41 @@ function saveProProfilModal() {
   if (toast) { toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2500); }
 }
 
+// ─── Gestion des logos (upload base64 + preview) ─────────────────
+function handleLogoUpload(input, previewId, hiddenId) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 1 * 1024 * 1024) {
+    alert('Le logo est trop lourd (1 Mo maximum). Compressez-le ou choisissez un autre fichier.');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    document.getElementById(hiddenId).value = dataUrl;
+    setLogoPreview(previewId, dataUrl);
+  };
+  reader.onerror = () => alert('Impossible de lire le fichier.');
+  reader.readAsDataURL(file);
+}
+
+function setLogoPreview(previewId, dataUrl) {
+  const el = document.getElementById(previewId);
+  if (!el) return;
+  if (dataUrl) {
+    el.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="Logo">`;
+  } else {
+    el.innerHTML = '<span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>';
+  }
+}
+
+function removeLogo(previewId, hiddenId, fileInputId) {
+  document.getElementById(hiddenId).value = '';
+  if (fileInputId) document.getElementById(fileInputId).value = '';
+  setLogoPreview(previewId, '');
+}
+
 function openSocieteModal() {
   const s = getSociete();
   const setV = (id, v) => { const el = document.getElementById(id); if(el) el.value = v||''; };
@@ -1763,6 +1831,11 @@ function openSocieteModal() {
   setV('soc-adresse',s.adresse); setV('soc-cp',s.cp); setV('soc-ville',s.ville);
   setV('soc-tel',s.tel); setV('soc-email',s.email); setV('soc-web',s.web);
   setV('soc-iban',s.iban); setV('soc-bic',s.bic); setV('soc-banque',s.banque);
+  // Logo
+  setV('soc-logo-data', s.logo);
+  const fileInput = document.getElementById('soc-logo-file');
+  if (fileInput) fileInput.value = '';
+  setLogoPreview('soc-logo-preview', s.logo || '');
   document.getElementById('modal-societe').classList.add('active');
 }
 function closeSocieteModal() { document.getElementById('modal-societe').classList.remove('active'); }
@@ -1774,7 +1847,8 @@ function saveSocieteModal() {
     tvaIntra: getV('soc-tva-intra'), capitalSocial: getV('soc-capital'),
     adresse: getV('soc-adresse'), cp: getV('soc-cp'), ville: getV('soc-ville'),
     tel: getV('soc-tel'), email: getV('soc-email'), web: getV('soc-web'),
-    iban: getV('soc-iban'), bic: getV('soc-bic'), banque: getV('soc-banque')
+    iban: getV('soc-iban'), bic: getV('soc-bic'), banque: getV('soc-banque'),
+    logo: document.getElementById('soc-logo-data')?.value || ''
   };
   if (!data.raisonSociale) { alert('La raison sociale est obligatoire.'); return; }
   saveSociete(data);
@@ -2519,6 +2593,11 @@ function openEditClientModal(email) {
   setV('edit-ville-fact', u.villeFact);
   const condEl = document.getElementById('edit-conditions-paiement');
   if (condEl) condEl.value = u.conditionsPaiement || '';
+  // Logo
+  setV('edit-logo-data', u.logo);
+  const fileInput = document.getElementById('edit-logo-file');
+  if (fileInput) fileInput.value = '';
+  setLogoPreview('edit-logo-preview', u.logo || '');
   document.getElementById('modal-edit-error').style.display = 'none';
   document.getElementById('modal-edit-client').classList.add('active');
 }
@@ -2555,8 +2634,9 @@ function saveEditClient() {
   const conditionsPaiement = condEl ? condEl.value : '';
 
   const existing = db.users[origEmail];
+  const logo = document.getElementById('edit-logo-data')?.value || '';
   const updated = { ...existing, societe, nom, prenom, tel, email: newEmail,
-    raisonSociale, siret, tvaIntra, adresseFact, cpFact, villeFact, conditionsPaiement };
+    raisonSociale, siret, tvaIntra, adresseFact, cpFact, villeFact, conditionsPaiement, logo };
   if (newPwd) updated.password = newPwd;
 
   // Si email changé : re-clé + MAJ des devis
@@ -3599,16 +3679,19 @@ function exportBonDeCommande(quoteId) {
 
 <!-- EN-TÊTE -->
 <div class="header">
-  <div>
-    <div class="co-name">${pro.societe || pro.raisonSociale || 'Intérieur Granit'}</div>
-    <div class="co-sub">
-      ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
-      ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
-      ${pro.email ? '<br>' + pro.email : ''}
-      ${pro.adresse ? '<br>' + pro.adresse : ''}
-      ${(pro.cp || pro.ville) ? ' ' + [pro.cp, pro.ville].filter(Boolean).join(' ') : ''}
-      ${pro.siret ? '<br>SIRET : ' + pro.siret : ''}
-      ${pro.web ? '<br>' + pro.web : ''}
+  <div style="display:flex;gap:16px;align-items:flex-start;">
+    ${pro.logo ? `<img src="${pro.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+    <div>
+      <div class="co-name">${pro.societe || pro.raisonSociale || 'Intérieur Granit'}</div>
+      <div class="co-sub">
+        ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
+        ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
+        ${pro.email ? '<br>' + pro.email : ''}
+        ${pro.adresse ? '<br>' + pro.adresse : ''}
+        ${(pro.cp || pro.ville) ? ' ' + [pro.cp, pro.ville].filter(Boolean).join(' ') : ''}
+        ${pro.siret ? '<br>SIRET : ' + pro.siret : ''}
+        ${pro.web ? '<br>' + pro.web : ''}
+      </div>
     </div>
   </div>
   <div class="doc-meta">
@@ -3720,6 +3803,7 @@ function exportDevisParticulier(quoteId) {
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
 
+  const s = getSociete();
   const adminUser = db.users['admin@interieur-granit.fr'] || {};
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -3846,12 +3930,15 @@ function exportDevisParticulier(quoteId) {
 <body>
 
 <div class="header">
-  <div>
-    <div class="co-name">Intérieur Granit</div>
-    <div class="co-sub">
-      ${[adminUser.prenom, adminUser.nom].filter(Boolean).join(' ')}
-      ${adminUser.email ? '<br>' + adminUser.email : ''}
-      <br>Spécialiste plan de travail granit, quartz &amp; céramique
+  <div style="display:flex;gap:16px;align-items:flex-start;">
+    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+    <div>
+      <div class="co-name">Intérieur Granit</div>
+      <div class="co-sub">
+        ${[adminUser.prenom, adminUser.nom].filter(Boolean).join(' ')}
+        ${adminUser.email ? '<br>' + adminUser.email : ''}
+        <br>Spécialiste plan de travail granit, quartz &amp; céramique
+      </div>
     </div>
   </div>
   <div class="doc-meta">
@@ -4164,13 +4251,16 @@ async function genererFacture(quoteId) {
 <body>
 
 <div class="header">
-  <div>
-    <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
-    <div class="co-sub">
-      ${socAddr || ''}
-      ${s.tel ? '<br>' + s.tel : ''}
-      ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
-      ${s.web ? '<br>' + s.web : ''}
+  <div style="display:flex;gap:16px;align-items:flex-start;">
+    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+    <div>
+      <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
+      <div class="co-sub">
+        ${socAddr || ''}
+        ${s.tel ? '<br>' + s.tel : ''}
+        ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
+        ${s.web ? '<br>' + s.web : ''}
+      </div>
     </div>
   </div>
   <div class="doc-meta">
@@ -4445,9 +4535,12 @@ async function genererFactureDirecte(quoteId) {
 </head>
 <body>
 <div class="header">
-  <div>
-    <div class="co-name">${s.raisonSociale||'Intérieur Granit'}</div>
-    <div class="co-sub">${socAddr||''}${s.tel?'<br>'+s.tel:''}${s.email?' &nbsp;·&nbsp; '+s.email:''}</div>
+  <div style="display:flex;gap:16px;align-items:flex-start;">
+    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+    <div>
+      <div class="co-name">${s.raisonSociale||'Intérieur Granit'}</div>
+      <div class="co-sub">${socAddr||''}${s.tel?'<br>'+s.tel:''}${s.email?' &nbsp;·&nbsp; '+s.email:''}</div>
+    </div>
   </div>
   <div style="text-align:right;">
     <div class="doc-title">Facture</div>
