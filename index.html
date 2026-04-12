@@ -3804,70 +3804,163 @@ function exportDevisParticulier(quoteId) {
   if (!q) return;
 
   const s = getSociete();
-  const adminUser = db.users['admin@interieur-granit.fr'] || {};
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const ref = q.client?.ref || ('DEV-' + q.id.slice(-6).toUpperCase());
 
-  // Lignes plans
-  let plansRows = '';
-  if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
-    q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
-      plansRows += `<tr><td>Plan P${i+1}</td><td>${p.larg} × ${p.long} mm${p.ep?' &nbsp;·&nbsp; ép. '+p.ep+' mm':''}</td></tr>`;
-    });
-    plansRows = `<tr class="sub-header"><td colspan="2">Plans de travail &nbsp;—&nbsp; Surface : ${q.surfacePlans ? q.surfacePlans.toFixed(2)+' m²' : '—'}</td></tr>` + plansRows;
-  } else if (q.surfacePlans > 0) {
-    plansRows = `<tr><td>Plans de travail</td><td>${q.surfacePlans.toFixed(2)} m²</td></tr>`;
-  }
-
-  let credRows = '';
-  if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
-    q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
-      credRows += `<tr><td>Crédence C${i+1}</td><td>${c.larg} × ${c.long} mm</td></tr>`;
-    });
-    credRows = `<tr class="sub-header"><td colspan="2">Crédences &nbsp;—&nbsp; Surface : ${q.surfaceCred ? q.surfaceCred.toFixed(2)+' m²' : '—'}</td></tr>` + credRows;
-  } else if (q.surfaceCred > 0) {
-    credRows = `<tr><td>Crédences</td><td>${q.surfaceCred.toFixed(2)} m²</td></tr>`;
-  }
-
-  // Façonnage & options avec prix
+  // ── Construction des lignes détaillées (plan par plan, crédence par crédence) ──
   const coeff = getCoeffDirect();
-  let optRows = '';
-  if (q.chant?.type && PRIX.chants?.[q.chant.type]) {
-    const ml = q.chant.longueur ? (q.chant.longueur/1000).toFixed(2) : 0;
-    const pu = Math.round(PRIX.chants[q.chant.type] * coeff);
-    const ht = Math.round(ml * pu);
-    optRows += `<tr><td>Chant — ${q.chant.type} &nbsp;·&nbsp; ${ml} ml × ${pu} €/ml</td><td>${ht.toLocaleString('fr-FR')} €</td></tr>`;
-  } else if (q.chant?.type) {
-    const ml = q.chant.longueur ? (q.chant.longueur/1000).toFixed(2) : 0;
-    optRows += `<tr><td>Chant — ${q.chant.type} &nbsp;·&nbsp; ${ml} ml</td><td>—</td></tr>`;
+  const mat = q.materiau;
+  const ep = q.epaisseur;
+  const coloris = q.coloris || '';
+  const finition = q.finition || '';
+  const matLabel = q.materiauLabel || mat || '';
+  const matDesc = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${ep ? ' · ' + ep + ' mm' : ''}`;
+
+  // Prix de vente particulier (avec coefficient appliqué)
+  const prixMatVente = getColorisPrixDirect(mat, coloris, ep, finition);
+
+  let lignesRows = '';
+  let ligneNum = 0;
+
+  // 1. Plans de travail — un ligne PAR plan
+  if (q.plans && prixMatVente !== null) {
+    const plansValid = q.plans.filter(p => p.larg && p.long);
+    plansValid.forEach((p, i) => {
+      const surf = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
+      if (surf > 0) {
+        const htPlan = Math.round(surf * prixMatVente);
+        ligneNum++;
+        lignesRows += `<tr>
+          <td class="li-desc">Plan de travail P${i+1} — ${matDesc}<br><span class="li-detail">${p.larg} × ${p.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
+          <td class="li-right">${surf.toFixed(2)} m²</td>
+          <td class="li-right">${Math.round(prixMatVente).toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${htPlan.toLocaleString('fr-FR')} €</td>
+        </tr>`;
+      }
+    });
+  } else if (q.surfacePlans > 0 && prixMatVente !== null) {
+    // Fallback : pas de détail plan par plan, ligne globale
+    const ht = Math.round(q.surfacePlans * prixMatVente);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Plans de travail — ${matDesc}</td>
+      <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
+      <td class="li-right">${Math.round(prixMatVente).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+    </tr>`;
   }
+
+  // 2. Crédences — une ligne PAR crédence
+  if (q.credences && prixMatVente !== null) {
+    const prixCred = prixMatVente * (PRIX.credences?.facteur || 1);
+    const credValid = q.credences.filter(c => c.larg && c.long);
+    credValid.forEach((c, i) => {
+      const surf = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
+      if (surf > 0) {
+        const htCred = Math.round(surf * prixCred);
+        ligneNum++;
+        lignesRows += `<tr>
+          <td class="li-desc">Crédence C${i+1} — ${matDesc}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
+          <td class="li-right">${surf.toFixed(2)} m²</td>
+          <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
+        </tr>`;
+      }
+    });
+  } else if (q.surfaceCred > 0 && prixMatVente !== null) {
+    const prixCred = prixMatVente * (PRIX.credences?.facteur || 1);
+    const ht = Math.round(q.surfaceCred * prixCred);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Crédences — ${matDesc}</td>
+      <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
+      <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 3. Chant
+  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+    const ml = q.chant.longueur / 1000;
+    const puChant = Math.round(PRIX.chants[q.chant.type] * coeff);
+    const htChant = Math.round(ml * puChant);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Chant — ${q.chant.type}</td>
+      <td class="li-right">${ml.toFixed(2)} ml</td>
+      <td class="li-right">${puChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${htChant.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // 4. Options (évidements, perçages, découpes)
   if (q.options) {
-    Object.entries(q.options).filter(([,v])=>v>0).forEach(([k,v]) => {
+    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
       if (k === 'coupe-onglet-ml') {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
-          const ml = (v/1000).toFixed(2);
+          const ml = (v / 1000).toFixed(2);
           const pu = Math.round(opt.prix * coeff);
           const ht = Math.round(ml * pu);
-          optRows += `<tr><td>Coupe d'onglet &nbsp;·&nbsp; ${ml} ml × ${pu} €/ml</td><td>${ht.toLocaleString('fr-FR')} €</td></tr>`;
+          ligneNum++;
+          lignesRows += `<tr>
+            <td class="li-desc">Coupe d'onglet</td>
+            <td class="li-right">${ml} ml</td>
+            <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+            <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+          </tr>`;
         }
         return;
       }
       const opt = PRIX.options[k];
       if (opt) {
         const pu = Math.round(opt.prix * coeff);
-        optRows += `<tr><td>${opt.label} × ${v}</td><td>${Math.round(pu*v).toLocaleString('fr-FR')} €</td></tr>`;
+        const ht = Math.round(pu * v);
+        ligneNum++;
+        lignesRows += `<tr>
+          <td class="li-desc">${opt.label}</td>
+          <td class="li-right">${v}</td>
+          <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+        </tr>`;
       }
     });
   }
 
-  // Livraison
-  if (q.livraison === 'etage') {
-    const livrPrix = Math.round((PRIX.livraison?.etage||0) * coeff);
-    if (livrPrix > 0) optRows += `<tr><td>Livraison (étage)</td><td>${livrPrix.toLocaleString('fr-FR')} €</td></tr>`;
+  // 5. Livraison (corrigé : utilise PRIX.pose et non PRIX.livraison)
+  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
+    const pu = Math.round(PRIX.pose.rdc * coeff);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Rez-de-chaussée</td>
+      <td class="li-right">1</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
+    const pu = Math.round(PRIX.pose.etage * coeff);
+    ligneNum++;
+    lignesRows += `<tr>
+      <td class="li-desc">Livraison — Étage / Paris</td>
+      <td class="li-right">1</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+    </tr>`;
   }
 
+  // Fallback si aucune ligne n'a pu être générée
+  if (ligneNum === 0) {
+    const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
+    lignesRows = `<tr>
+      <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
+      <td class="li-right">1</td>
+      <td class="li-right">—</td>
+      <td class="li-right">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td>
+    </tr>`;
+  }
+
+  // Totaux
   const tvaRate = (q.tva || 20) / 100;
   const tvaLabel = q.tva || 20;
   const totalHT = q.totalHT ? Math.round(q.totalHT) : null;
@@ -3875,6 +3968,16 @@ function exportDevisParticulier(quoteId) {
   const totalTTC = q.totalTTC ? Math.round(q.totalTTC) : null;
 
   const installDate = q.client?.datePose ? new Date(q.client.datePose).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : null;
+
+  // Adresses & footer société (depuis "Ma société")
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const socFooter = [
+    s.raisonSociale,
+    s.formeJuridique ? s.formeJuridique + (s.capitalSocial ? ' au capital de ' + s.capitalSocial : '') : '',
+    s.siret ? 'SIRET : ' + s.siret : '',
+    s.naf ? 'NAF : ' + s.naf : '',
+    s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -3884,70 +3987,91 @@ function exportDevisParticulier(quoteId) {
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;font-size:11px;color:#1a1814;background:#fff;padding:32px 40px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:2.5px solid #1a1814;}
-  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
-  .co-sub{font-size:9.5px;color:#7a6f62;margin-top:5px;line-height:1.8;}
-  .doc-meta{text-align:right;}
-  .doc-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;letter-spacing:.18em;text-transform:uppercase;color:#1a1814;}
-  .doc-badge{display:inline-block;background:#c9a84c;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:.12em;padding:3px 10px;border-radius:2px;margin-top:7px;}
-  .doc-ref{font-size:9.5px;color:#7a6f62;margin-top:5px;}
-  .parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
-  .party{border:1px solid #ede6d6;border-radius:3px;padding:13px 15px;}
-  .p-label{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;margin-bottom:7px;}
-  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
-  .p-detail{font-size:10px;color:#3d3830;line-height:1.65;}
-  .sec{margin-bottom:18px;}
-  .sec-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:500;border-bottom:1px solid #ede6d6;padding-bottom:5px;margin-bottom:10px;}
-  .mat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
-  .mat-cell{background:#f5f0e8;padding:9px 11px;border-radius:2px;}
-  .mat-key{font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;color:#7a6f62;margin-bottom:3px;}
-  .mat-val{font-size:11px;font-weight:500;}
-  table.det{width:100%;border-collapse:collapse;}
-  table.det td{padding:5.5px 8px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
-  table.det td:last-child{text-align:right;font-weight:500;}
-  table.det tr:last-child td{border-bottom:none;}
-  table.det .sub-header td{background:#f5f0e8;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;padding:5px 8px;border-bottom:none;}
-  .totals{margin-top:14px;border-top:2px solid #1a1814;}
-  .totals table{width:100%;border-collapse:collapse;margin-top:8px;}
-  .totals td{padding:5px 8px;font-size:10.5px;}
-  .totals td:last-child{text-align:right;font-weight:500;}
-  .totals .total-ttc td{font-size:14px;font-weight:600;font-family:'Cormorant Garamond',serif;padding-top:9px;}
-  .totals .total-ttc td:first-child{color:#7a6f62;}
-  .totals .total-ttc td:last-child{color:#1a1814;font-size:16px;}
-  .mention-box{border:1px solid #ede6d6;border-radius:3px;padding:11px 14px;margin:16px 0;font-size:9.5px;color:#3d3830;line-height:1.7;background:#fdfaf5;}
-  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;}
-  .sig-box{border:1px solid #ede6d6;border-radius:3px;padding:15px 16px;}
-  .sig-lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#7a6f62;margin-bottom:6px;}
-  .sig-mention{font-size:10px;font-style:italic;color:#3d3830;margin-bottom:14px;}
-  .sig-zone{height:56px;border-bottom:1px solid #1a1814;}
-  .sig-date{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:10px;}
+  body{font-family:'DM Sans',sans-serif;font-size:9.5px;color:#1a1814;background:#fff;padding:20px 26px;}
+  /* EN-TÊTE */
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:8px;color:#7a6f62;margin-top:3px;line-height:1.55;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.18em;text-transform:uppercase;text-align:right;}
+  .doc-badge{display:inline-block;background:#c9a84c;color:#fff;font-size:7px;text-transform:uppercase;letter-spacing:.12em;padding:2px 8px;border-radius:2px;margin-top:4px;}
+  .doc-ref{font-size:8.5px;color:#7a6f62;margin-top:4px;text-align:right;}
+  /* PARTIES */
+  .parties{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:9px 11px;}
+  .p-label{font-size:6.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:600;margin-bottom:5px;}
+  .p-name{font-size:11px;font-weight:500;margin-bottom:3px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:8.5px;color:#3d3830;line-height:1.55;}
+  .p-legal{font-size:7.5px;color:#7a6f62;margin-top:3px;}
+  /* SECTIONS */
+  .sec{margin-bottom:11px;}
+  .sec-title{font-size:6.5px;text-transform:uppercase;letter-spacing:.13em;color:#c9a84c;font-weight:600;border-bottom:1px solid #ede6d6;padding-bottom:3px;margin-bottom:6px;}
+  /* GRILLE MATÉRIAU */
+  .mat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .mat-cell{background:#f5f0e8;padding:6px 8px;border-radius:2px;}
+  .mat-key{font-size:6.5px;text-transform:uppercase;letter-spacing:.1em;color:#7a6f62;margin-bottom:2px;}
+  .mat-val{font-size:9.5px;font-weight:500;}
+  /* TABLEAU LIGNES DE PRIX */
+  .li-table{width:100%;border-collapse:collapse;font-size:9px;}
+  .li-table thead tr{background:#1a1814;color:#f5f0e8;}
+  .li-table thead td{padding:5px 7px;font-size:6.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:500;}
+  .li-table tbody tr{border-bottom:1px solid #f0ebe0;}
+  .li-table tbody tr:last-child{border-bottom:none;}
+  .li-desc{padding:5px 7px;line-height:1.4;}
+  .li-detail{font-size:7.5px;color:#7a6f62;}
+  .li-right{padding:5px 7px;text-align:right;white-space:nowrap;font-weight:500;}
+  /* TOTAUX */
+  .totaux{display:flex;justify-content:flex-end;margin-top:8px;}
+  .totaux table{border-collapse:collapse;min-width:230px;border:1px solid #ede6d6;border-radius:3px;overflow:hidden;}
+  .totaux td{padding:5px 11px;font-size:9.5px;border-bottom:1px solid #f0ebe0;}
+  .totaux td:last-child{text-align:right;font-weight:500;}
+  .totaux .row-tva td{color:#7a6f62;}
+  .totaux .row-ttc td{background:#1a1814;color:#f5f0e8;font-size:11px;border-bottom:none;}
+  .totaux .row-ttc td:last-child{font-family:'Cormorant Garamond',serif;font-size:14px;color:#c9a84c;}
+  /* RIB / Mentions */
+  .rib-box{border:1px solid #ede6d6;border-radius:3px;padding:8px 11px;margin-top:9px;display:flex;gap:18px;flex-wrap:wrap;}
+  .rib-title{font-size:6.5px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;font-weight:600;width:100%;margin-bottom:4px;}
+  .rib-item{font-size:8px;color:#3d3830;}
+  .rib-item .lbl{font-size:6.5px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;display:block;}
+  .rib-val{font-family:monospace;font-size:7.5px;}
+  .mention-box{border:1px solid #ede6d6;border-radius:3px;padding:7px 11px;margin-top:8px;font-size:7.5px;color:#3d3830;line-height:1.55;background:#fdfaf5;}
+  /* SIGNATURES */
+  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:9px;}
+  .sig-box{border:1px solid #ede6d6;border-radius:3px;padding:8px 10px;}
+  .sig-lbl{font-size:6.5px;text-transform:uppercase;letter-spacing:.12em;color:#7a6f62;margin-bottom:3px;}
+  .sig-mention{font-size:8px;font-style:italic;color:#3d3830;margin-bottom:6px;}
+  .sig-zone{height:32px;border-bottom:1px solid #1a1814;}
+  .sig-date{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:8px;}
   .sig-date span{flex:1;border-bottom:1px solid #7a6f62;}
-  .footer{margin-top:22px;padding-top:10px;border-top:1px solid #ede6d6;font-size:8.5px;color:#7a6f62;text-align:center;}
-  @media print{body{padding:0;}@page{margin:16mm 15mm;size:A4;}}
+  .footer{margin-top:10px;padding-top:6px;border-top:1px solid #ede6d6;font-size:6.5px;color:#7a6f62;text-align:center;line-height:1.6;}
+  @media print{body{padding:0;}@page{margin:10mm 11mm;size:A4;}}
 </style>
 </head>
 <body>
 
+<!-- EN-TÊTE -->
 <div class="header">
-  <div style="display:flex;gap:16px;align-items:flex-start;">
-    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+  <div style="display:flex;gap:14px;align-items:flex-start;">
+    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:75px;max-height:75px;object-fit:contain;flex-shrink:0;">` : ''}
     <div>
-      <div class="co-name">Intérieur Granit</div>
+      <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
       <div class="co-sub">
-        ${[adminUser.prenom, adminUser.nom].filter(Boolean).join(' ')}
-        ${adminUser.email ? '<br>' + adminUser.email : ''}
-        <br>Spécialiste plan de travail granit, quartz &amp; céramique
+        ${socAddr || ''}
+        ${s.tel ? '<br>' + s.tel : ''}
+        ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
+        ${s.web ? '<br>' + s.web : ''}
+        ${s.siret ? '<br>SIRET : ' + s.siret : ''}
+        ${s.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + s.tvaIntra : ''}
       </div>
     </div>
   </div>
-  <div class="doc-meta">
+  <div>
     <div class="doc-title">Devis</div>
-    <div class="doc-badge">Vente directe particulier</div>
+    <div style="text-align:right;"><span class="doc-badge">Vente directe particulier</span></div>
     <div class="doc-ref">Réf. ${ref} &nbsp;·&nbsp; Émis le ${today}</div>
   </div>
 </div>
 
+<!-- CLIENT / CHANTIER -->
 <div class="parties">
   <div class="party">
     <div class="p-label">Client</div>
@@ -3973,6 +4097,7 @@ function exportDevisParticulier(quoteId) {
   </div>
 </div>
 
+<!-- MATÉRIAU -->
 <div class="sec">
   <div class="sec-title">Matériau</div>
   <div class="mat-grid">
@@ -3983,38 +4108,42 @@ function exportDevisParticulier(quoteId) {
   </div>
 </div>
 
-${(plansRows || credRows) ? `<div class="sec">
-  <div class="sec-title">Dimensions</div>
-  <table class="det">${plansRows}${credRows}</table>
-</div>` : ''}
+<!-- TABLEAU DÉTAILLÉ -->
+<div class="sec">
+  <div class="sec-title">Détail des prestations</div>
+  <table class="li-table">
+    <thead><tr>
+      <td style="width:50%;">Désignation</td>
+      <td style="text-align:right;">Qté</td>
+      <td style="text-align:right;">PU HT</td>
+      <td style="text-align:right;">Total HT</td>
+    </tr></thead>
+    <tbody>${lignesRows}</tbody>
+  </table>
+</div>
 
-${(optRows) ? `<div class="sec">
-  <div class="sec-title">Façonnage, options &amp; pose</div>
-  <table class="det">${optRows}</table>
-</div>` : ''}
-
-${q.commentaire ? `<div class="sec">
-  <div class="sec-title">Commentaire</div>
-  <p style="font-size:10px;color:#3d3830;line-height:1.65;">${q.commentaire}</p>
-</div>` : ''}
-
-${totalHT !== null ? `<div class="totals">
+${totalHT !== null ? `<div class="totaux">
   <table>
-    <tr><td style="color:#7a6f62;">Total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
-    <tr><td style="color:#7a6f62;">TVA ${tvaLabel}%</td><td>${tvaAmt !== null ? tvaAmt.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
-    <tr class="total-ttc"><td>Total TTC</td><td>${totalTTC !== null ? totalTTC.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
+    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
+    <tr class="row-tva"><td>TVA ${tvaLabel}%</td><td>${tvaAmt !== null ? tvaAmt.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC !== null ? totalTTC.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
   </table>
 </div>` : ''}
 
+${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
+  <div class="rib-title">Règlement — Virement bancaire</div>
+  ${s.iban ? `<div class="rib-item"><span class="lbl">IBAN</span><span class="rib-val">${s.iban}</span></div>` : ''}
+  ${s.bic ? `<div class="rib-item"><span class="lbl">BIC</span><span class="rib-val">${s.bic}</span></div>` : ''}
+  ${s.banque ? `<div class="rib-item"><span class="lbl">Banque</span>${s.banque}</div>` : ''}
+</div>` : ''}
+
 <div class="mention-box">
-  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission.<br>
-  Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place.<br>
-  Délai de réalisation : environ 6 semaines après validation du dossier complet et disponibilité du matériau.
+  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
 </div>
 
 <div class="sigs">
   <div class="sig-box">
-    <div class="sig-lbl">Intérieur Granit</div>
+    <div class="sig-lbl">${s.raisonSociale || 'Intérieur Granit'}</div>
     <div class="sig-mention">Bon pour accord</div>
     <div class="sig-zone"></div>
     <div class="sig-date">Date :&nbsp;<span></span></div>
@@ -4028,8 +4157,7 @@ ${totalHT !== null ? `<div class="totals">
 </div>
 
 <div class="footer">
-  Intérieur Granit &nbsp;·&nbsp; Devis particulier &nbsp;·&nbsp; Réf. ${ref} &nbsp;·&nbsp; Émis le ${today}<br>
-  Les prix indiqués sont des prix de vente TTC, établis à titre indicatif et confirmés après visite.
+  ${socFooter}
 </div>
 
 <script>window.onload=function(){window.print();}<\/script>
