@@ -397,7 +397,10 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="tab-quotes" class="tab-content">
       <div class="section-header">
         <h2 class="section-title">Demandes de chiffrage</h2>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="search-bar-wrapper" style="min-width:220px;max-width:280px;">
+            <input type="text" id="admin-quotes-search" placeholder="Rechercher (client, ville, adresse…)" oninput="renderQuotesTable()">
+          </div>
           <select id="filter-status" onchange="renderQuotesTable()" style="width:auto;padding:7px 12px;font-size:.8rem;">
             <option value="">Tous les statuts</option>
             <option value="nouveau">Nouvelles</option>
@@ -426,7 +429,12 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="tab-direct" class="tab-content">
       <div class="section-header">
         <h2 class="section-title">Devis vente directe particuliers</h2>
-        <button class="btn btn-gold btn-sm" onclick="startDirectQuote()">+ Nouveau devis particulier</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="search-bar-wrapper" style="min-width:220px;max-width:280px;">
+            <input type="text" id="admin-direct-search" placeholder="Rechercher (client, ville, adresse…)" oninput="renderDevisDirectTab()">
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="startDirectQuote()">+ Nouveau devis particulier</button>
+        </div>
       </div>
       <div id="direct-quotes-list">
         <div class="empty-state">Aucun devis particulier pour le moment.</div>
@@ -818,6 +826,26 @@ textarea { resize: vertical; min-height: 80px; }
       <h1 class="step-title">Récapitulatif</h1>
       <p class="step-subtitle">Vérifiez le devis avant de finaliser</p>
       <div class="summary-card" id="summary-chantier"></div>
+      <div class="summary-card" id="remise-card-admin" style="display:none;">
+        <h3>Remise commerciale <span style="font-size:.72rem;color:var(--stone-light);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;">(admin uniquement)</span></h3>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;">
+          <div style="flex:0 0 160px;">
+            <label style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);">Type</label>
+            <select id="remise-type" class="input-field" onchange="updateRemisePreview()">
+              <option value="none">Aucune remise</option>
+              <option value="pct">Pourcentage (%)</option>
+              <option value="eur">Montant fixe (€)</option>
+            </select>
+          </div>
+          <div style="flex:0 0 160px;">
+            <label style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);">Valeur</label>
+            <input type="number" id="remise-valeur" class="input-field" min="0" step="0.01" value="0" oninput="updateRemisePreview()">
+          </div>
+          <div id="remise-preview" style="flex:1;min-width:180px;font-size:.82rem;color:var(--stone-light);padding-bottom:10px;">
+            Aucune remise appliquée
+          </div>
+        </div>
+      </div>
       <div class="summary-card" id="price-breakdown"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="prevStep(5)">← Retour</button>
@@ -2090,6 +2118,35 @@ function showProView() {
 // ═══════════════════════════════════════════════════════════════
 //  ADMIN DASHBOARD
 // ═══════════════════════════════════════════════════════════════
+
+// ─── HELPERS D'AFFICHAGE PRIX (2 décimales) ─────────────────────
+function fmt2(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtEUR(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return fmt2(n) + ' €';
+}
+// ─── HELPERS REMISE COMMERCIALE ─────────────────────────────────
+function computeRemiseAmount(totalHT, remise) {
+  if (!remise || !totalHT || totalHT <= 0) return 0;
+  const v = parseFloat(remise.valeur) || 0;
+  if (v <= 0) return 0;
+  if (remise.type === 'pct') return totalHT * (v / 100);
+  if (remise.type === 'eur') return Math.min(v, totalHT);
+  return 0;
+}
+function computeQuoteTotals(q) {
+  const htBrut = q.totalHT || 0;
+  const remiseAmt = computeRemiseAmount(htBrut, q.remise);
+  const htNet = htBrut - remiseAmt;
+  const tvaRate = (q.tva || 20) / 100;
+  const tvaAmt = htNet * tvaRate;
+  const ttc = htNet + tvaAmt;
+  return { htBrut, remiseAmt, htNet, tvaAmt, ttc, tvaRate };
+}
+
 function renderAdminDashboard() {
   const db = getDB();
   const proUsers = Object.values(db.users).filter(u => u.role === 'pro');
@@ -2101,7 +2158,7 @@ function renderAdminDashboard() {
   document.getElementById('stat-clients').textContent = proUsers.length;
   document.getElementById('stat-total').textContent = quotes.length;
   document.getElementById('stat-new').textContent = newQuotes.length;
-  document.getElementById('stat-ca').textContent = totalHT_commandes > 0 ? Math.round(totalHT_commandes).toLocaleString('fr-FR') + ' €' : '—';
+  document.getElementById('stat-ca').textContent = totalHT_commandes > 0 ? fmtEUR(totalHT_commandes) : '—';
 
   // Clients table
   const tbody = document.getElementById('clients-tbody');
@@ -2147,9 +2204,24 @@ function renderQuotesTable() {
   const db = getDB();
   const statusFilter = document.getElementById('filter-status')?.value || '';
   const proFilter = document.getElementById('filter-pro')?.value || '';
+  const searchTerm = (document.getElementById('admin-quotes-search')?.value || '').toLowerCase().trim();
   let quotes = [...db.quotes].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  // Exclure devis particuliers (onglet dédié)
+  quotes = quotes.filter(q => q.type !== 'direct' && q.proSociete);
   if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
   if (proFilter) quotes = quotes.filter(q => q.proEmail === proFilter);
+  if (searchTerm) {
+    quotes = quotes.filter(q => {
+      const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].filter(Boolean).join(' ').toLowerCase();
+      return clientName.includes(searchTerm)
+        || (q.client?.ville||'').toLowerCase().includes(searchTerm)
+        || (q.client?.adresse||'').toLowerCase().includes(searchTerm)
+        || (q.client?.cp||'').includes(searchTerm)
+        || (q.client?.ref||'').toLowerCase().includes(searchTerm)
+        || (q.materiauLabel||q.materiau||'').toLowerCase().includes(searchTerm)
+        || (q.proSociete||'').toLowerCase().includes(searchTerm);
+    });
+  }
 
   const tbody = document.getElementById('quotes-tbody');
   if (quotes.length === 0) {
@@ -2165,11 +2237,124 @@ function renderQuotesTable() {
       <td>${clientName}</td>
       <td>${q.materiauLabel||q.materiau}</td>
       <td>${surf} m²</td>
-      <td class="price">${q.totalTTC ? Math.round(q.totalTTC).toLocaleString('fr-FR')+' €' : 'Sur devis'}</td>
+      <td class="price">${q.totalTTC ? fmtEUR(q.totalTTC) : 'Sur devis'}</td>
       <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
       <td>${statusTag(q.status)}</td>
     </tr>`;
   }).join('');
+}
+
+// ─── REMISE COMMERCIALE ÉDITABLE (admin, depuis panneau détail) ──
+function buildRemiseEditor(q, source) {
+  const hasRemise = q.remise && q.remise.valeur > 0;
+  const curType = hasRemise ? q.remise.type : 'none';
+  const curVal = hasRemise ? q.remise.valeur : 0;
+  const prefix = source === 'direct' ? 'remise-edit-direct-' : 'remise-edit-admin-';
+  const totals = computeQuoteTotals(q);
+  const htBrut = totals.htBrut;
+  return `
+    <div style="margin-top:18px;padding:14px 16px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.25);border-radius:6px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:600;">Remise commerciale (admin)</div>
+        ${hasRemise ? `<span style="font-size:.72rem;color:var(--gold);">✓ Remise appliquée : − ${fmtEUR(totals.remiseAmt)}</span>` : '<span style="font-size:.72rem;color:var(--stone-light);font-style:italic;">Aucune remise</span>'}
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:0 0 150px;">
+          <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);display:block;margin-bottom:3px;">Type</label>
+          <select id="${prefix}type" class="input-field" style="padding:6px 10px;font-size:.82rem;">
+            <option value="none" ${curType==='none'?'selected':''}>Aucune remise</option>
+            <option value="pct" ${curType==='pct'?'selected':''}>Pourcentage (%)</option>
+            <option value="eur" ${curType==='eur'?'selected':''}>Montant fixe (€)</option>
+          </select>
+        </div>
+        <div style="flex:0 0 140px;">
+          <label style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);display:block;margin-bottom:3px;">Valeur</label>
+          <input type="number" id="${prefix}valeur" class="input-field" min="0" step="0.01" value="${curVal}" style="padding:6px 10px;font-size:.82rem;">
+        </div>
+        <div style="flex:1;min-width:180px;padding-bottom:6px;font-size:.74rem;color:var(--stone-light);">
+          Sous-total HT actuel : <strong>${fmtEUR(htBrut)}</strong>
+        </div>
+        <div style="display:flex;gap:6px;padding-bottom:2px;">
+          <button class="btn btn-gold btn-sm" onclick="applyRemiseToQuote('${q.id}','${source}')">Appliquer</button>
+          ${hasRemise ? `<button class="btn btn-secondary btn-sm" onclick="clearRemiseFromQuote('${q.id}','${source}')">Retirer</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function applyRemiseToQuote(quoteId, source) {
+  if (!(currentUser && currentUser.role === 'admin')) return;
+  const prefix = source === 'direct' ? 'remise-edit-direct-' : 'remise-edit-admin-';
+  const type = document.getElementById(prefix+'type')?.value || 'none';
+  const valeur = parseFloat(document.getElementById(prefix+'valeur')?.value) || 0;
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+
+  if (type === 'none' || valeur <= 0) {
+    q.remise = null;
+  } else {
+    if (type === 'eur' && q.totalHT && valeur > q.totalHT) {
+      alert('La remise ne peut pas dépasser le sous-total HT (' + fmtEUR(q.totalHT) + ').');
+      return;
+    }
+    if (type === 'pct' && valeur > 100) {
+      alert('Une remise en pourcentage ne peut pas dépasser 100%.');
+      return;
+    }
+    q.remise = { type, valeur };
+  }
+
+  // Recalcule totalTTC stocké à partir du HT net
+  const totals = computeQuoteTotals(q);
+  q.totalTTC = totals.ttc;
+
+  saveDB(db);
+  fbDb.collection('quotes').doc(quoteId).update({
+    remise: q.remise,
+    totalTTC: q.totalTTC
+  }).catch(console.error);
+
+  // Rafraîchit l'affichage
+  if (source === 'direct') {
+    renderDevisDirectTab();
+    // Re-ouvrir le panneau pour refléter la mise à jour
+    setTimeout(() => {
+      const card = document.getElementById('dqc-' + quoteId);
+      if (card) toggleDirectQuoteDetail(quoteId, card);
+    }, 50);
+  } else {
+    renderQuotesTable();
+    renderAdminDashboard();
+    // Re-ouvrir le panneau détail
+    setTimeout(() => showQuoteDetail(quoteId), 50);
+  }
+}
+
+function clearRemiseFromQuote(quoteId, source) {
+  if (!(currentUser && currentUser.role === 'admin')) return;
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  q.remise = null;
+  const totals = computeQuoteTotals(q);
+  q.totalTTC = totals.ttc;
+  saveDB(db);
+  fbDb.collection('quotes').doc(quoteId).update({
+    remise: null,
+    totalTTC: q.totalTTC
+  }).catch(console.error);
+  if (source === 'direct') {
+    renderDevisDirectTab();
+    setTimeout(() => {
+      const card = document.getElementById('dqc-' + quoteId);
+      if (card) toggleDirectQuoteDetail(quoteId, card);
+    }, 50);
+  } else {
+    renderQuotesTable();
+    renderAdminDashboard();
+    setTimeout(() => showQuoteDetail(quoteId), 50);
+  }
 }
 
 function showQuoteDetail(id) {
@@ -2222,11 +2407,24 @@ function showQuoteDetail(id) {
         <div class="detail-row"><span class="dk">Accès</span><span class="dv">${q.livraison==='etage'?'Étage':'Rez-de-chaussée'}</span></div>
         ${optLines?`<div style="margin-top:16px;" class="detail-section-title">Options</div>${optLines}`:''}
         <div style="margin-top:16px;" class="detail-section-title">Tarif estimé</div>
-        <div class="detail-row"><span class="dk">Total HT</span><span class="dv">${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' €':'—'}</span></div>
-        <div class="detail-row"><span class="dk">TVA ${q.tva}%</span><span class="dv">${q.totalHT?Math.round(q.totalHT*(q.tva/100)).toLocaleString('fr-FR')+' €':'—'}</span></div>
-        <div style="margin-top:8px;"><div class="price-ttc">${q.totalTTC?Math.round(q.totalTTC).toLocaleString('fr-FR')+' €':'Sur devis'}</div><div class="price-ht">Total TTC estimé</div></div>
+        ${(function(){
+          if (!q.totalHT) return '<div class="detail-row"><span class="dk">Total HT</span><span class="dv">—</span></div>';
+          const t = computeQuoteTotals(q);
+          if (t.remiseAmt > 0) {
+            const rLabel = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)}%)` : 'Remise commerciale';
+            return `<div class="detail-row"><span class="dk">Sous-total HT</span><span class="dv">${fmtEUR(t.htBrut)}</span></div>
+                    <div class="detail-row"><span class="dk" style="color:var(--gold);">${rLabel}</span><span class="dv" style="color:var(--gold);">− ${fmtEUR(t.remiseAmt)}</span></div>
+                    <div class="detail-row"><span class="dk">Total HT net</span><span class="dv">${fmtEUR(t.htNet)}</span></div>
+                    <div class="detail-row"><span class="dk">TVA ${q.tva}%</span><span class="dv">${fmtEUR(t.tvaAmt)}</span></div>
+                    <div style="margin-top:8px;"><div class="price-ttc">${fmtEUR(t.ttc)}</div><div class="price-ht">Total TTC estimé</div></div>`;
+          }
+          return `<div class="detail-row"><span class="dk">Total HT</span><span class="dv">${fmtEUR(t.htBrut)}</span></div>
+                  <div class="detail-row"><span class="dk">TVA ${q.tva}%</span><span class="dv">${fmtEUR(t.tvaAmt)}</span></div>
+                  <div style="margin-top:8px;"><div class="price-ttc">${fmtEUR(t.ttc)}</div><div class="price-ht">Total TTC estimé</div></div>`;
+        })()}
       </div>
     </div>
+    ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'admin') : ''}
     ${q.commentaire?`<div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);font-size:.82rem;color:var(--stone-light);">${q.commentaire}</div>`:''}
     ${q.commande ? `
     <div style="margin-top:18px;padding:14px;background:rgba(45,122,79,.1);border-radius:6px;">
@@ -2329,8 +2527,20 @@ function saveCoeffDirect() {
 
 function renderDevisDirectTab() {
   const db = getDB();
-  // Filtre : type === 'direct' OU quote créée par admin (pas de proSociete = admin, pas de cuisiniste)
-  const directQuotes = db.quotes.filter(q => q.type === 'direct' || !q.proSociete);
+  let directQuotes = db.quotes.filter(q => q.type === 'direct' || !q.proSociete);
+  directQuotes.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  const searchTerm = (document.getElementById('admin-direct-search')?.value || '').toLowerCase().trim();
+  if (searchTerm) {
+    directQuotes = directQuotes.filter(q => {
+      const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].filter(Boolean).join(' ').toLowerCase();
+      return clientName.includes(searchTerm)
+        || (q.client?.ville||'').toLowerCase().includes(searchTerm)
+        || (q.client?.adresse||'').toLowerCase().includes(searchTerm)
+        || (q.client?.cp||'').includes(searchTerm)
+        || (q.client?.ref||'').toLowerCase().includes(searchTerm)
+        || (q.materiauLabel||q.materiau||'').toLowerCase().includes(searchTerm);
+    });
+  }
   const container = document.getElementById('direct-quotes-list');
   if (!container) return;
 
@@ -2343,7 +2553,7 @@ function renderDevisDirectTab() {
     const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
     const matLabel = q.materiauLabel || q.materiau || '—';
     const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('fr-FR') : '—';
-    const prixHT = q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR') + ' € HT' : 'Sur devis';
+    const prixHT = q.totalHT ? (fmtEUR(q.totalHT) + ' HT') : 'Sur devis';
     return `
       <div class="direct-quote-card" onclick="toggleDirectQuoteDetail('${q.id}', this)" id="dqc-${q.id}">
         <div>
@@ -2382,8 +2592,8 @@ function buildDirectQuoteDetail(quoteId) {
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return '';
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
-  const totalTTC = q.totalTTC ? Math.round(q.totalTTC).toLocaleString('fr-FR') + ' €' : '—';
-  const totalHT = q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR') + ' €' : '—';
+  const totalTTC = q.totalTTC ? fmtEUR(q.totalTTC) : '—';
+  const totalHT = q.totalHT ? fmtEUR(q.totalHT) : '—';
 
   const surfTotal = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
   const adresseFull = [q.client?.adresse, q.client?.cp, q.client?.ville].filter(Boolean).join(', ');
@@ -2412,7 +2622,7 @@ function buildDirectQuoteDetail(quoteId) {
   });
 
   const tvaLabel = q.tva ? `TVA ${q.tva}%` : 'TVA 20%';
-  const tvaAmt = q.totalHT && q.tva ? Math.round(q.totalHT * q.tva / 100).toLocaleString('fr-FR') + ' €' : '—';
+  const tvaAmt = q.totalHT && q.tva ? fmtEUR(q.totalHT * q.tva / 100) : '—';
 
   return `
     <div class="direct-detail-title">
@@ -2465,15 +2675,31 @@ function buildDirectQuoteDetail(quoteId) {
         </div>` : ''}
         <div class="direct-detail-section">
           <div class="direct-detail-section-title">Prix</div>
-          <div class="direct-detail-row"><span class="dk">Total HT</span><span class="dv">${totalHT}</span></div>
-          <div class="direct-detail-row"><span class="dk">${tvaLabel}</span><span class="dv">${tvaAmt}</span></div>
-          <div class="direct-detail-total">
-            <span class="direct-detail-ht">${totalHT} HT</span>
-            <span class="direct-detail-ttc">${totalTTC} TTC</span>
-          </div>
+          ${(function(){
+            if (!q.totalHT) return '<div class="direct-detail-row"><span class="dk">Total HT</span><span class="dv">—</span></div>';
+            const t = computeQuoteTotals(q);
+            if (t.remiseAmt > 0) {
+              const rLabel = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)}%)` : 'Remise commerciale';
+              return `<div class="direct-detail-row"><span class="dk">Sous-total HT</span><span class="dv">${fmtEUR(t.htBrut)}</span></div>
+                      <div class="direct-detail-row"><span class="dk" style="color:var(--gold);">${rLabel}</span><span class="dv" style="color:var(--gold);">− ${fmtEUR(t.remiseAmt)}</span></div>
+                      <div class="direct-detail-row"><span class="dk">Total HT net</span><span class="dv">${fmtEUR(t.htNet)}</span></div>
+                      <div class="direct-detail-row"><span class="dk">${tvaLabel}</span><span class="dv">${fmtEUR(t.tvaAmt)}</span></div>
+                      <div class="direct-detail-total">
+                        <span class="direct-detail-ht">${fmtEUR(t.htNet)} HT</span>
+                        <span class="direct-detail-ttc">${fmtEUR(t.ttc)} TTC</span>
+                      </div>`;
+            }
+            return `<div class="direct-detail-row"><span class="dk">Total HT</span><span class="dv">${fmtEUR(t.htBrut)}</span></div>
+                    <div class="direct-detail-row"><span class="dk">${tvaLabel}</span><span class="dv">${fmtEUR(t.tvaAmt)}</span></div>
+                    <div class="direct-detail-total">
+                      <span class="direct-detail-ht">${fmtEUR(t.htBrut)} HT</span>
+                      <span class="direct-detail-ttc">${fmtEUR(t.ttc)} TTC</span>
+                    </div>`;
+          })()}
         </div>
       </div>
-    </div>`;
+    </div>
+    ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'direct') : ''}`;
 }
 
 function editDirectQuote(quoteId) {
@@ -2756,7 +2982,7 @@ function displayFilteredQuotes(quotes) {
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
-        <div class="qc-price">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : 'Sur devis'}</div>
+        <div class="qc-price">${q.totalHT ? fmtEUR(q.totalHT) : 'Sur devis'}</div>
         <div class="qc-date">${q.totalHT ? 'Prix d\'achat HT' : ''}</div>
       </div>
     </div>`;
@@ -2821,7 +3047,7 @@ function showProQuoteDetail(id) {
         <div class="summary-row"><span class="key">Surface</span><span class="val">${surf} m²</span></div>
         ${q.chant?.type?`<div class="summary-row"><span class="key">Chant</span><span class="val">${q.chant.type}</span></div>`:''}
         ${optLines}
-        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' €':'—'}</span></div>
+        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?fmtEUR(q.totalHT):'—'}</span></div>
       </div>
     </div>
     ${commandeInfo}
@@ -2856,7 +3082,7 @@ function openCommandeModal(quoteId) {
   // Recap
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
   document.getElementById('commande-quote-recap').innerHTML =
-    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; <strong>${q.totalHT?Math.round(q.totalHT).toLocaleString('fr-FR')+' € HT':''}</strong>`;
+    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; <strong>${q.totalHT?(fmtEUR(q.totalHT) + ' HT'):''}</strong>`;
   document.getElementById('modal-commande').classList.add('active');
 }
 
@@ -3260,7 +3486,7 @@ function updatePriceBadge() {
         ? getColorisPrixDirect(mat, coloris, ep, finition)
         : getColorisPrice(mat, coloris, ep, finition);
     }
-    const prixTxt = prix !== null ? `${Math.round(prix)} €/m² HT` : 'sélectionnez un coloris';
+    const prixTxt = prix !== null ? `${fmt2(prix)} €/m² HT` : 'sélectionnez un coloris';
     const epTxt = ep ? ` — ${ep} mm` : '';
     document.getElementById('price-badge-text').textContent = `${label}${epTxt} : ${prixTxt}`;
   } else { badge.style.display = 'none'; }
@@ -3306,8 +3532,8 @@ function initCounterPrices() {
   // Labels livraison avec prix
   const rdcEl = document.getElementById('lbl-rdc');
   const etageEl = document.getElementById('lbl-etage');
-  if (rdcEl && P.pose?.rdc) rdcEl.textContent = Math.round(P.pose.rdc * _coeff) + ' € HT';
-  if (etageEl && P.pose?.etage) etageEl.textContent = Math.round(P.pose.etage * _coeff) + ' € HT';
+  if (rdcEl && P.pose?.rdc) rdcEl.textContent = fmt2(P.pose.rdc * _coeff) + ' € HT';
+  if (etageEl && P.pose?.etage) etageEl.textContent = fmt2(P.pose.etage * _coeff) + ' € HT';
 }
 
 function updateLiveSurface() {
@@ -3376,7 +3602,7 @@ function computePrice() {
 
   if (surfaceCred > 0 && prixMat !== null) {
     const pc = prixMat * P.credences.facteur;
-    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${Math.round(pc)} €/m²`, ht: surfaceCred*pc });
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m²`, ht: surfaceCred*pc });
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
@@ -3415,7 +3641,70 @@ function computePrice() {
   return { lines, totalHT, tva, surfacePlans, surfaceCred };
 }
 
+function updateRemisePreview() {
+  const previewEl = document.getElementById('remise-preview');
+  if (!previewEl) return;
+  if (!(currentUser && currentUser.role === 'admin')) return;
+  const rType = document.getElementById('remise-type')?.value || 'none';
+  const rVal = parseFloat(document.getElementById('remise-valeur')?.value) || 0;
+  if (rType === 'none' || rVal <= 0) {
+    previewEl.textContent = 'Aucune remise appliquée';
+    previewEl.style.color = 'var(--stone-light)';
+  } else if (rType === 'pct') {
+    previewEl.textContent = `Remise : ${fmt2(rVal)}% HT`;
+    previewEl.style.color = 'var(--gold)';
+  } else {
+    previewEl.textContent = `Remise : ${fmtEUR(rVal)} HT`;
+    previewEl.style.color = 'var(--gold)';
+  }
+  // Rafraîchit le tableau prix sans re-déclencher buildSummary entier
+  if (document.getElementById('step-5')?.classList.contains('active')) {
+    const { lines, totalHT, tva } = computePrice();
+    if (totalHT === null) return;
+    let rows = '';
+    let lastCat = '';
+    lines.forEach(l => {
+      if (l.cat !== lastCat) { rows += `<tr class="group-header"><td colspan="2">${l.cat}</td></tr>`; lastCat=l.cat; }
+      rows += `<tr><td style="padding-left:12px;">${l.label}</td><td>${l.ht!==null?fmtEUR(l.ht):'Sur devis'}</td></tr>`;
+    });
+    let remiseAmt = 0;
+    if (rType === 'pct' && rVal > 0) remiseAmt = totalHT * (rVal / 100);
+    else if (rType === 'eur' && rVal > 0) remiseAmt = Math.min(rVal, totalHT);
+    const htNet = totalHT - remiseAmt;
+    const tvaAmt = htNet * tva;
+    const ttc = htNet + tvaAmt;
+    if (remiseAmt > 0) {
+      rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Sous-total HT</td><td>${fmtEUR(totalHT)}</td></tr>
+               <tr style="color:#c9a84c;"><td>Remise commerciale</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+               <tr class="total-ht"><td>Total HT net</td><td>${fmtEUR(htNet)}</td></tr>
+               <tr class="tva-row"><td>TVA ${fmt2(tva*100)}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+               <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${fmtEUR(ttc)}</td></tr>`;
+    } else {
+      rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Total HT</td><td>${fmtEUR(totalHT)}</td></tr>
+               <tr class="tva-row"><td>TVA ${fmt2(tva*100)}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+               <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${fmtEUR(ttc)}</td></tr>`;
+    }
+    const pb = document.getElementById('price-breakdown');
+    if (pb) {
+      pb.innerHTML = `<h3>Décomposition tarifaire</h3><table class="price-table">${rows}</table><p style="font-size:.76rem;color:var(--stone-light);font-style:italic;margin-top:12px;">Prix indicatifs HT — confirmés après étude du dossier.</p>`;
+    }
+  }
+}
+
 function buildSummary() {
+  const remiseCard = document.getElementById('remise-card-admin');
+  if (remiseCard) {
+    remiseCard.style.display = (currentUser && currentUser.role === 'admin') ? 'block' : 'none';
+  }
+  if (currentUser && currentUser.role === 'admin' && currentEditingQuoteId) {
+    const _dbEdit = getDB();
+    const _qEdit = _dbEdit.quotes.find(x => x.id === currentEditingQuoteId);
+    if (_qEdit && _qEdit.remise) {
+      const rt = document.getElementById('remise-type');
+      const rv = document.getElementById('remise-valeur');
+      if (rt && rv) { rt.value = _qEdit.remise.type || 'none'; rv.value = _qEdit.remise.valeur || 0; }
+    }
+  }
   const P = getCurrentPrix();
   const mat = document.getElementById('materiau').value;
   // Label toujours depuis PRIX (référence), car PRIX_VENTE n'a pas de propriété label
@@ -3446,14 +3735,31 @@ function buildSummary() {
     let lastCat = '';
     lines.forEach(l => {
       if (l.cat !== lastCat) { rows += `<tr class="group-header"><td colspan="2">${l.cat}</td></tr>`; lastCat=l.cat; }
-      rows += `<tr><td style="padding-left:12px;">${l.label}</td><td>${l.ht!==null?Math.round(l.ht).toLocaleString('fr-FR')+' €':'Sur devis'}</td></tr>`;
+      rows += `<tr><td style="padding-left:12px;">${l.label}</td><td>${l.ht!==null?fmtEUR(l.ht):'Sur devis'}</td></tr>`;
     });
   }
   if (totalHT !== null) {
-    const tvaAmt = totalHT*tva;
-    rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Total HT</td><td>${Math.round(totalHT).toLocaleString('fr-FR')} €</td></tr>
-             <tr class="tva-row"><td>TVA ${Math.round(tva*100)}%</td><td>${Math.round(tvaAmt).toLocaleString('fr-FR')} €</td></tr>
-             <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${Math.round(totalHT+tvaAmt).toLocaleString('fr-FR')} €</td></tr>`;
+    let remiseAmt = 0;
+    if (currentUser && currentUser.role === 'admin') {
+      const rType = document.getElementById('remise-type')?.value || 'none';
+      const rVal = parseFloat(document.getElementById('remise-valeur')?.value) || 0;
+      if (rType === 'pct' && rVal > 0) remiseAmt = totalHT * (rVal / 100);
+      else if (rType === 'eur' && rVal > 0) remiseAmt = Math.min(rVal, totalHT);
+    }
+    const htNet = totalHT - remiseAmt;
+    const tvaAmt = htNet * tva;
+    const ttc = htNet + tvaAmt;
+    if (remiseAmt > 0) {
+      rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Sous-total HT</td><td>${fmtEUR(totalHT)}</td></tr>
+               <tr style="color:#c9a84c;"><td>Remise commerciale</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+               <tr class="total-ht"><td>Total HT net</td><td>${fmtEUR(htNet)}</td></tr>
+               <tr class="tva-row"><td>TVA ${fmt2(tva*100)}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+               <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${fmtEUR(ttc)}</td></tr>`;
+    } else {
+      rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Total HT</td><td>${fmtEUR(totalHT)}</td></tr>
+               <tr class="tva-row"><td>TVA ${fmt2(tva*100)}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+               <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC</td><td>${fmtEUR(ttc)}</td></tr>`;
+    }
   }
   document.getElementById('price-breakdown').innerHTML = `
     <h3>Décomposition tarifaire</h3>
@@ -3467,7 +3773,15 @@ function submitQuote(action) {
     const mat = document.getElementById('materiau').value;
     const matLabel = mat ? (PRIX.materiaux[mat]?.label || mat) : mat;
     const { lines, totalHT, tva, surfacePlans, surfaceCred } = computePrice();
-    const totalTTC = totalHT !== null ? totalHT * (1 + tva) : null;
+    let _remiseAmt = 0;
+    if (currentUser && currentUser.role === 'admin') {
+      const _rT = document.getElementById('remise-type')?.value || 'none';
+      const _rV = parseFloat(document.getElementById('remise-valeur')?.value) || 0;
+      if (_rT === 'pct' && _rV > 0 && totalHT !== null) _remiseAmt = totalHT * (_rV / 100);
+      else if (_rT === 'eur' && _rV > 0 && totalHT !== null) _remiseAmt = Math.min(_rV, totalHT);
+    }
+    const _htNet = totalHT !== null ? (totalHT - _remiseAmt) : null;
+    const totalTTC = _htNet !== null ? _htNet * (1 + tva) : null;
     const datePose = document.getElementById('date-pose').value;
     const newStatus = action === 'commande' ? 'commande' : 'devise';
 
@@ -3500,10 +3814,13 @@ function submitQuote(action) {
       chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
       options: getCounters(),
       tva: Math.round(tva*100),
+      remise: (currentUser && currentUser.role === 'admin' && (document.getElementById('remise-type')?.value || 'none') !== 'none')
+        ? { type: document.getElementById('remise-type').value, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 }
+        : null,
       livraison: document.querySelector('input[name="livraison"]:checked')?.value,
       commentaire: document.getElementById('commentaire').value,
-      totalHT: totalHT ? Math.round(totalHT) : null,
-      totalTTC: totalTTC ? Math.round(totalTTC) : null,
+      totalHT: totalHT !== null ? totalHT : null,
+      totalTTC: totalTTC !== null ? totalTTC : null,
       status: newStatus,
       type: isDirect ? 'direct' : 'pro'
     };
@@ -3834,7 +4151,7 @@ function exportDevisParticulier(quoteId) {
         lignesRows += `<tr>
           <td class="li-desc">Plan de travail P${i+1} — ${matDesc}<br><span class="li-detail">${p.larg} × ${p.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
           <td class="li-right">${surf.toFixed(2)} m²</td>
-          <td class="li-right">${Math.round(prixMatVente).toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmt2(prixMatVente)} €</td>
           <td class="li-right">${htPlan.toLocaleString('fr-FR')} €</td>
         </tr>`;
       }
@@ -3846,7 +4163,7 @@ function exportDevisParticulier(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Plans de travail — ${matDesc}</td>
       <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
-      <td class="li-right">${Math.round(prixMatVente).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmt2(prixMatVente)} €</td>
       <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -3863,7 +4180,7 @@ function exportDevisParticulier(quoteId) {
         lignesRows += `<tr>
           <td class="li-desc">Crédence C${i+1} — ${matDesc}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
           <td class="li-right">${surf.toFixed(2)} m²</td>
-          <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmt2(prixCred)} €</td>
           <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
         </tr>`;
       }
@@ -3875,7 +4192,7 @@ function exportDevisParticulier(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Crédences — ${matDesc}</td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
-      <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -3956,16 +4273,19 @@ function exportDevisParticulier(quoteId) {
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
       <td class="li-right">1</td>
       <td class="li-right">—</td>
-      <td class="li-right">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td>
+      <td class="li-right">${q.totalHT ? fmtEUR(q.totalHT) : '—'}</td>
     </tr>`;
   }
 
-  // Totaux
-  const tvaRate = (q.tva || 20) / 100;
+  // Totaux (avec remise éventuelle)
   const tvaLabel = q.tva || 20;
-  const totalHT = q.totalHT ? Math.round(q.totalHT) : null;
-  const tvaAmt = totalHT ? Math.round(totalHT * tvaRate) : null;
-  const totalTTC = q.totalTTC ? Math.round(q.totalTTC) : null;
+  const _tPdf = computeQuoteTotals(q);
+  const htBrut = _tPdf.htBrut;
+  const remiseAmt = _tPdf.remiseAmt;
+  const htNet = _tPdf.htNet;
+  const tvaAmt = _tPdf.tvaAmt;
+  const totalTTC = _tPdf.ttc;
+  const totalHT = htBrut > 0 ? htBrut : null;
 
   const installDate = q.client?.datePose ? new Date(q.client.datePose).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : null;
 
@@ -4122,11 +4442,13 @@ function exportDevisParticulier(quoteId) {
   </table>
 </div>
 
-${totalHT !== null ? `<div class="totaux">
+${htBrut > 0 ? `<div class="totaux">
   <table>
-    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
-    <tr class="row-tva"><td>TVA ${tvaLabel}%</td><td>${tvaAmt !== null ? tvaAmt.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
-    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC !== null ? totalTTC.toLocaleString('fr-FR')+' €' : '—'}</td></tr>
+    <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    <tr><td>Total HT net</td><td>${fmtEUR(htNet)}</td></tr>` : ''}
+    <tr class="row-tva"><td>TVA ${tvaLabel}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>` : ''}
 
@@ -4218,7 +4540,7 @@ async function genererFacture(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
       <td class="li-qty">${q.surfacePlans.toFixed(2)} m²</td>
-      <td class="li-pu">${Math.round(prixMat).toLocaleString('fr-FR')} €</td>
+      <td class="li-pu">${fmt2(prixMat)} €</td>
       <td class="li-total">${htPlans.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -4231,7 +4553,7 @@ async function genererFacture(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-qty">${q.surfaceCred.toFixed(2)} m²</td>
-      <td class="li-pu">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-pu">${fmt2(prixCred)} €</td>
       <td class="li-total">${htCred.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -4305,14 +4627,16 @@ async function genererFacture(quoteId) {
   // Fallback : si aucune ligne détaillée n'a pu être générée, afficher une ligne globale
   if (ligneNum === 0) {
     const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
-    lignesRows = `<tr><td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td></tr>`;
+    lignesRows = `<tr><td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? fmtEUR(q.totalHT) : '—'}</td></tr>`;
   }
 
-  // Totaux
-  const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
-  const tvaRate = (q.tva || 20) / 100;
-  const tvaAmt = Math.round(totalHT * tvaRate);
-  const totalTTC = Math.round(totalHT + tvaAmt);
+  // Totaux (avec remise éventuelle)
+  const _tCuis = computeQuoteTotals(q);
+  const htBrut = _tCuis.htBrut;
+  const remiseAmt = _tCuis.remiseAmt;
+  const totalHT = _tCuis.htNet;
+  const tvaAmt = _tCuis.tvaAmt;
+  const totalTTC = _tCuis.ttc;
 
   // Adresse société
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -4440,9 +4764,11 @@ async function genererFacture(quoteId) {
 
 <div class="totaux">
   <table>
-    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
-    <tr class="row-tva"><td>TVA ${q.tva || 20}%</td><td>${tvaAmt.toLocaleString('fr-FR')} €</td></tr>
-    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC.toLocaleString('fr-FR')} €</td></tr>
+    <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
+    <tr class="row-tva"><td>TVA ${q.tva || 20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
 
@@ -4513,7 +4839,7 @@ async function genererFactureDirecte(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
       <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
-      <td class="li-right">${Math.round(prixMat).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmt2(prixMat)} €</td>
       <td class="li-right">${htPlans.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -4526,7 +4852,7 @@ async function genererFactureDirecte(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
-      <td class="li-right">${Math.round(prixCred).toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
     </tr>`;
   }
@@ -4607,14 +4933,16 @@ async function genererFactureDirecte(quoteId) {
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
       <td class="li-right">1</td>
       <td class="li-right">—</td>
-      <td class="li-right">${q.totalHT ? Math.round(q.totalHT).toLocaleString('fr-FR')+' €' : '—'}</td>
+      <td class="li-right">${q.totalHT ? fmtEUR(q.totalHT) : '—'}</td>
     </tr>`;
   }
 
-  const totalHT = q.totalHT ? Math.round(q.totalHT) : 0;
-  const tvaRate = (q.tva || 20) / 100;
-  const tvaAmt = Math.round(totalHT * tvaRate);
-  const totalTTC = Math.round(totalHT + tvaAmt);
+  const _tDir = computeQuoteTotals(q);
+  const htBrut = _tDir.htBrut;
+  const remiseAmt = _tDir.remiseAmt;
+  const totalHT = _tDir.htNet;
+  const tvaAmt = _tDir.tvaAmt;
+  const totalTTC = _tDir.ttc;
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -4706,9 +5034,11 @@ async function genererFactureDirecte(quoteId) {
 </table>
 <div class="totaux">
   <table>
-    <tr><td>Sous-total HT</td><td>${totalHT.toLocaleString('fr-FR')} €</td></tr>
-    <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${tvaAmt.toLocaleString('fr-FR')} €</td></tr>
-    <tr class="row-ttc"><td>Total TTC</td><td>${totalTTC.toLocaleString('fr-FR')} €</td></tr>
+    <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
+    <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
 ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
