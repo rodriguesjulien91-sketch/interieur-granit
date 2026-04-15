@@ -2013,17 +2013,45 @@ async function loadAppData() {
   }
 }
 
-// ─── Listener temps réel (admin uniquement) ────────────────────
+// ─── Listener temps réel (admin ET pro) ────────────────────────
 let unsubQuotes = null;
 function setupRealtimeListeners() {
   if (unsubQuotes) unsubQuotes();
-  unsubQuotes = fbDb.collection('quotes').onSnapshot(snap => {
-    const quotes = [];
-    snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
-    quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-    appCache.quotes = quotes;
-    if (document.getElementById('view-admin')?.classList.contains('active')) {
-      renderAdminDashboard();
+  // Admin : écoute tous les devis
+  // Pro : écoute uniquement ses devis (filtré par proEmail)
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const baseQuery = isAdmin
+    ? fbDb.collection('quotes')
+    : fbDb.collection('quotes').where('proEmail', '==', currentUser.email);
+  unsubQuotes = baseQuery.onSnapshot(snap => {
+    if (isAdmin) {
+      // Admin : remplace entièrement le cache
+      const quotes = [];
+      snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
+      quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      appCache.quotes = quotes;
+      if (document.getElementById('view-admin')?.classList.contains('active')) {
+        renderAdminDashboard();
+      }
+    } else {
+      // Pro : fusionne dans le cache (on ne connaît que nos propres devis)
+      const myQuotes = [];
+      snap.forEach(doc => myQuotes.push({ id: doc.id, ...doc.data() }));
+      const otherQuotes = (appCache.quotes || []).filter(q => q.proEmail !== currentUser.email);
+      appCache.quotes = [...myQuotes, ...otherQuotes]
+        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Rafraîchit la vue pro si affichée
+      if (document.getElementById('view-pro')?.classList.contains('active')) {
+        const openDetailId = document.getElementById('pro-quote-detail')?.dataset?.openId;
+        renderProQuotes();
+        // Si un détail était ouvert, le ré-ouvrir pour afficher la version à jour
+        if (openDetailId && myQuotes.some(q => q.id === openDetailId)) {
+          // reset puis ré-ouvrir
+          const panel = document.getElementById('pro-quote-detail');
+          if (panel) { panel.dataset.openId = ''; panel.classList.remove('active'); }
+          setTimeout(() => showProQuoteDetail(openDetailId), 30);
+        }
+      }
     }
   }, err => console.warn('onSnapshot error:', err));
 }
@@ -2053,7 +2081,7 @@ function doLogin() {
       }
       currentUser = user;
       if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); }
-      else showProView();
+      else { showProView(); setupRealtimeListeners(); }
     })
     .catch(() => {
       errEl.textContent = 'Email ou mot de passe incorrect.';
@@ -2153,7 +2181,10 @@ function renderAdminDashboard() {
   const quotes = db.quotes;
   const newQuotes = quotes.filter(q => q.status === 'nouveau');
   const commandeQuotes = quotes.filter(q => q.status === 'commande');
-  const totalHT_commandes = commandeQuotes.reduce((s,q) => s + (q.totalHT||0), 0);
+  const totalHT_commandes = commandeQuotes.reduce((s,q) => {
+    const t = q.totalHT ? computeQuoteTotals(q) : null;
+    return s + (t ? t.htNet : 0);
+  }, 0);
 
   document.getElementById('stat-clients').textContent = proUsers.length;
   document.getElementById('stat-total').textContent = quotes.length;
@@ -2974,15 +3005,22 @@ function displayFilteredQuotes(quotes) {
     const cmdBtn = (q.status === 'devise')
       ? `<button class="btn btn-sm btn-commande qc-commander" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>`
       : '';
+    const t = q.totalHT ? computeQuoteTotals(q) : null;
+    const hasRemise = t && t.remiseAmt > 0;
+    const priceDisplay = t
+      ? (hasRemise
+          ? `<div style="text-decoration:line-through;font-size:.78rem;color:var(--stone-light);">${fmtEUR(t.htBrut)}</div><div class="qc-price" style="color:var(--gold);">${fmtEUR(t.htNet)}</div>`
+          : `<div class="qc-price">${fmtEUR(t.htBrut)}</div>`)
+      : '<div class="qc-price">Sur devis</div>';
     return `<div class="quote-card fade-in" onclick="showProQuoteDetail('${q.id}')">
       <div>
         <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
         <div class="qc-client">${clientName} — ${q.client?.ville||''}</div>
-        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}</div>
+        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}${hasRemise?' · <span style="color:var(--gold);font-weight:600;">Remise appliquée</span>':''}</div>
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
-        <div class="qc-price">${q.totalHT ? fmtEUR(q.totalHT) : 'Sur devis'}</div>
+        ${priceDisplay}
         <div class="qc-date">${q.totalHT ? 'Prix d\'achat HT' : ''}</div>
       </div>
     </div>`;
@@ -3047,7 +3085,17 @@ function showProQuoteDetail(id) {
         <div class="summary-row"><span class="key">Surface</span><span class="val">${surf} m²</span></div>
         ${q.chant?.type?`<div class="summary-row"><span class="key">Chant</span><span class="val">${q.chant.type}</span></div>`:''}
         ${optLines}
-        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?fmtEUR(q.totalHT):'—'}</span></div>
+        ${(function(){
+          if (!q.totalHT) return '<div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">—</span></div>';
+          const t = computeQuoteTotals(q);
+          if (t.remiseAmt > 0) {
+            const rLabel = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)}%)` : 'Remise commerciale';
+            return `<div class="summary-row" style="margin-top:8px;"><span class="key">Sous-total HT</span><span class="val">${fmtEUR(t.htBrut)}</span></div>
+                    <div class="summary-row"><span class="key" style="color:var(--gold);">${rLabel}</span><span class="val" style="color:var(--gold);">− ${fmtEUR(t.remiseAmt)}</span></div>
+                    <div class="summary-row"><span class="key" style="font-weight:600;">Total HT net</span><span class="val" style="font-weight:700;font-size:1rem;color:var(--gold);">${fmtEUR(t.htNet)}</span></div>`;
+          }
+          return `<div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(t.htBrut)}</span></div>`;
+        })()}
       </div>
     </div>
     ${commandeInfo}
@@ -3081,8 +3129,14 @@ function openCommandeModal(quoteId) {
   document.getElementById('file-devis').value = '';
   // Recap
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const _tRecap = q.totalHT ? computeQuoteTotals(q) : null;
+  const priceRecap = _tRecap
+    ? (_tRecap.remiseAmt > 0
+        ? `<strong>${fmtEUR(_tRecap.htNet)} HT</strong> <span style="color:var(--gold);font-size:.76rem;">(remisé)</span>`
+        : `<strong>${fmtEUR(_tRecap.htBrut)} HT</strong>`)
+    : '';
   document.getElementById('commande-quote-recap').innerHTML =
-    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; <strong>${q.totalHT?(fmtEUR(q.totalHT) + ' HT'):''}</strong>`;
+    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; ${priceRecap}`;
   document.getElementById('modal-commande').classList.add('active');
 }
 
@@ -3814,9 +3868,20 @@ function submitQuote(action) {
       chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
       options: getCounters(),
       tva: Math.round(tva*100),
-      remise: (currentUser && currentUser.role === 'admin' && (document.getElementById('remise-type')?.value || 'none') !== 'none')
-        ? { type: document.getElementById('remise-type').value, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 }
-        : null,
+      // Remise commerciale : admin peut la modifier ; pro ne la touche pas (préservation)
+      remise: (function(){
+        if (currentUser && currentUser.role === 'admin') {
+          const rType = document.getElementById('remise-type')?.value || 'none';
+          if (rType === 'none') return null;
+          return { type: rType, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 };
+        }
+        // Non-admin : préserver la remise existante si on édite
+        if (currentEditingQuoteId) {
+          const _existing = db.quotes.find(x => x.id === currentEditingQuoteId);
+          return _existing?.remise || null;
+        }
+        return null;
+      })(),
       livraison: document.querySelector('input[name="livraison"]:checked')?.value,
       commentaire: document.getElementById('commentaire').value,
       totalHT: totalHT !== null ? totalHT : null,
