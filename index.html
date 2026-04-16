@@ -1,15 +1,14 @@
-
 <!DOCTYPE html>
-<!-- saved from url=(0043)file:///C:/Users/PC/Downloads/index_45.html -->
-<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intérieur Granit — Espace Professionnel</title>
-<link href="./Intérieur Granit — Espace Professionnel_files/css2" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Firebase SDK (compat mode — pas besoin de build tool) -->
-<script src="./Intérieur Granit — Espace Professionnel_files/firebase-app-compat.js.téléchargement"></script>
-<script src="./Intérieur Granit — Espace Professionnel_files/firebase-auth-compat.js.téléchargement"></script>
-<script src="./Intérieur Granit — Espace Professionnel_files/firebase-firestore-compat.js.téléchargement"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 <style>
 /* ═══ VARIABLES ═══════════════════════════════════════════════════ */
 :root {
@@ -339,12 +338,13 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <div class="field" style="margin-bottom:22px;">
         <label for="login-password">Mot de passe</label>
-        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key===&#39;Enter&#39;) doLogin()">
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') doLogin()">
       </div>
       <button id="login-btn" class="btn btn-primary" style="width:100%;padding:14px;" onclick="doLogin()">Se connecter</button>
       <div class="login-demo" style="text-align:center;font-size:.78rem;color:var(--stone-light);">
         Mot de passe oublié ?&nbsp;
-        <a href="file:///C:/Users/PC/Downloads/index_45.html#" onclick="sendPasswordReset(event)" style="color:var(--gold);text-decoration:none;">Réinitialiser par email</a>
+        <a href="#" onclick="sendPasswordReset(event)" style="color:var(--gold);text-decoration:none;">Réinitialiser par email</a>
       </div>
     </div>
   </div>
@@ -380,11 +380,11 @@ textarea { resize: vertical; min-height: 80px; }
     <!-- Tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
       <div class="tabs" style="border-bottom:none;margin-bottom:0;flex:1;">
-        <button class="tab-btn active" onclick="switchTab(&#39;clients&#39;)">Clients professionnels</button>
-        <button class="tab-btn" onclick="switchTab(&#39;quotes&#39;)">Tous les chiffrages</button>
-        <button class="tab-btn" onclick="switchTab(&#39;direct&#39;)">Devis particuliers</button>
-        <button class="tab-btn" onclick="switchTab(&#39;coeff&#39;)">Coefficient de vente</button>
-        <button class="tab-btn" onclick="switchTab(&#39;visuels&#39;)">🖼 Visuels coloris</button>
+        <button class="tab-btn active" onclick="switchTab('clients')">Clients professionnels</button>
+        <button class="tab-btn" onclick="switchTab('quotes')">Tous les chiffrages</button>
+        <button class="tab-btn" onclick="switchTab('direct')">Devis particuliers</button>
+        <button class="tab-btn" onclick="switchTab('coeff')">Coefficient de vente</button>
+        <button class="tab-btn" onclick="switchTab('visuels')">🖼 Visuels coloris</button>
       </div>
       <button class="btn btn-sm btn-secondary" style="margin-bottom:1px;" onclick="renderAdminDashboard()" title="Rafraîchir les données">↺ Rafraîchir</button>
     </div>
@@ -467,7 +467,9 @@ textarea { resize: vertical; min-height: 80px; }
           <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
             <div style="flex:1;">
               <label>Coefficient de vente</label>
-              <input type="number" id="coeff-direct-input" class="input-field" value="1.00" min="1.00" max="3.00" step="0.01" style="font-size:1.1rem;font-weight:600;text-align:center;" oninput="updateCoeffPreview()">
+              <input type="number" id="coeff-direct-input" class="input-field" value="1.00" min="1.00" max="3.00" step="0.01"
+                     style="font-size:1.1rem;font-weight:600;text-align:center;"
+                     oninput="updateCoeffPreview()">
             </div>
             <div id="coeff-preview" style="font-size:.82rem;color:var(--stone-light);margin-top:18px;min-width:140px;">
               Marge : 0%
@@ -515,7 +517,7 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="ok">Avec image</option>
             <option value="missing">Sans image</option>
           </select>
-          <button class="btn btn-sm btn-danger" onclick="if(confirm(&#39;Vider toutes les images ?&#39;)) vClearAll()">✕ Tout effacer</button>
+          <button class="btn btn-sm btn-danger" onclick="if(confirm('Vider toutes les images ?')) vClearAll()">✕ Tout effacer</button>
         </div>
       </div>
       <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;">
@@ -698,8 +700,10 @@ textarea { resize: vertical; min-height: 80px; }
             <select id="coloris" onchange="onColorisChange();"><option value="">Sélectionnez d'abord un matériau...</option></select>
             <div class="coloris-preview-box" id="coloris-preview-wrap">
               <div class="coloris-preview-img-wrap">
-                <div class="img-loader" id="coloris-img-loader">Aperçu indisponible</div>
-                <img id="coloris-preview-img" src="file:///C:/Users/PC/Downloads/index_45.html" alt="Aperçu" style="opacity: 0; display: none;" onload="this.style.opacity=&#39;1&#39;;document.getElementById(&#39;coloris-img-loader&#39;).style.display=&#39;none&#39;;" onerror="this.style.display=&#39;none&#39;;document.getElementById(&#39;coloris-img-loader&#39;).textContent=&#39;Aperçu indisponible&#39;;">
+                <div class="img-loader" id="coloris-img-loader">Sélectionnez un coloris</div>
+                <img id="coloris-preview-img" src="" alt="Aperçu" style="opacity:0"
+                     onload="this.style.opacity='1';document.getElementById('coloris-img-loader').style.display='none';"
+                     onerror="this.style.display='none';document.getElementById('coloris-img-loader').textContent='Aperçu indisponible';">
               </div>
               <div class="coloris-preview-info">
                 <div class="coloris-preview-name" id="coloris-preview-name"></div>
@@ -792,10 +796,10 @@ textarea { resize: vertical; min-height: 80px; }
               <option value="Droit chanfreiné">Droit chanfreiné</option>
               <option value="Arrondi 1/4 de rond">Arrondi 1/4 de rond</option>
               <option value="Arrondi 1/2 rond">Arrondi 1/2 rond</option>
-              <option value="Droit 4 à 10 cm coupe d&#39;onglet">Droit 4–10 cm onglet</option>
+              <option value="Droit 4 à 10 cm coupe d'onglet">Droit 4–10 cm onglet</option>
               <option value="Droit 4 à 10 cm rapporté">Droit 4–10 cm rapporté</option>
               <option value="Droit 2 + 2 cm chanfreiné">Droit 2+2 cm chanfreiné</option>
-              <option value="Aile d&#39;avion">Aile d'avion</option>
+              <option value="Aile d'avion">Aile d'avion</option>
             </select>
           </div>
           <div class="field">
@@ -812,56 +816,56 @@ textarea { resize: vertical; min-height: 80px; }
 
     <!-- ÉTAPE 4 : OPTIONS -->
     <div class="step-panel" id="step-4">
-      <h1 class="step-title">Options &amp; évidements</h1>
+      <h1 class="step-title">Options & évidements</h1>
       <p class="step-subtitle">Découpes, perçages et conditions de pose</p>
       <div class="section-block">
-        <h3>Évidements &amp; perçages</h3>
+        <h3>Évidements & perçages</h3>
         <div class="counter-grid" id="counters">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson">88 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre">88 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan">158 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur">20 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar">29 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan">44 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence">23 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle">63 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage">168 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi">60 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item" id="coupe-onglet-item"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet">60 € HT / ml</span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:&#39;DM Sans&#39;,sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" id="coupe-onglet-item"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet"></span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:'DM Sans',sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Prestation &amp; livraison</h3>
+        <h3>Prestation & livraison</h3>
         <div class="counter-grid">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote">150 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose &amp; installation</span><span class="counter-price" data-key="pose-installation">472 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose & installation</span><span class="counter-price" data-key="pose-installation"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Conditions de pose &amp; TVA</h3>
+        <h3>Conditions de pose & TVA</h3>
         <div class="form-grid">
           <div class="field">
             <label>Le logement a-t-il plus de 2 ans ?</label>
             <div class="radio-cards">
-              <div class="radio-card"><input type="radio" name="tva" id="tva-oui" value="10" checked=""><label for="tva-oui"><span class="icon">🏠</span>Oui — TVA 10%</label></div>
+              <div class="radio-card"><input type="radio" name="tva" id="tva-oui" value="10" checked><label for="tva-oui"><span class="icon">🏠</span>Oui — TVA 10%</label></div>
               <div class="radio-card"><input type="radio" name="tva" id="tva-non" value="20"><label for="tva-non"><span class="icon">🏗️</span>Non — TVA 20%</label></div>
             </div>
           </div>
           <div class="field">
-            <label>Accès &amp; livraison</label>
+            <label>Accès & livraison</label>
             <div class="radio-cards">
-              <div class="radio-card"><input type="radio" name="livraison" id="rdc" value="rdc" checked=""><label for="rdc"><span class="icon">🚪</span>Rez-de-chaussée<small id="lbl-rdc" style="display:block;font-size:.75rem;opacity:.7;">195,00 € HT</small></label></div>
-              <div class="radio-card"><input type="radio" name="livraison" id="etage" value="etage"><label for="etage"><span class="icon">🏢</span>Étage / Paris<small id="lbl-etage" style="display:block;font-size:.75rem;opacity:.7;">395,00 € HT</small></label></div>
+              <div class="radio-card"><input type="radio" name="livraison" id="rdc" value="rdc" checked><label for="rdc"><span class="icon">🚪</span>Rez-de-chaussée<small id="lbl-rdc" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
+              <div class="radio-card"><input type="radio" name="livraison" id="etage" value="etage"><label for="etage"><span class="icon">🏢</span>Étage / Paris<small id="lbl-etage" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
             </div>
           </div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Commentaire &amp; plan coté</h3>
+        <h3>Commentaire & plan coté</h3>
         <div class="form-grid full">
           <div class="field">
             <label>Commentaire</label>
-            <textarea id="commentaire" placeholder="Forme particulière, contrainte d&#39;accès, précisions..."></textarea>
+            <textarea id="commentaire" placeholder="Forme particulière, contrainte d'accès, précisions..."></textarea>
           </div>
           <div class="field">
             <label>Plan coté (facultatif)</label>
@@ -904,7 +908,7 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="summary-card" id="price-breakdown"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="prevStep(5)">← Retour</button>
-        <button class="btn btn-gold btn-submit" onclick="submitQuote(&#39;valider&#39;)">✓ Valider le devis</button>
+        <button class="btn btn-gold btn-submit" onclick="submitQuote('valider')">✓ Valider le devis</button>
       </div>
     </div>
 
@@ -918,7 +922,7 @@ textarea { resize: vertical; min-height: 80px; }
   <div class="modal fade-in">
     <h2>Nouveau client professionnel</h2>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="new-societe" placeholder="Cuisines &amp; Co"></div>
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="new-societe" placeholder="Cuisines & Co"></div>
       <div class="field"><label>Nom *</label><input type="text" id="new-nom" placeholder="Dupont"></div>
       <div class="field"><label>Prénom</label><input type="text" id="new-prenom" placeholder="Jean"></div>
       <div class="field"><label>Email *</label><input type="email" id="new-email" placeholder="jean@cuisines-co.fr"></div>
@@ -950,7 +954,7 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Coordonnées société</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="pp-societe" placeholder="Cuisines &amp; Co"></div>
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="pp-societe" placeholder="Cuisines & Co"></div>
       <div class="field"><label>Prénom du contact</label><input type="text" id="pp-prenom" placeholder="Marc"></div>
       <div class="field"><label>Nom du contact</label><input type="text" id="pp-nom" placeholder="Bernard"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="pp-tel" placeholder="06 12 34 56 78"></div>
@@ -994,7 +998,7 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Coordonnées</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Adresse</label><input type="text" id="soc-adresse" placeholder="12 rue de l&#39;Artisan"></div>
+      <div class="field span-2"><label>Adresse</label><input type="text" id="soc-adresse" placeholder="12 rue de l'Artisan"></div>
       <div class="field"><label>Code postal</label><input type="text" id="soc-cp" placeholder="75001"></div>
       <div class="field"><label>Ville</label><input type="text" id="soc-ville" placeholder="Paris"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="soc-tel" placeholder="01 23 45 67 89"></div>
@@ -1017,9 +1021,9 @@ textarea { resize: vertical; min-height: 80px; }
             <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
           </div>
           <div style="flex:1;">
-            <input type="file" id="soc-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,&#39;soc-logo-preview&#39;,&#39;soc-logo-data&#39;)" style="font-size:.82rem;">
+            <input type="file" id="soc-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'soc-logo-preview','soc-logo-data')" style="font-size:.82rem;">
             <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · format carré ou rectangulaire recommandé</span>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo(&#39;soc-logo-preview&#39;,&#39;soc-logo-data&#39;,&#39;soc-logo-file&#39;)">Supprimer le logo</button>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('soc-logo-preview','soc-logo-data','soc-logo-file')">Supprimer le logo</button>
           </div>
         </div>
         <input type="hidden" id="soc-logo-data" value="">
@@ -1040,14 +1044,14 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Informations de contact</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société (commercial) *</label><input type="text" id="edit-societe" placeholder="Cuisines &amp; Co"></div>
+      <div class="field span-2"><label>Nom de la société (commercial) *</label><input type="text" id="edit-societe" placeholder="Cuisines & Co"></div>
       <div class="field"><label>Nom *</label><input type="text" id="edit-nom"></div>
       <div class="field"><label>Prénom</label><input type="text" id="edit-prenom"></div>
       <div class="field"><label>Email *</label><input type="email" id="edit-email"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="edit-tel"></div>
       <div class="field span-2">
         <label>Réinitialisation du mot de passe</label>
-        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="sendResetForClient(document.getElementById(&#39;edit-email&#39;).value)">📧 Envoyer un email de réinitialisation</button>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="sendResetForClient(document.getElementById('edit-email').value)">📧 Envoyer un email de réinitialisation</button>
         <span class="field-hint">Le cuisiniste recevra un lien par email pour définir un nouveau mot de passe.</span>
         <input type="hidden" id="edit-password" value="">
       </div>
@@ -1083,9 +1087,9 @@ textarea { resize: vertical; min-height: 80px; }
             <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
           </div>
           <div style="flex:1;">
-            <input type="file" id="edit-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,&#39;edit-logo-preview&#39;,&#39;edit-logo-data&#39;)" style="font-size:.82rem;">
+            <input type="file" id="edit-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'edit-logo-preview','edit-logo-data')" style="font-size:.82rem;">
             <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · le logo apparaîtra en en-tête des bons de commande émis par ce cuisiniste</span>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo(&#39;edit-logo-preview&#39;,&#39;edit-logo-data&#39;,&#39;edit-logo-file&#39;)">Supprimer le logo</button>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('edit-logo-preview','edit-logo-data','edit-logo-file')">Supprimer le logo</button>
           </div>
         </div>
         <input type="hidden" id="edit-logo-data" value="">
@@ -1119,8 +1123,8 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div class="commande-section">
       <h4>📐 Plan de la cuisine</h4>
-      <div class="file-drop-zone" id="drop-plan" onclick="document.getElementById(&#39;file-plan&#39;).click()">
-        <input type="file" id="file-plan" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this,&#39;drop-plan&#39;,&#39;label-plan&#39;)">
+      <div class="file-drop-zone" id="drop-plan" onclick="document.getElementById('file-plan').click()">
+        <input type="file" id="file-plan" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this,'drop-plan','label-plan')">
         <div class="file-drop-label">
           <strong id="label-plan">Cliquez pour ajouter le plan coté</strong><br>
           PDF, JPG, PNG — 20 Mo max
@@ -1130,8 +1134,8 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div class="commande-section">
       <h4>✍️ Devis signé <span style="font-size:.75rem;font-weight:300;color:var(--stone-light);">(optionnel — à venir)</span></h4>
-      <div class="file-drop-zone" id="drop-devis" onclick="document.getElementById(&#39;file-devis&#39;).click()">
-        <input type="file" id="file-devis" accept=".pdf" onchange="handleFileSelect(this,&#39;drop-devis&#39;,&#39;label-devis&#39;)">
+      <div class="file-drop-zone" id="drop-devis" onclick="document.getElementById('file-devis').click()">
+        <input type="file" id="file-devis" accept=".pdf" onchange="handleFileSelect(this,'drop-devis','label-devis')">
         <div class="file-drop-label">
           <strong id="label-devis">Cliquez pour joindre le devis signé</strong><br>
           PDF uniquement
@@ -1142,7 +1146,7 @@ textarea { resize: vertical; min-height: 80px; }
     <div class="commande-section">
       <h4>💬 Notes pour Intérieur Granit</h4>
       <div class="field">
-        <textarea id="commande-notes" placeholder="Contraintes d&#39;accès, précisions de pose, informations complémentaires…" style="min-height:70px;"></textarea>
+        <textarea id="commande-notes" placeholder="Contraintes d'accès, précisions de pose, informations complémentaires…" style="min-height:70px;"></textarea>
       </div>
     </div>
 
@@ -5374,5 +5378,5 @@ document.getElementById('modal-pro-profil').addEventListener('click', function(e
   if (e.target === this) closeProProfilModal();
 });
 </script>
-
-</body></html>
+</body>
+</html>
