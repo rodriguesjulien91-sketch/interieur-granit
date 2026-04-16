@@ -1,14 +1,15 @@
+
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0043)file:///C:/Users/PC/Downloads/index_45.html -->
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intérieur Granit — Espace Professionnel</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="./Intérieur Granit — Espace Professionnel_files/css2" rel="stylesheet">
 <!-- Firebase SDK (compat mode — pas besoin de build tool) -->
-<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+<script src="./Intérieur Granit — Espace Professionnel_files/firebase-app-compat.js.téléchargement"></script>
+<script src="./Intérieur Granit — Espace Professionnel_files/firebase-auth-compat.js.téléchargement"></script>
+<script src="./Intérieur Granit — Espace Professionnel_files/firebase-firestore-compat.js.téléchargement"></script>
 <style>
 /* ═══ VARIABLES ═══════════════════════════════════════════════════ */
 :root {
@@ -225,6 +226,16 @@ textarea { resize: vertical; min-height: 80px; }
 .file-selected { background: rgba(45,122,79,.06); border-color: #2d7a4f; }
 .file-selected .file-drop-label { color: #1a6640; }
 
+
+/* ═══ COLORIS PREVIEW ══════════════════════════════════════════ */
+.coloris-preview-box { margin-top:10px; border-radius:4px; overflow:hidden; border:1px solid var(--cream-dark); display:none; flex-direction:column; }
+.coloris-preview-box.visible { display:flex; }
+.coloris-preview-img-wrap { width:100%; height:130px; background:var(--cream-dark); position:relative; overflow:hidden; }
+.coloris-preview-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; transition:opacity .3s; }
+.coloris-preview-img-wrap .img-loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:var(--stone-light); font-style:italic; background:var(--cream-dark); text-align:center; padding:8px; }
+.coloris-preview-info { padding:8px 12px; background:var(--white); border-top:1px solid var(--cream-dark); }
+.coloris-preview-name { font-size:.82rem; font-weight:500; color:var(--stone); }
+.coloris-preview-mat { font-size:.71rem; color:var(--stone-light); margin-top:2px; text-transform:uppercase; letter-spacing:.06em; }
 /* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
 #view-form { min-height: 100vh; }
 .progress-wrapper { background: var(--stone-mid); padding: 18px 40px; position: sticky; top: 64px; z-index: 100; }
@@ -328,13 +339,12 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <div class="field" style="margin-bottom:22px;">
         <label for="login-password">Mot de passe</label>
-        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter') doLogin()">
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key===&#39;Enter&#39;) doLogin()">
       </div>
       <button id="login-btn" class="btn btn-primary" style="width:100%;padding:14px;" onclick="doLogin()">Se connecter</button>
       <div class="login-demo" style="text-align:center;font-size:.78rem;color:var(--stone-light);">
         Mot de passe oublié ?&nbsp;
-        <a href="#" onclick="sendPasswordReset(event)" style="color:var(--gold);text-decoration:none;">Réinitialiser par email</a>
+        <a href="file:///C:/Users/PC/Downloads/index_45.html#" onclick="sendPasswordReset(event)" style="color:var(--gold);text-decoration:none;">Réinitialiser par email</a>
       </div>
     </div>
   </div>
@@ -370,10 +380,11 @@ textarea { resize: vertical; min-height: 80px; }
     <!-- Tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
       <div class="tabs" style="border-bottom:none;margin-bottom:0;flex:1;">
-        <button class="tab-btn active" onclick="switchTab('clients')">Clients professionnels</button>
-        <button class="tab-btn" onclick="switchTab('quotes')">Tous les chiffrages</button>
-        <button class="tab-btn" onclick="switchTab('direct')">Devis particuliers</button>
-        <button class="tab-btn" onclick="switchTab('coeff')">Coefficient de vente</button>
+        <button class="tab-btn active" onclick="switchTab(&#39;clients&#39;)">Clients professionnels</button>
+        <button class="tab-btn" onclick="switchTab(&#39;quotes&#39;)">Tous les chiffrages</button>
+        <button class="tab-btn" onclick="switchTab(&#39;direct&#39;)">Devis particuliers</button>
+        <button class="tab-btn" onclick="switchTab(&#39;coeff&#39;)">Coefficient de vente</button>
+        <button class="tab-btn" onclick="switchTab(&#39;visuels&#39;)">🖼 Visuels coloris</button>
       </div>
       <button class="btn btn-sm btn-secondary" style="margin-bottom:1px;" onclick="renderAdminDashboard()" title="Rafraîchir les données">↺ Rafraîchir</button>
     </div>
@@ -456,9 +467,7 @@ textarea { resize: vertical; min-height: 80px; }
           <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
             <div style="flex:1;">
               <label>Coefficient de vente</label>
-              <input type="number" id="coeff-direct-input" class="input-field" value="1.00" min="1.00" max="3.00" step="0.01"
-                     style="font-size:1.1rem;font-weight:600;text-align:center;"
-                     oninput="updateCoeffPreview()">
+              <input type="number" id="coeff-direct-input" class="input-field" value="1.00" min="1.00" max="3.00" step="0.01" style="font-size:1.1rem;font-weight:600;text-align:center;" oninput="updateCoeffPreview()">
             </div>
             <div id="coeff-preview" style="font-size:.82rem;color:var(--stone-light);margin-top:18px;min-width:140px;">
               Marge : 0%
@@ -479,6 +488,42 @@ textarea { resize: vertical; min-height: 80px; }
           <span id="coeff-saved-msg" style="display:none;color:var(--success);font-size:.82rem;">✓ Coefficient enregistré</span>
         </div>
       </div>
+    </div>
+
+    <!-- Tab : Visuels coloris -->
+    <div id="tab-visuels" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Visuels coloris</h2>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <select id="visuels-mat-filter" onchange="renderVisuelsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="all">Tous les matériaux</option>
+            <option value="granit">Granit</option><option value="marbre">Marbre</option>
+            <option value="pierre">Pierre calcaire</option>
+            <option value="quartz-silestone">Quartz Silestone</option>
+            <option value="quartz-unistone">Quartz Unistone</option>
+            <option value="dekton">Dekton</option>
+            <option value="ceramique-neolith">Neolith</option>
+            <option value="ceramique-laminam">Laminam</option>
+            <option value="ceramique-uniceramica">Uniceramica</option>
+            <option value="ceramique-xstone">Xtone</option>
+            <option value="ceramique-abkstone">ABK-Materia</option>
+            <option value="gc-granit">Granit GC</option><option value="gc-quartz">Quartz GC</option>
+            <option value="gc-neolith">Neolith GC</option><option value="gc-uniceramica">Uniceramica GC</option>
+          </select>
+          <select id="visuels-status-filter" onchange="renderVisuelsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="all">Tous</option>
+            <option value="ok">Avec image</option>
+            <option value="missing">Sans image</option>
+          </select>
+          <button class="btn btn-sm btn-danger" onclick="if(confirm(&#39;Vider toutes les images ?&#39;)) vClearAll()">✕ Tout effacer</button>
+        </div>
+      </div>
+      <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;">
+        <strong>Comment ajouter un visuel :</strong> faites une capture d'écran du coloris sur le site du fabricant,
+        ou copiez l'adresse d'une image (clic droit → "Copier l'adresse de l'image"). Collez dans le champ et cliquez Enregistrer.
+      </p>
+      <div id="visuels-stats" style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;"></div>
+      <div id="visuels-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;"></div>
     </div>
 
   </div>
@@ -651,6 +696,16 @@ textarea { resize: vertical; min-height: 80px; }
           <div class="field">
             <label>Coloris *</label>
             <select id="coloris" onchange="onColorisChange();"><option value="">Sélectionnez d'abord un matériau...</option></select>
+            <div class="coloris-preview-box" id="coloris-preview-wrap">
+              <div class="coloris-preview-img-wrap">
+                <div class="img-loader" id="coloris-img-loader">Aperçu indisponible</div>
+                <img id="coloris-preview-img" src="file:///C:/Users/PC/Downloads/index_45.html" alt="Aperçu" style="opacity: 0; display: none;" onload="this.style.opacity=&#39;1&#39;;document.getElementById(&#39;coloris-img-loader&#39;).style.display=&#39;none&#39;;" onerror="this.style.display=&#39;none&#39;;document.getElementById(&#39;coloris-img-loader&#39;).textContent=&#39;Aperçu indisponible&#39;;">
+              </div>
+              <div class="coloris-preview-info">
+                <div class="coloris-preview-name" id="coloris-preview-name"></div>
+                <div class="coloris-preview-mat" id="coloris-preview-mat"></div>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label>Finition *</label>
@@ -737,10 +792,10 @@ textarea { resize: vertical; min-height: 80px; }
               <option value="Droit chanfreiné">Droit chanfreiné</option>
               <option value="Arrondi 1/4 de rond">Arrondi 1/4 de rond</option>
               <option value="Arrondi 1/2 rond">Arrondi 1/2 rond</option>
-              <option value="Droit 4 à 10 cm coupe d'onglet">Droit 4–10 cm onglet</option>
+              <option value="Droit 4 à 10 cm coupe d&#39;onglet">Droit 4–10 cm onglet</option>
               <option value="Droit 4 à 10 cm rapporté">Droit 4–10 cm rapporté</option>
               <option value="Droit 2 + 2 cm chanfreiné">Droit 2+2 cm chanfreiné</option>
-              <option value="Aile d'avion">Aile d'avion</option>
+              <option value="Aile d&#39;avion">Aile d'avion</option>
             </select>
           </div>
           <div class="field">
@@ -757,56 +812,56 @@ textarea { resize: vertical; min-height: 80px; }
 
     <!-- ÉTAPE 4 : OPTIONS -->
     <div class="step-panel" id="step-4">
-      <h1 class="step-title">Options & évidements</h1>
+      <h1 class="step-title">Options &amp; évidements</h1>
       <p class="step-subtitle">Découpes, perçages et conditions de pose</p>
       <div class="section-block">
-        <h3>Évidements & perçages</h3>
+        <h3>Évidements &amp; perçages</h3>
         <div class="counter-grid" id="counters">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item" id="coupe-onglet-item"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet"></span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:'DM Sans',sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson">88 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre">88 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan">158 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur">20 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar">29 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan">44 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence">23 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle">63 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage">168 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi">60 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" id="coupe-onglet-item"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet">60 € HT / ml</span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:&#39;DM Sans&#39;,sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Prestation & livraison</h3>
+        <h3>Prestation &amp; livraison</h3>
         <div class="counter-grid">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose & installation</span><span class="counter-price" data-key="pose-installation"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote">150 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose &amp; installation</span><span class="counter-price" data-key="pose-installation">472 € HT / unité</span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Conditions de pose & TVA</h3>
+        <h3>Conditions de pose &amp; TVA</h3>
         <div class="form-grid">
           <div class="field">
             <label>Le logement a-t-il plus de 2 ans ?</label>
             <div class="radio-cards">
-              <div class="radio-card"><input type="radio" name="tva" id="tva-oui" value="10" checked><label for="tva-oui"><span class="icon">🏠</span>Oui — TVA 10%</label></div>
+              <div class="radio-card"><input type="radio" name="tva" id="tva-oui" value="10" checked=""><label for="tva-oui"><span class="icon">🏠</span>Oui — TVA 10%</label></div>
               <div class="radio-card"><input type="radio" name="tva" id="tva-non" value="20"><label for="tva-non"><span class="icon">🏗️</span>Non — TVA 20%</label></div>
             </div>
           </div>
           <div class="field">
-            <label>Accès & livraison</label>
+            <label>Accès &amp; livraison</label>
             <div class="radio-cards">
-              <div class="radio-card"><input type="radio" name="livraison" id="rdc" value="rdc" checked><label for="rdc"><span class="icon">🚪</span>Rez-de-chaussée<small id="lbl-rdc" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
-              <div class="radio-card"><input type="radio" name="livraison" id="etage" value="etage"><label for="etage"><span class="icon">🏢</span>Étage / Paris<small id="lbl-etage" style="display:block;font-size:.75rem;opacity:.7;"></small></label></div>
+              <div class="radio-card"><input type="radio" name="livraison" id="rdc" value="rdc" checked=""><label for="rdc"><span class="icon">🚪</span>Rez-de-chaussée<small id="lbl-rdc" style="display:block;font-size:.75rem;opacity:.7;">195,00 € HT</small></label></div>
+              <div class="radio-card"><input type="radio" name="livraison" id="etage" value="etage"><label for="etage"><span class="icon">🏢</span>Étage / Paris<small id="lbl-etage" style="display:block;font-size:.75rem;opacity:.7;">395,00 € HT</small></label></div>
             </div>
           </div>
         </div>
       </div>
       <div class="section-block">
-        <h3>Commentaire & plan coté</h3>
+        <h3>Commentaire &amp; plan coté</h3>
         <div class="form-grid full">
           <div class="field">
             <label>Commentaire</label>
-            <textarea id="commentaire" placeholder="Forme particulière, contrainte d'accès, précisions..."></textarea>
+            <textarea id="commentaire" placeholder="Forme particulière, contrainte d&#39;accès, précisions..."></textarea>
           </div>
           <div class="field">
             <label>Plan coté (facultatif)</label>
@@ -849,7 +904,7 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="summary-card" id="price-breakdown"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="prevStep(5)">← Retour</button>
-        <button class="btn btn-gold btn-submit" onclick="submitQuote('valider')">✓ Valider le devis</button>
+        <button class="btn btn-gold btn-submit" onclick="submitQuote(&#39;valider&#39;)">✓ Valider le devis</button>
       </div>
     </div>
 
@@ -863,7 +918,7 @@ textarea { resize: vertical; min-height: 80px; }
   <div class="modal fade-in">
     <h2>Nouveau client professionnel</h2>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="new-societe" placeholder="Cuisines & Co"></div>
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="new-societe" placeholder="Cuisines &amp; Co"></div>
       <div class="field"><label>Nom *</label><input type="text" id="new-nom" placeholder="Dupont"></div>
       <div class="field"><label>Prénom</label><input type="text" id="new-prenom" placeholder="Jean"></div>
       <div class="field"><label>Email *</label><input type="email" id="new-email" placeholder="jean@cuisines-co.fr"></div>
@@ -895,7 +950,7 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Coordonnées société</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="pp-societe" placeholder="Cuisines & Co"></div>
+      <div class="field span-2"><label>Nom de la société *</label><input type="text" id="pp-societe" placeholder="Cuisines &amp; Co"></div>
       <div class="field"><label>Prénom du contact</label><input type="text" id="pp-prenom" placeholder="Marc"></div>
       <div class="field"><label>Nom du contact</label><input type="text" id="pp-nom" placeholder="Bernard"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="pp-tel" placeholder="06 12 34 56 78"></div>
@@ -939,7 +994,7 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Coordonnées</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Adresse</label><input type="text" id="soc-adresse" placeholder="12 rue de l'Artisan"></div>
+      <div class="field span-2"><label>Adresse</label><input type="text" id="soc-adresse" placeholder="12 rue de l&#39;Artisan"></div>
       <div class="field"><label>Code postal</label><input type="text" id="soc-cp" placeholder="75001"></div>
       <div class="field"><label>Ville</label><input type="text" id="soc-ville" placeholder="Paris"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="soc-tel" placeholder="01 23 45 67 89"></div>
@@ -962,9 +1017,9 @@ textarea { resize: vertical; min-height: 80px; }
             <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
           </div>
           <div style="flex:1;">
-            <input type="file" id="soc-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'soc-logo-preview','soc-logo-data')" style="font-size:.82rem;">
+            <input type="file" id="soc-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,&#39;soc-logo-preview&#39;,&#39;soc-logo-data&#39;)" style="font-size:.82rem;">
             <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · format carré ou rectangulaire recommandé</span>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('soc-logo-preview','soc-logo-data','soc-logo-file')">Supprimer le logo</button>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo(&#39;soc-logo-preview&#39;,&#39;soc-logo-data&#39;,&#39;soc-logo-file&#39;)">Supprimer le logo</button>
           </div>
         </div>
         <input type="hidden" id="soc-logo-data" value="">
@@ -985,14 +1040,14 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;">Informations de contact</div>
     <div class="form-grid">
-      <div class="field span-2"><label>Nom de la société (commercial) *</label><input type="text" id="edit-societe" placeholder="Cuisines & Co"></div>
+      <div class="field span-2"><label>Nom de la société (commercial) *</label><input type="text" id="edit-societe" placeholder="Cuisines &amp; Co"></div>
       <div class="field"><label>Nom *</label><input type="text" id="edit-nom"></div>
       <div class="field"><label>Prénom</label><input type="text" id="edit-prenom"></div>
       <div class="field"><label>Email *</label><input type="email" id="edit-email"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="edit-tel"></div>
       <div class="field span-2">
         <label>Réinitialisation du mot de passe</label>
-        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="sendResetForClient(document.getElementById('edit-email').value)">📧 Envoyer un email de réinitialisation</button>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="sendResetForClient(document.getElementById(&#39;edit-email&#39;).value)">📧 Envoyer un email de réinitialisation</button>
         <span class="field-hint">Le cuisiniste recevra un lien par email pour définir un nouveau mot de passe.</span>
         <input type="hidden" id="edit-password" value="">
       </div>
@@ -1028,9 +1083,9 @@ textarea { resize: vertical; min-height: 80px; }
             <span style="font-size:.72rem;color:var(--stone-light);text-align:center;padding:6px;">Aucun logo</span>
           </div>
           <div style="flex:1;">
-            <input type="file" id="edit-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,'edit-logo-preview','edit-logo-data')" style="font-size:.82rem;">
+            <input type="file" id="edit-logo-file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" onchange="handleLogoUpload(this,&#39;edit-logo-preview&#39;,&#39;edit-logo-data&#39;)" style="font-size:.82rem;">
             <span class="field-hint">PNG, JPG ou SVG · 1 Mo max · le logo apparaîtra en en-tête des bons de commande émis par ce cuisiniste</span>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo('edit-logo-preview','edit-logo-data','edit-logo-file')">Supprimer le logo</button>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="removeLogo(&#39;edit-logo-preview&#39;,&#39;edit-logo-data&#39;,&#39;edit-logo-file&#39;)">Supprimer le logo</button>
           </div>
         </div>
         <input type="hidden" id="edit-logo-data" value="">
@@ -1064,8 +1119,8 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div class="commande-section">
       <h4>📐 Plan de la cuisine</h4>
-      <div class="file-drop-zone" id="drop-plan" onclick="document.getElementById('file-plan').click()">
-        <input type="file" id="file-plan" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this,'drop-plan','label-plan')">
+      <div class="file-drop-zone" id="drop-plan" onclick="document.getElementById(&#39;file-plan&#39;).click()">
+        <input type="file" id="file-plan" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this,&#39;drop-plan&#39;,&#39;label-plan&#39;)">
         <div class="file-drop-label">
           <strong id="label-plan">Cliquez pour ajouter le plan coté</strong><br>
           PDF, JPG, PNG — 20 Mo max
@@ -1075,8 +1130,8 @@ textarea { resize: vertical; min-height: 80px; }
 
     <div class="commande-section">
       <h4>✍️ Devis signé <span style="font-size:.75rem;font-weight:300;color:var(--stone-light);">(optionnel — à venir)</span></h4>
-      <div class="file-drop-zone" id="drop-devis" onclick="document.getElementById('file-devis').click()">
-        <input type="file" id="file-devis" accept=".pdf" onchange="handleFileSelect(this,'drop-devis','label-devis')">
+      <div class="file-drop-zone" id="drop-devis" onclick="document.getElementById(&#39;file-devis&#39;).click()">
+        <input type="file" id="file-devis" accept=".pdf" onchange="handleFileSelect(this,&#39;drop-devis&#39;,&#39;label-devis&#39;)">
         <div class="file-drop-label">
           <strong id="label-devis">Cliquez pour joindre le devis signé</strong><br>
           PDF uniquement
@@ -1087,7 +1142,7 @@ textarea { resize: vertical; min-height: 80px; }
     <div class="commande-section">
       <h4>💬 Notes pour Intérieur Granit</h4>
       <div class="field">
-        <textarea id="commande-notes" placeholder="Contraintes d'accès, précisions de pose, informations complémentaires…" style="min-height:70px;"></textarea>
+        <textarea id="commande-notes" placeholder="Contraintes d&#39;accès, précisions de pose, informations complémentaires…" style="min-height:70px;"></textarea>
       </div>
     </div>
 
@@ -2013,45 +2068,17 @@ async function loadAppData() {
   }
 }
 
-// ─── Listener temps réel (admin ET pro) ────────────────────────
+// ─── Listener temps réel (admin uniquement) ────────────────────
 let unsubQuotes = null;
 function setupRealtimeListeners() {
   if (unsubQuotes) unsubQuotes();
-  // Admin : écoute tous les devis
-  // Pro : écoute uniquement ses devis (filtré par proEmail)
-  const isAdmin = currentUser && currentUser.role === 'admin';
-  const baseQuery = isAdmin
-    ? fbDb.collection('quotes')
-    : fbDb.collection('quotes').where('proEmail', '==', currentUser.email);
-  unsubQuotes = baseQuery.onSnapshot(snap => {
-    if (isAdmin) {
-      // Admin : remplace entièrement le cache
-      const quotes = [];
-      snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
-      quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-      appCache.quotes = quotes;
-      if (document.getElementById('view-admin')?.classList.contains('active')) {
-        renderAdminDashboard();
-      }
-    } else {
-      // Pro : fusionne dans le cache (on ne connaît que nos propres devis)
-      const myQuotes = [];
-      snap.forEach(doc => myQuotes.push({ id: doc.id, ...doc.data() }));
-      const otherQuotes = (appCache.quotes || []).filter(q => q.proEmail !== currentUser.email);
-      appCache.quotes = [...myQuotes, ...otherQuotes]
-        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-      // Rafraîchit la vue pro si affichée
-      if (document.getElementById('view-pro')?.classList.contains('active')) {
-        const openDetailId = document.getElementById('pro-quote-detail')?.dataset?.openId;
-        renderProQuotes();
-        // Si un détail était ouvert, le ré-ouvrir pour afficher la version à jour
-        if (openDetailId && myQuotes.some(q => q.id === openDetailId)) {
-          // reset puis ré-ouvrir
-          const panel = document.getElementById('pro-quote-detail');
-          if (panel) { panel.dataset.openId = ''; panel.classList.remove('active'); }
-          setTimeout(() => showProQuoteDetail(openDetailId), 30);
-        }
-      }
+  unsubQuotes = fbDb.collection('quotes').onSnapshot(snap => {
+    const quotes = [];
+    snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
+    quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    appCache.quotes = quotes;
+    if (document.getElementById('view-admin')?.classList.contains('active')) {
+      renderAdminDashboard();
     }
   }, err => console.warn('onSnapshot error:', err));
 }
@@ -2081,7 +2108,7 @@ function doLogin() {
       }
       currentUser = user;
       if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); }
-      else { showProView(); setupRealtimeListeners(); }
+      else showProView();
     })
     .catch(() => {
       errEl.textContent = 'Email ou mot de passe incorrect.';
@@ -2181,10 +2208,7 @@ function renderAdminDashboard() {
   const quotes = db.quotes;
   const newQuotes = quotes.filter(q => q.status === 'nouveau');
   const commandeQuotes = quotes.filter(q => q.status === 'commande');
-  const totalHT_commandes = commandeQuotes.reduce((s,q) => {
-    const t = q.totalHT ? computeQuoteTotals(q) : null;
-    return s + (t ? t.htNet : 0);
-  }, 0);
+  const totalHT_commandes = commandeQuotes.reduce((s,q) => s + (q.totalHT||0), 0);
 
   document.getElementById('stat-clients').textContent = proUsers.length;
   document.getElementById('stat-total').textContent = quotes.length;
@@ -2495,7 +2519,7 @@ function statusTag(status) {
 }
 
 function switchTab(tab) {
-  const tabs = ['clients','quotes','direct','coeff'];
+  const tabs = ['clients','quotes','direct','coeff','visuels'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
   tabs.forEach(t => {
     const el = document.getElementById('tab-'+t);
@@ -2503,6 +2527,7 @@ function switchTab(tab) {
   });
   if (tab === 'direct') renderDevisDirectTab();
   if (tab === 'coeff') renderCoeffTab();
+  if (tab === 'visuels') renderVisuelsTab();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3005,22 +3030,15 @@ function displayFilteredQuotes(quotes) {
     const cmdBtn = (q.status === 'devise')
       ? `<button class="btn btn-sm btn-commande qc-commander" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>`
       : '';
-    const t = q.totalHT ? computeQuoteTotals(q) : null;
-    const hasRemise = t && t.remiseAmt > 0;
-    const priceDisplay = t
-      ? (hasRemise
-          ? `<div style="text-decoration:line-through;font-size:.78rem;color:var(--stone-light);">${fmtEUR(t.htBrut)}</div><div class="qc-price" style="color:var(--gold);">${fmtEUR(t.htNet)}</div>`
-          : `<div class="qc-price">${fmtEUR(t.htBrut)}</div>`)
-      : '<div class="qc-price">Sur devis</div>';
     return `<div class="quote-card fade-in" onclick="showProQuoteDetail('${q.id}')">
       <div>
         <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
         <div class="qc-client">${clientName} — ${q.client?.ville||''}</div>
-        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}${hasRemise?' · <span style="color:var(--gold);font-weight:600;">Remise appliquée</span>':''}</div>
+        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}</div>
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
-        ${priceDisplay}
+        <div class="qc-price">${q.totalHT ? fmtEUR(q.totalHT) : 'Sur devis'}</div>
         <div class="qc-date">${q.totalHT ? 'Prix d\'achat HT' : ''}</div>
       </div>
     </div>`;
@@ -3085,17 +3103,7 @@ function showProQuoteDetail(id) {
         <div class="summary-row"><span class="key">Surface</span><span class="val">${surf} m²</span></div>
         ${q.chant?.type?`<div class="summary-row"><span class="key">Chant</span><span class="val">${q.chant.type}</span></div>`:''}
         ${optLines}
-        ${(function(){
-          if (!q.totalHT) return '<div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">—</span></div>';
-          const t = computeQuoteTotals(q);
-          if (t.remiseAmt > 0) {
-            const rLabel = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)}%)` : 'Remise commerciale';
-            return `<div class="summary-row" style="margin-top:8px;"><span class="key">Sous-total HT</span><span class="val">${fmtEUR(t.htBrut)}</span></div>
-                    <div class="summary-row"><span class="key" style="color:var(--gold);">${rLabel}</span><span class="val" style="color:var(--gold);">− ${fmtEUR(t.remiseAmt)}</span></div>
-                    <div class="summary-row"><span class="key" style="font-weight:600;">Total HT net</span><span class="val" style="font-weight:700;font-size:1rem;color:var(--gold);">${fmtEUR(t.htNet)}</span></div>`;
-          }
-          return `<div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(t.htBrut)}</span></div>`;
-        })()}
+        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?fmtEUR(q.totalHT):'—'}</span></div>
       </div>
     </div>
     ${commandeInfo}
@@ -3129,14 +3137,8 @@ function openCommandeModal(quoteId) {
   document.getElementById('file-devis').value = '';
   // Recap
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
-  const _tRecap = q.totalHT ? computeQuoteTotals(q) : null;
-  const priceRecap = _tRecap
-    ? (_tRecap.remiseAmt > 0
-        ? `<strong>${fmtEUR(_tRecap.htNet)} HT</strong> <span style="color:var(--gold);font-size:.76rem;">(remisé)</span>`
-        : `<strong>${fmtEUR(_tRecap.htBrut)} HT</strong>`)
-    : '';
   document.getElementById('commande-quote-recap').innerHTML =
-    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; ${priceRecap}`;
+    `<strong style="color:var(--gold);">${clientName}</strong> &nbsp;·&nbsp; ${q.materiauLabel||q.materiau} &nbsp;·&nbsp; ${q.client?.ville||''} &nbsp;·&nbsp; <strong>${q.totalHT?(fmtEUR(q.totalHT) + ' HT'):''}</strong>`;
   document.getElementById('modal-commande').classList.add('active');
 }
 
@@ -3482,12 +3484,34 @@ function onColorisChange() {
   const finSel = document.getElementById('finition');
   const fins = getColorisFinitions(mat, coloris);
   if (fins.length > 1) {
-    // Plusieurs finitions disponibles — dropdown interactif
     finSel.innerHTML = fins.map(f => '<option value="' + f.f + '">' + f.f + '</option>').join('');
   } else if (fins.length === 1) {
     finSel.innerHTML = '<option value="' + fins[0].f + '" selected>' + fins[0].f + '</option>';
   } else {
     finSel.innerHTML = '<option value="">—</option>';
+  }
+  // ── Preview image coloris ─────────────────────────────────────────
+  const wrap = document.getElementById('coloris-preview-wrap');
+  if (coloris && mat && wrap) {
+    const url    = vGetImage(mat, coloris);
+    const img    = document.getElementById('coloris-preview-img');
+    const loader = document.getElementById('coloris-img-loader');
+    document.getElementById('coloris-preview-name').textContent = coloris;
+    document.getElementById('coloris-preview-mat').textContent  = vMatLabels[mat] || mat;
+    if (url) {
+      img.style.display  = 'block';
+      img.style.opacity  = '0';
+      loader.style.display = 'flex';
+      loader.textContent = 'Chargement...';
+      img.src = url;
+    } else {
+      img.style.display    = 'none';
+      loader.style.display = 'flex';
+      loader.textContent   = "Aucun visuel — ajoutez-en un via l'onglet Visuels (admin)";
+    }
+    wrap.classList.add('visible');
+  } else if (wrap) {
+    wrap.classList.remove('visible');
   }
   onFinitionChange();
 }
@@ -3868,20 +3892,9 @@ function submitQuote(action) {
       chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
       options: getCounters(),
       tva: Math.round(tva*100),
-      // Remise commerciale : admin peut la modifier ; pro ne la touche pas (préservation)
-      remise: (function(){
-        if (currentUser && currentUser.role === 'admin') {
-          const rType = document.getElementById('remise-type')?.value || 'none';
-          if (rType === 'none') return null;
-          return { type: rType, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 };
-        }
-        // Non-admin : préserver la remise existante si on édite
-        if (currentEditingQuoteId) {
-          const _existing = db.quotes.find(x => x.id === currentEditingQuoteId);
-          return _existing?.remise || null;
-        }
-        return null;
-      })(),
+      remise: (currentUser && currentUser.role === 'admin' && (document.getElementById('remise-type')?.value || 'none') !== 'none')
+        ? { type: document.getElementById('remise-type').value, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 }
+        : null,
       livraison: document.querySelector('input[name="livraison"]:checked')?.value,
       commentaire: document.getElementById('commentaire').value,
       totalHT: totalHT !== null ? totalHT : null,
@@ -3951,7 +3964,8 @@ function showToast(msg) {
 // ═══════════════════════════════════════════════════════════════
 //  EXPORT BON DE COMMANDE (PDF via impression navigateur)
 // ═══════════════════════════════════════════════════════════════
-function exportBonDeCommande(quoteId) {
+async function exportBonDeCommande(quoteId) {
+  await vLoad();
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -4000,6 +4014,7 @@ function exportBonDeCommande(quoteId) {
   const rawDate = q.commande?.dateInstall || q.client?.datePose;
   const installDate = rawDate ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : null;
 
+  const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -4106,12 +4121,16 @@ function exportBonDeCommande(quoteId) {
 <!-- MATÉRIAU -->
 <div class="sec">
   <div class="sec-title">Matériau</div>
-  <div class="mat-grid">
-    <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel || '—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris || '—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition || '—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur + ' mm' : '—'}</div></div>
-  </div>
+  <div style="display:flex;gap:14px;align-items:flex-start;">
+    ${imgColoris ? `<img src="${imgColoris}" alt="${q.coloris}" style="width:120px;height:80px;object-fit:cover;border-radius:3px;border:1px solid #ede6d6;flex-shrink:0;">` : ''}
+    <div class="mat-grid" style="flex:1;">
+      <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel || '—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris || '—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition || '—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur + ' mm' : '—'}</div></div>
+    </div>
+  </div>${imgColoris ? `
+    <div style="font-size:7px;color:#7a6f62;font-style:italic;margin-top:5px;">Visuel du coloris fourni à titre indicatif uniquement — les teintes et textures peuvent varier selon les lots de fabrication. Document non contractuel.</div>` : ''}
 </div>
 
 <!-- DIMENSIONS -->
@@ -4180,7 +4199,8 @@ ${optRows ? `<div class="sec">
 // ═══════════════════════════════════════════════════════════════
 //  EXPORT DEVIS PARTICULIER (PDF via impression navigateur)
 // ═══════════════════════════════════════════════════════════════
-function exportDevisParticulier(quoteId) {
+async function exportDevisParticulier(quoteId) {
+  await vLoad();
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -4364,6 +4384,7 @@ function exportDevisParticulier(quoteId) {
     s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
+  const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -4485,12 +4506,17 @@ function exportDevisParticulier(quoteId) {
 <!-- MATÉRIAU -->
 <div class="sec">
   <div class="sec-title">Matériau</div>
-  <div class="mat-grid">
-    <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel||'—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris||'—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition||'—'}</div></div>
-    <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur+' mm' : '—'}</div></div>
+  <div style="display:flex;gap:12px;align-items:flex-start;">
+    ${imgColoris ? `<img src="${imgColoris}" alt="${q.coloris}" style="width:110px;height:75px;object-fit:cover;border-radius:3px;border:1px solid #ede6d6;flex-shrink:0;">` : ''}
+    <div class="mat-grid" style="flex:1;">
+      <div class="mat-cell"><div class="mat-key">Matière</div><div class="mat-val">${q.materiauLabel||'—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Coloris</div><div class="mat-val">${q.coloris||'—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Finition</div><div class="mat-val">${q.finition||'—'}</div></div>
+      <div class="mat-cell"><div class="mat-key">Épaisseur</div><div class="mat-val">${q.epaisseur ? q.epaisseur+' mm' : '—'}</div></div>
+    </div>
   </div>
+  ${imgColoris ? `
+    <div style="font-size:7px;color:#7a6f62;font-style:italic;margin-top:5px;">Visuel du coloris fourni à titre indicatif uniquement — les teintes et textures peuvent varier selon les lots de fabrication. Document non contractuel.</div>` : ""}
 </div>
 
 <!-- TABLEAU DÉTAILLÉ -->
@@ -4712,6 +4738,7 @@ async function genererFacture(quoteId) {
     s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
+  const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5009,6 +5036,7 @@ async function genererFactureDirecte(quoteId) {
   const tvaAmt = _tDir.tvaAmt;
   const totalTTC = _tDir.ttc;
 
+  const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5125,11 +5153,209 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   win.document.close();
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+//  VISUELS COLORIS — ajout manuel, sauvegarde Firestore
+// ═══════════════════════════════════════════════════════════════
+var vCache = {};   // { "mat|coloris": "url" }
+var vLoaded = false;
+
+const vMatLabels = {
+  'granit':'Granit','marbre':'Marbre','pierre':'Pierre calcaire',
+  'quartz-silestone':'Quartz Silestone','quartz-unistone':'Quartz Unistone',
+  'dekton':'Dekton','ceramique-neolith':'Neolith','ceramique-laminam':'Laminam',
+  'ceramique-uniceramica':'Uniceramica','ceramique-xstone':'Xtone Porcelanosa',
+  'ceramique-abkstone':'ABK-Materia','gc-granit':'Granit GC',
+  'gc-quartz':'Quartz Unistone GC','gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
+};
+
+async function vLoad() {
+  if (vLoaded) return;
+  try {
+    const doc = await fbDb.collection('settings').doc('coloris_images').get();
+    if (doc.exists) vCache = doc.data() || {};
+  } catch(e) {}
+  vLoaded = true;
+}
+
+async function vSave() {
+  try {
+    // Sauvegarder chaque clé séparément pour éviter la limite Firestore (1MB/doc)
+    const batch = {};
+    for (const [k, v] of Object.entries(vCache)) {
+      // Stocker par matériau pour éviter le dépassement de taille
+      batch[k] = v;
+    }
+    await fbDb.collection('settings').doc('coloris_images').set(batch);
+    return true;
+  } catch(e) {
+    console.error('vSave error:', e);
+    alert("Erreur sauvegarde : " + e.message);
+    return false;
+  }
+}
+
+async function vClearAll() {
+  vCache = {};
+  try { await fbDb.collection('settings').doc('coloris_images').delete(); } catch(e) {}
+  renderVisuelsTab();
+}
+
+async function vSaveUrl(key, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) { alert("Champ introuvable"); return; }
+  const url = input.value.trim();
+  if (!url) { alert("Collez d'abord une URL dans le champ"); return; }
+  // Feedback visuel immédiat
+  input.style.borderColor = 'var(--gold)';
+  vCache[key] = url;
+  const ok = await vSave();
+  if (ok) {
+    input.style.borderColor = 'var(--success)';
+    setTimeout(() => { input.style.borderColor = ''; renderVisuelsTab(); }, 800);
+  } else {
+    input.style.borderColor = '#c0392b';
+  }
+}
+
+async function vUpload(key, file) {
+  if (!file) return;
+  if (file.size > 900000) {
+    alert("Image trop lourde (max 900Ko). Réduisez la taille ou utilisez une URL.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    vCache[key] = e.target.result;
+    const ok = await vSave();
+    if (ok) {
+      renderVisuelsTab();
+    }
+  };
+  reader.onerror = function() { alert("Erreur lecture fichier"); };
+  reader.readAsDataURL(file);
+}
+
+async function vDelete(key) {
+  delete vCache[key];
+  await vSave();
+  renderVisuelsTab();
+}
+
+function vGetImage(mat, coloris) {
+  return vCache[mat + '|' + coloris] || null;
+}
+
+async function renderVisuelsTab() {
+  await vLoad();
+  const matF    = (document.getElementById('visuels-mat-filter')    || {}).value || 'all';
+  const statusF = (document.getElementById('visuels-status-filter') || {}).value || 'all';
+  const grid    = document.getElementById('visuels-grid');
+  const statsEl = document.getElementById('visuels-stats');
+  if (!grid) return;
+
+  const items = [];
+  for (const mat of Object.keys(COLORIS_DATA)) {
+    if (matF !== 'all' && mat !== matF) continue;
+    for (const col of Object.keys(COLORIS_DATA[mat])) {
+      const key = mat + '|' + col;
+      const url = vCache[key] || null;
+      if (statusF === 'ok'      && !url) continue;
+      if (statusF === 'missing' &&  url) continue;
+      items.push({ mat, col, key, url });
+    }
+  }
+
+  const total   = Object.values(COLORIS_DATA).reduce((s,c)=>s+Object.keys(c).length,0);
+  const withImg = Object.keys(vCache).length;
+  if (statsEl) statsEl.textContent = withImg + ' / ' + total + ' coloris avec image — ' + items.length + ' affichés';
+
+  grid.innerHTML = '';
+  items.forEach(function(item) {
+    const eid = item.key.replace(/[^a-zA-Z0-9]/g, '_');
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--white);border:1px solid var(--cream-dark);border-radius:4px;overflow:hidden;';
+
+    // Zone image
+    const imgZone = document.createElement('div');
+    imgZone.style.cssText = 'height:100px;background:var(--cream-dark);overflow:hidden;';
+    if (item.url) {
+      const img = document.createElement('img');
+      img.src = item.url;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.onerror = function() { imgZone.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:.72rem;color:var(--stone-light);">Image invalide</div>'; };
+      imgZone.appendChild(img);
+    } else {
+      imgZone.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:.72rem;color:var(--stone-light);font-style:italic;">Aucune image</div>';
+    }
+    card.appendChild(imgZone);
+
+    // Zone infos
+    const info = document.createElement('div');
+    info.style.cssText = 'padding:8px 10px;';
+
+    const name = document.createElement('div');
+    name.style.cssText = 'font-size:.75rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    name.title = item.col;
+    name.textContent = item.col;
+    info.appendChild(name);
+
+    const matLbl = document.createElement('div');
+    matLbl.style.cssText = 'font-size:.68rem;color:var(--stone-light);margin-bottom:5px;';
+    matLbl.textContent = vMatLabels[item.mat] || item.mat;
+    info.appendChild(matLbl);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'vi_' + eid;
+    input.placeholder = 'Coller une URL image ici';
+    input.value = (item.url && item.url.indexOf('data:') !== 0) ? item.url : '';
+    input.style.cssText = 'font-size:.72rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;width:100%;margin-bottom:4px;';
+    info.appendChild(input);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:4px;';
+
+    const btnUrl = document.createElement('button');
+    btnUrl.textContent = '✓ URL';
+    btnUrl.style.cssText = 'flex:1;font-size:.68rem;padding:3px 0;border:1px solid var(--cream-dark);background:var(--cream);border-radius:3px;cursor:pointer;';
+    btnUrl.onclick = function() { vSaveUrl(item.key, 'vi_' + eid); };
+    btnRow.appendChild(btnUrl);
+
+    const lblFile = document.createElement('label');
+    lblFile.textContent = '📷 Capture';
+    lblFile.style.cssText = 'flex:1;font-size:.68rem;padding:3px 0;border:1px solid var(--cream-dark);background:var(--cream);border-radius:3px;cursor:pointer;text-align:center;';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.onchange = function() { if (this.files[0]) vUpload(item.key, this.files[0]); };
+    lblFile.appendChild(fileInput);
+    btnRow.appendChild(lblFile);
+
+    if (item.url) {
+      const btnDel = document.createElement('button');
+      btnDel.textContent = '✕';
+      btnDel.style.cssText = 'font-size:.68rem;padding:3px 6px;border:1px solid #e8c8c5;color:#c0392b;background:transparent;border-radius:3px;cursor:pointer;';
+      btnDel.onclick = function() { vDelete(item.key); };
+      btnRow.appendChild(btnDel);
+    }
+
+    info.appendChild(btnRow);
+    card.appendChild(info);
+    grid.appendChild(card);
+  });
+}
+
+
+async function initVisuels() { await vLoad(); }
+
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
 getDB(); // initialise la DB si vide
 initCounterPrices();
+initVisuels();
 
 // Fermer modals en cliquant hors
 document.getElementById('modal-new-client').addEventListener('click', function(e) {
@@ -5148,5 +5374,5 @@ document.getElementById('modal-pro-profil').addEventListener('click', function(e
   if (e.target === this) closeProProfilModal();
 });
 </script>
-</body>
-</html>
+
+</body></html>
