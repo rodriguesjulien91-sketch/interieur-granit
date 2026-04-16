@@ -5176,32 +5176,42 @@ const vMatLabels = {
 async function vLoad() {
   if (vLoaded) return;
   try {
-    const doc = await fbDb.collection('settings').doc('coloris_images').get();
-    if (doc.exists) vCache = doc.data() || {};
+    // Chaque coloris est un document séparé dans la collection 'visuels'
+    const snap = await fbDb.collection('visuels').get();
+    snap.forEach(doc => { vCache[doc.id] = doc.data().url || null; });
   } catch(e) {}
   vLoaded = true;
 }
 
-async function vSave() {
+async function vSaveOne(key, url) {
+  // Un document par coloris = jamais de dépassement 1MB
   try {
-    // Sauvegarder chaque clé séparément pour éviter la limite Firestore (1MB/doc)
-    const batch = {};
-    for (const [k, v] of Object.entries(vCache)) {
-      // Stocker par matériau pour éviter le dépassement de taille
-      batch[k] = v;
-    }
-    await fbDb.collection('settings').doc('coloris_images').set(batch);
+    await fbDb.collection('visuels').doc(key).set({ url: url });
     return true;
   } catch(e) {
-    console.error('vSave error:', e);
     alert("Erreur sauvegarde : " + e.message);
     return false;
   }
 }
 
+async function vDeleteOne(key) {
+  try {
+    await fbDb.collection('visuels').doc(key).delete();
+    return true;
+  } catch(e) {
+    alert("Erreur suppression : " + e.message);
+    return false;
+  }
+}
+
 async function vClearAll() {
+  try {
+    const snap = await fbDb.collection('visuels').get();
+    const batch = fbDb.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  } catch(e) {}
   vCache = {};
-  try { await fbDb.collection('settings').doc('coloris_images').delete(); } catch(e) {}
   renderVisuelsTab();
 }
 
@@ -5210,11 +5220,10 @@ async function vSaveUrl(key, inputId) {
   if (!input) { alert("Champ introuvable"); return; }
   const url = input.value.trim();
   if (!url) { alert("Collez d'abord une URL dans le champ"); return; }
-  // Feedback visuel immédiat
   input.style.borderColor = 'var(--gold)';
-  vCache[key] = url;
-  const ok = await vSave();
+  const ok = await vSaveOne(key, url);
   if (ok) {
+    vCache[key] = url;
     input.style.borderColor = 'var(--success)';
     setTimeout(() => { input.style.borderColor = ''; renderVisuelsTab(); }, 800);
   } else {
@@ -5230,9 +5239,9 @@ async function vUpload(key, file) {
   }
   const reader = new FileReader();
   reader.onload = async function(e) {
-    vCache[key] = e.target.result;
-    const ok = await vSave();
+    const ok = await vSaveOne(key, e.target.result);
     if (ok) {
+      vCache[key] = e.target.result;
       renderVisuelsTab();
     }
   };
@@ -5241,9 +5250,11 @@ async function vUpload(key, file) {
 }
 
 async function vDelete(key) {
-  delete vCache[key];
-  await vSave();
-  renderVisuelsTab();
+  const ok = await vDeleteOne(key);
+  if (ok) {
+    delete vCache[key];
+    renderVisuelsTab();
+  }
 }
 
 function vGetImage(mat, coloris) {
