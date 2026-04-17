@@ -229,8 +229,8 @@ textarea { resize: vertical; min-height: 80px; }
 /* ═══ COLORIS PREVIEW ══════════════════════════════════════════ */
 .coloris-preview-box { margin-top:10px; border-radius:4px; overflow:hidden; border:1px solid var(--cream-dark); display:none; flex-direction:column; }
 .coloris-preview-box.visible { display:flex; }
-.coloris-preview-img-wrap { width:100%; height:160px; background:#f0ebe0; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-.coloris-preview-img-wrap img { max-width:100%; max-height:160px; width:auto; height:auto; object-fit:contain; display:block; transition:opacity .3s; image-rendering:auto; }
+.coloris-preview-img-wrap { width:100%; height:110px; background:#f0ebe0; position:relative; overflow:hidden; }
+.coloris-preview-img-wrap img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; transition:opacity .3s; }
 .coloris-preview-img-wrap .img-loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:var(--stone-light); font-style:italic; background:var(--cream-dark); text-align:center; padding:8px; }
 .coloris-preview-info { padding:8px 12px; background:var(--white); border-top:1px solid var(--cream-dark); }
 .coloris-preview-name { font-size:.82rem; font-weight:500; color:var(--stone); }
