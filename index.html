@@ -5173,20 +5173,30 @@ const vMatLabels = {
   'gc-quartz':'Quartz Unistone GC','gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
 };
 
+function vKeyToDocId(key) {
+  // Remplace | par __ car Firestore n'accepte pas | dans les IDs
+  return key.replace(/\|/g, '__');
+}
+function vDocIdToKey(docId) {
+  return docId.replace(/__/g, '|');
+}
+
 async function vLoad() {
-  if (vLoaded) return;
+  // Toujours recharger depuis Firestore (pas de cache persistant entre sessions)
+  vCache = {};
   try {
-    // Chaque coloris est un document séparé dans la collection 'visuels'
     const snap = await fbDb.collection('visuels').get();
-    snap.forEach(doc => { vCache[doc.id] = doc.data().url || null; });
+    snap.forEach(doc => {
+      const key = vDocIdToKey(doc.id);
+      vCache[key] = doc.data().url || null;
+    });
   } catch(e) {}
   vLoaded = true;
 }
 
 async function vSaveOne(key, url) {
-  // Un document par coloris = jamais de dépassement 1MB
   try {
-    await fbDb.collection('visuels').doc(key).set({ url: url });
+    await fbDb.collection('visuels').doc(vKeyToDocId(key)).set({ url: url });
     return true;
   } catch(e) {
     alert("Erreur sauvegarde : " + e.message);
@@ -5196,7 +5206,7 @@ async function vSaveOne(key, url) {
 
 async function vDeleteOne(key) {
   try {
-    await fbDb.collection('visuels').doc(key).delete();
+    await fbDb.collection('visuels').doc(vKeyToDocId(key)).delete();
     return true;
   } catch(e) {
     alert("Erreur suppression : " + e.message);
