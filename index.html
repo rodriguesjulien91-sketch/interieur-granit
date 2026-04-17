@@ -227,14 +227,14 @@ textarea { resize: vertical; min-height: 80px; }
 
 
 /* ═══ COLORIS PREVIEW ══════════════════════════════════════════ */
-.coloris-preview-box { margin-top:10px; border-radius:4px; overflow:hidden; border:none; display:none; flex-direction:column; }
+.coloris-preview-box { margin-top:8px; display:none; align-items:center; gap:12px; }
 .coloris-preview-box.visible { display:flex; }
-.coloris-preview-img-wrap { width:100%; height:120px; background:#f0ebe0; position:relative; overflow:hidden; }
+.coloris-preview-img-wrap { width:80px; height:54px; flex-shrink:0; border-radius:3px; overflow:hidden; background:#f0ebe0; position:relative; box-shadow:0 1px 4px rgba(0,0,0,.10); }
 .coloris-preview-img-wrap img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; transition:opacity .3s; }
-.coloris-preview-img-wrap .img-loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:var(--stone-light); font-style:italic; background:var(--cream-dark); text-align:center; padding:8px; }
-.coloris-preview-info { padding:6px 10px; background:var(--cream); border-top:none; }
-.coloris-preview-name { font-size:.82rem; font-weight:500; color:var(--stone); }
-.coloris-preview-mat { font-size:.71rem; color:var(--stone-light); margin-top:2px; text-transform:uppercase; letter-spacing:.06em; }
+.coloris-preview-img-wrap .img-loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.6rem; color:var(--stone-light); font-style:italic; background:#f0ebe0; text-align:center; padding:2px; }
+.coloris-preview-info { display:flex; flex-direction:column; gap:2px; }
+.coloris-preview-name { font-size:.8rem; font-weight:500; color:var(--stone); }
+.coloris-preview-mat { font-size:.68rem; color:var(--stone-light); text-transform:uppercase; letter-spacing:.06em; }
 /* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
 #view-form { min-height: 100vh; }
 .progress-wrapper { background: var(--stone-mid); padding: 18px 40px; position: sticky; top: 64px; z-index: 100; }
