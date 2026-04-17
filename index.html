@@ -227,12 +227,12 @@ textarea { resize: vertical; min-height: 80px; }
 
 
 /* ═══ COLORIS PREVIEW ══════════════════════════════════════════ */
-.coloris-preview-box { margin-top:10px; border-radius:4px; overflow:hidden; border:1px solid var(--cream-dark); display:none; flex-direction:column; }
+.coloris-preview-box { margin-top:10px; border-radius:4px; overflow:hidden; border:none; display:none; flex-direction:column; }
 .coloris-preview-box.visible { display:flex; }
-.coloris-preview-img-wrap { width:100%; height:110px; background:#f0ebe0; position:relative; overflow:hidden; }
+.coloris-preview-img-wrap { width:100%; height:120px; background:#f0ebe0; position:relative; overflow:hidden; }
 .coloris-preview-img-wrap img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; transition:opacity .3s; }
 .coloris-preview-img-wrap .img-loader { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:var(--stone-light); font-style:italic; background:var(--cream-dark); text-align:center; padding:8px; }
-.coloris-preview-info { padding:8px 12px; background:var(--white); border-top:1px solid var(--cream-dark); }
+.coloris-preview-info { padding:6px 10px; background:var(--cream); border-top:none; }
 .coloris-preview-name { font-size:.82rem; font-weight:500; color:var(--stone); }
 .coloris-preview-mat { font-size:.71rem; color:var(--stone-light); margin-top:2px; text-transform:uppercase; letter-spacing:.06em; }
 /* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
@@ -5303,11 +5303,11 @@ async function renderVisuelsTab() {
 
     // Zone image
     const imgZone = document.createElement('div');
-    imgZone.style.cssText = 'height:100px;background:var(--cream-dark);overflow:hidden;';
+    imgZone.style.cssText = 'height:90px;background:#f0ebe0;overflow:hidden;border-radius:3px 3px 0 0;';
     if (item.url) {
       const img = document.createElement('img');
       img.src = item.url;
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;object-position:center;display:block;';
       img.onerror = function() { imgZone.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:.72rem;color:var(--stone-light);">Image invalide</div>'; };
       imgZone.appendChild(img);
     } else {
