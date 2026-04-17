@@ -235,6 +235,15 @@ textarea { resize: vertical; min-height: 80px; }
 .coloris-preview-info { display:flex; flex-direction:column; gap:2px; }
 .coloris-preview-name { font-size:.8rem; font-weight:500; color:var(--stone); }
 .coloris-preview-mat { font-size:.68rem; color:var(--stone-light); text-transform:uppercase; letter-spacing:.06em; }
+/* ═══ LIGHTBOX COLORIS ══════════════════════════════════════════ */
+.coloris-lightbox { position:fixed; inset:0; background:rgba(26,24,20,.85); z-index:9999; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .25s ease; }
+.coloris-lightbox.open { opacity:1; pointer-events:all; }
+.coloris-lightbox img { max-width:90vw; max-height:85vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.5); transform:scale(.92); transition:transform .25s ease; }
+.coloris-lightbox.open img { transform:scale(1); }
+.coloris-lightbox-close { position:absolute; top:20px; right:28px; font-size:28px; color:#fff; cursor:pointer; opacity:.7; line-height:1; }
+.coloris-lightbox-close:hover { opacity:1; }
+.coloris-lightbox-caption { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); color:#fff; font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; opacity:.8; white-space:nowrap; }
+.coloris-preview-img-wrap { cursor:zoom-in; }
 /* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
 #view-form { min-height: 100vh; }
 .progress-wrapper { background: var(--stone-mid); padding: 18px 40px; position: sticky; top: 64px; z-index: 100; }
@@ -3505,6 +3514,8 @@ function onColorisChange() {
     if (url) {
       img.style.display  = 'block';
       img.style.opacity  = '0';
+      img.style.cursor   = 'zoom-in';
+      img.onclick = function() { openLightbox(url, coloris + ' — ' + (vMatLabels[mat]||mat)); };
       loader.style.display = 'flex';
       loader.textContent = 'Chargement...';
       img.src = url;
@@ -4191,6 +4202,11 @@ ${optRows ? `<div class="sec">
 </div>
 
 <script>window.onload=function(){window.print();}<\/script>
+<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
+  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="coloris-lightbox-img" src="" alt="">
+  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
 </body>
 </html>`;
 
@@ -4578,6 +4594,11 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
 </div>
 
 <script>window.onload=function(){window.print();}<\/script>
+<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
+  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="coloris-lightbox-img" src="" alt="">
+  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
 </body>
 </html>`;
 
@@ -4889,6 +4910,11 @@ async function genererFacture(quoteId) {
 </div>
 
 <script>window.onload=function(){window.print();}<\/script>
+<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
+  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="coloris-lightbox-img" src="" alt="">
+  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
 </body>
 </html>`;
 
@@ -5375,6 +5401,22 @@ async function renderVisuelsTab() {
 
 async function initVisuels() { await vLoad(); }
 
+// ═══ LIGHTBOX COLORIS ═════════════════════════════════════════
+function openLightbox(url, caption) {
+  const lb = document.getElementById('coloris-lightbox');
+  const img = document.getElementById('coloris-lightbox-img');
+  const cap = document.getElementById('coloris-lightbox-caption');
+  img.src = url;
+  cap.textContent = caption || '';
+  lb.classList.add('open');
+  document.addEventListener('keydown', onLightboxKey);
+}
+function closeLightbox() {
+  document.getElementById('coloris-lightbox').classList.remove('open');
+  document.removeEventListener('keydown', onLightboxKey);
+}
+function onLightboxKey(e) { if (e.key === 'Escape') closeLightbox(); }
+
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
@@ -5399,5 +5441,10 @@ document.getElementById('modal-pro-profil').addEventListener('click', function(e
   if (e.target === this) closeProProfilModal();
 });
 </script>
+<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
+  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="coloris-lightbox-img" src="" alt="">
+  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
 </body>
 </html>
