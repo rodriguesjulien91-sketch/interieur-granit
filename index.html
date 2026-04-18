@@ -2112,6 +2112,7 @@ function doLogin() {
   fbAuth.signInWithEmailAndPassword(email, password)
     .then(async () => {
       await loadAppData();
+      await vLoad(); // Charger les visuels coloris pour tous les utilisateurs
       const user = appCache.users[email];
       if (!user) {
         errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
