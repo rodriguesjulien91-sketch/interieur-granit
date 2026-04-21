@@ -244,6 +244,22 @@ textarea { resize: vertical; min-height: 80px; }
 .coloris-lightbox-close:hover { opacity:1; }
 .coloris-lightbox-caption { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); color:#fff; font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; opacity:.8; white-space:nowrap; }
 .coloris-preview-img-wrap { cursor:zoom-in; }
+
+/* ═══ POPUP NOUVELLES COMMANDES ════════════════════════════════ */
+.notif-overlay { position:fixed; inset:0; background:rgba(26,24,20,.6); z-index:8888; display:flex; align-items:center; justify-content:center; animation:fadeIn .2s ease; }
+.notif-box { background:var(--white); border-radius:6px; padding:28px 32px; max-width:520px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,.2); animation:slideUp .25s ease; }
+.notif-title { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:400; color:var(--stone); margin-bottom:4px; }
+.notif-subtitle { font-size:.78rem; color:var(--stone-light); margin-bottom:18px; }
+.notif-list { display:flex; flex-direction:column; gap:10px; max-height:320px; overflow-y:auto; margin-bottom:20px; }
+.notif-item { border:1px solid var(--cream-dark); border-radius:4px; padding:11px 14px; background:var(--cream); }
+.notif-item-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.notif-item-client { font-size:.88rem; font-weight:500; color:var(--stone); }
+.notif-item-date { font-size:.72rem; color:var(--stone-light); }
+.notif-item-detail { font-size:.78rem; color:var(--stone-light); line-height:1.5; }
+.notif-item-pro { font-size:.72rem; color:var(--gold); margin-top:3px; }
+.notif-empty { text-align:center; padding:20px; font-size:.85rem; color:var(--stone-light); font-style:italic; }
+.notif-footer { display:flex; justify-content:flex-end; gap:10px; }
+@keyframes slideUp { from { transform:translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 /* ═══ FORM VIEW ═══════════════════════════════════════════════════ */
 #view-form { min-height: 100vh; }
 .progress-wrapper { background: var(--stone-mid); padding: 18px 40px; position: sticky; top: 64px; z-index: 100; }
@@ -2173,6 +2189,7 @@ function showAdminView() {
   document.getElementById('admin-name').textContent = currentUser.prenom || currentUser.nom;
   document.getElementById('admin-avatar').textContent = (currentUser.prenom || currentUser.nom || 'A')[0].toUpperCase();
   renderAdminDashboard();
+  showCommandesNotif();
 }
 
 function showProView() {
@@ -5417,6 +5434,63 @@ function closeLightbox() {
   document.removeEventListener('keydown', onLightboxKey);
 }
 function onLightboxKey(e) { if (e.key === 'Escape') closeLightbox(); }
+
+// ═══ POPUP NOUVELLES COMMANDES ════════════════════════════════
+function showCommandesNotif() {
+  const db = getDB();
+  const lastVisit = localStorage.getItem('admin_last_visit') || '1970-01-01';
+  
+  // Trouver toutes les commandes passées depuis la dernière visite admin
+  const nouvelles = db.quotes.filter(q =>
+    q.status === 'commande' &&
+    q.commande?.createdAt &&
+    new Date(q.commande.createdAt) > new Date(lastVisit)
+  ).sort((a,b) => new Date(b.commande.createdAt) - new Date(a.commande.createdAt));
+
+  // Mettre à jour la date de dernière visite
+  localStorage.setItem('admin_last_visit', new Date().toISOString());
+
+  // Toujours afficher le popup à la connexion admin
+  const overlay = document.createElement('div');
+  overlay.className = 'notif-overlay';
+  overlay.id = 'notif-overlay';
+
+  const hasNew = nouvelles.length > 0;
+
+  const itemsHtml = hasNew ? nouvelles.map(q => {
+    const client = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+    const mat = q.materiauLabel || q.materiau || '—';
+    const coloris = q.coloris || '—';
+    const date = new Date(q.commande.createdAt).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    return `<div class="notif-item">
+      <div class="notif-item-header">
+        <span class="notif-item-client">${client}</span>
+        <span class="notif-item-date">${date}</span>
+      </div>
+      <div class="notif-item-detail">${mat} — ${coloris} · ${surf} m²</div>
+      <div class="notif-item-pro">📐 ${q.proSociete || q.proEmail || ''}</div>
+    </div>`;
+  }).join('') : '<div class="notif-empty">Aucune nouvelle commande depuis votre dernière connexion.</div>';
+
+  overlay.innerHTML = `
+    <div class="notif-box">
+      <div class="notif-title">${hasNew ? '🛒 ' + nouvelles.length + ' nouvelle' + (nouvelles.length > 1 ? 's' : '') + ' commande' + (nouvelles.length > 1 ? 's' : '') : 'Tableau de bord'}</div>
+      <div class="notif-subtitle">${hasNew ? 'Passée' + (nouvelles.length > 1 ? 's' : '') + ' depuis votre dernière connexion' : 'Aucune nouvelle commande depuis votre dernière connexion'}</div>
+      <div class="notif-list">${itemsHtml}</div>
+      <div class="notif-footer">
+        ${hasNew ? '<button class="btn btn-secondary btn-sm" onclick="closeNotif();switchTab(&quot;quotes&quot;)">Voir toutes les commandes</button>' : ''}
+        <button class="btn btn-primary btn-sm" onclick="closeNotif()">OK, continuer</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+function closeNotif() {
+  const el = document.getElementById('notif-overlay');
+  if (el) el.remove();
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
