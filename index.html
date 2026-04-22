@@ -2537,12 +2537,15 @@ function clearRemiseFromQuote(quoteId, source) {
   }
 }
 
-function showQuoteDetail(id) {
+async function showQuoteDetail(id) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
   if (!q) return;
   const panel = document.getElementById('quote-detail');
   panel.classList.add('active');
+  // Forcer rechargement des caches prix si nécessaire
+  aLoaded = false; await aLoad();
+  fLoaded = false; await fLoad();
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
   const optLines = Object.entries(q.options||{}).filter(([k,v])=>v>0).map(([k,v])=>{
     if (k === 'coupe-onglet-ml') return `<div class="detail-row"><span class="dk">Coupe d'onglet</span><span class="dv">${(v/1000).toFixed(2)} ml</span></div>`;
@@ -5578,10 +5581,10 @@ async function aSaveOne(key, prix) {
     const docId = aKeyToDocId(key);
     if (!prix || isNaN(prix) || prix <= 0) {
       await fbDb.collection('achats').doc(docId).delete();
-      delete aCache[key];
+      delete aCache[docId];
     } else {
       await fbDb.collection('achats').doc(docId).set({ prix: parseFloat(prix) });
-      aCache[key] = parseFloat(prix);
+      aCache[docId] = parseFloat(prix);
     }
     return true;
   } catch(e) {
