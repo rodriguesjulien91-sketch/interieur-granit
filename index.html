@@ -5652,7 +5652,6 @@ async function renderAchatsTab() {
     'gc-quartz':'Quartz GC','gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
   };
 
-  // Construire la liste des lignes mat/coloris/finition/epaisseur
   const rows = [];
   for (const [mat, cols] of Object.entries(COLORIS_DATA)) {
     if (matF !== 'all' && mat !== matF) continue;
@@ -5679,26 +5678,80 @@ async function renderAchatsTab() {
   if (statsEl) statsEl.textContent = withPrix + ' / ' + totalRows + " combinaisons avec prix d'achat — " + rows.length + ' affichées';
 
   table.innerHTML = '';
-
   if (rows.length === 0) {
     table.innerHTML = '<p style="color:var(--stone-light);font-style:italic;">Aucune combinaison à afficher.</p>';
     return;
   }
 
-  // Grouper par matériau
   const byMat = {};
   rows.forEach(r => { if (!byMat[r.mat]) byMat[r.mat] = []; byMat[r.mat].push(r); });
 
   for (const [mat, matRows] of Object.entries(byMat)) {
     const section = document.createElement('div');
-    section.style.cssText = 'margin-bottom:24px;';
+    section.style.cssText = 'margin-bottom:28px;';
 
-    const title = document.createElement('div');
-    title.style.cssText = 'font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);';
-    title.textContent = matLabels[mat] || mat;
-    section.appendChild(title);
+    // ── En-tête matériau + barre d'outils ────────────────────────────
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--gold);flex-wrap:wrap;gap:8px;';
 
-    // En-tête tableau
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);';
+    titleEl.textContent = (matLabels[mat] || mat) + ' — ' + matRows.length + ' combinaison(s)';
+    header.appendChild(titleEl);
+
+    // Barre outils : % marge + bouton appliquer
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+
+    const pctLabel = document.createElement('span');
+    pctLabel.style.cssText = 'font-size:.75rem;color:var(--stone-light);';
+    pctLabel.textContent = 'Marge cible :';
+    toolbar.appendChild(pctLabel);
+
+    const pctInput = document.createElement('input');
+    pctInput.type = 'number';
+    pctInput.id = 'marge-pct-' + mat;
+    pctInput.placeholder = 'ex: 35';
+    pctInput.min = '0'; pctInput.max = '99'; pctInput.step = '1';
+    pctInput.style.cssText = 'width:70px;padding:4px 8px;font-size:.78rem;border:1px solid var(--cream-dark);border-radius:3px;text-align:center;';
+    toolbar.appendChild(pctInput);
+
+    const pctUnit = document.createElement('span');
+    pctUnit.style.cssText = 'font-size:.75rem;color:var(--stone-light);';
+    pctUnit.textContent = '%';
+    toolbar.appendChild(pctUnit);
+
+    const btnApply = document.createElement('button');
+    btnApply.textContent = '⚡ Appliquer à tous';
+    btnApply.style.cssText = 'font-size:.72rem;padding:4px 10px;background:var(--gold);color:var(--white);border:none;border-radius:3px;cursor:pointer;white-space:nowrap;';
+    btnApply.onclick = (function(m, mrows) {
+      return async function() {
+        const pct = parseFloat(document.getElementById('marge-pct-' + m).value);
+        if (isNaN(pct) || pct <= 0 || pct >= 100) {
+          alert('Entrez un pourcentage valide entre 1 et 99.');
+          return;
+        }
+        btnApply.disabled = true;
+        btnApply.textContent = 'Enregistrement...';
+        let saved = 0;
+        for (const r of mrows) {
+          // Prix achat = prix vente * (1 - marge%)
+          const pa = parseFloat((r.prixVente * (1 - pct/100)).toFixed(2));
+          aCache[aKeyToDocId(r.key)] = pa;
+          await aSaveOne(r.key, pa);
+          saved++;
+        }
+        btnApply.textContent = '✓ ' + saved + ' prix enregistrés';
+        btnApply.style.background = 'var(--success)';
+        setTimeout(() => { renderAchatsTab(); }, 800);
+      };
+    })(mat, matRows);
+    toolbar.appendChild(btnApply);
+
+    header.appendChild(toolbar);
+    section.appendChild(header);
+
+    // ── En-tête colonnes ──────────────────────────────────────────────
     const thead = document.createElement('div');
     thead.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;';
     ['Coloris','Finition','Ép. (mm)','Prix vente','Prix achat','Marge'].forEach(h => {
@@ -5709,76 +5762,60 @@ async function renderAchatsTab() {
     });
     section.appendChild(thead);
 
-    matRows.forEach(r => {
+    // ── Lignes ────────────────────────────────────────────────────────
+    matRows.forEach(function(r) {
       const eid = r.docId.replace(/[^a-zA-Z0-9]/g, '_');
       const row = document.createElement('div');
       row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:4px;margin-bottom:3px;align-items:center;';
 
-      // Coloris
       const cCell = document.createElement('div');
       cCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-      cCell.title = r.coloris;
-      cCell.textContent = r.coloris;
+      cCell.title = r.coloris; cCell.textContent = r.coloris;
       row.appendChild(cCell);
 
-      // Finition
       const fCell = document.createElement('div');
       fCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
-      fCell.textContent = r.fin;
-      row.appendChild(fCell);
+      fCell.textContent = r.fin; row.appendChild(fCell);
 
-      // Épaisseur
       const eCell = document.createElement('div');
       eCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
-      eCell.textContent = r.ep + ' mm';
-      row.appendChild(eCell);
+      eCell.textContent = r.ep + ' mm'; row.appendChild(eCell);
 
-      // Prix vente
       const pvCell = document.createElement('div');
       pvCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;';
-      pvCell.textContent = r.prixVente.toFixed(2) + ' €';
-      row.appendChild(pvCell);
+      pvCell.textContent = r.prixVente.toFixed(2) + ' €'; row.appendChild(pvCell);
 
-      // Prix achat (input)
       const paCell = document.createElement('div');
       const input = document.createElement('input');
-      input.type = 'number';
-      input.id = 'pa_' + eid;
-      input.placeholder = '0.00';
-      input.step = '0.01';
-      input.min = '0';
+      input.type = 'number'; input.id = 'pa_' + eid;
+      input.placeholder = '0.00'; input.step = '0.01'; input.min = '0';
       input.value = r.prixAchat ? r.prixAchat.toFixed(2) : '';
       input.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
       input.onblur = function() { aSaveInput(r.key, 'pa_' + eid); };
       input.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
-      paCell.appendChild(input);
-      row.appendChild(paCell);
+      paCell.appendChild(input); row.appendChild(paCell);
 
-      // Marge
       const mCell = document.createElement('div');
-      mCell.id = 'marge_' + eid;
       mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
       if (r.prixAchat && r.prixVente) {
-        // Calculer sur 1 tranche (4.5m²) pour avoir un ratio représentatif
         const surfEx = r.mat.startsWith('gc-') ? 1 : 4.5;
         const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
         const pv = r.prixVente * surfEx;
-        const marge = pv - cout;
-        const pct = (marge / pv * 100);
+        const pct = ((pv - cout) / pv * 100);
         mCell.textContent = pct.toFixed(0) + '%';
-        mCell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€ / Marge=' + marge.toFixed(0) + '€';
+        mCell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
         mCell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
       } else {
-        mCell.textContent = '—';
-        mCell.style.color = 'var(--stone-light)';
+        mCell.textContent = '—'; mCell.style.color = 'var(--stone-light)';
       }
       row.appendChild(mCell);
-
       section.appendChild(row);
     });
+
     table.appendChild(section);
   }
 }
+
 
 async function initAchats() { await aLoad(); }
 
