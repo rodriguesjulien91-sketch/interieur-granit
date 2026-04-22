@@ -2656,26 +2656,32 @@ async function showQuoteDetail(id) {
       const pct = pv ? (marge / pv * 100) : 0;
       const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
 
-      let html = '<div style="margin-top:18px;padding:14px 16px;background:#f8f5ef;border-radius:4px;border:1px solid var(--cream-dark);">';
-      html += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">💰 Analyse des coûts fournisseurs</div>';
+      const _row = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(200,185,160,.3);font-size:.8rem;';
+      const _dk  = 'color:#7a6f62;';
+      const _dv  = 'color:#1a1814;font-weight:500;';
+      const _line = (label, val) => '<div style="' + _row + '"><span style="' + _dk + '">' + label + '</span><span style="' + _dv + '">' + val + '</span></div>';
+
+      let html = '<div style="margin-top:18px;padding:14px 16px;background:#f8f5ef;border-radius:4px;border:1px solid #ede6d6;">';
+      html += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#c9a84c;margin-bottom:12px;font-weight:600;">💰 Analyse des coûts fournisseurs</div>';
 
       // Matériau
-      html += '<div style="font-size:.72rem;color:var(--stone-light);margin-bottom:4px;font-weight:600;">Matériau</div>';
+      html += '<div style="font-size:.72rem;color:#7a6f62;margin-bottom:4px;font-weight:600;">Matériau</div>';
       if (isGC) {
-        html += '<div class="detail-row"><span class="dk">' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²</span><span class="dv">' + fmtEUR(coutMat) + '</span></div>';
+        html += _line(surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²', fmtEUR(coutMat));
       } else {
-        html += '<div class="detail-row"><span class="dk">Matière utile — ' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²</span><span class="dv">' + fmtEUR(surf * pa) + '</span></div>';
+        html += _line('Matière utile — ' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²', fmtEUR(surf * pa));
         if (chute > 0) {
-          html += '<div class="detail-row"><span class="dk">Chute — ' + chute.toFixed(2) + ' m² × ' + (pa * 0.35).toFixed(2) + ' €/m² (35%)</span><span class="dv">' + fmtEUR(chute * pa * 0.35) + '</span></div>';
-          html += '<div class="detail-row"><span class="dk" style="font-style:italic;">' + nbTranches + ' tranche(s) × 4,5 m²</span><span class="dv" style="font-weight:600;">' + fmtEUR(coutMat) + '</span></div>';
+          html += _line('Chute — ' + chute.toFixed(2) + ' m² × ' + (pa * 0.35).toFixed(2) + ' €/m² (35%)', fmtEUR(chute * pa * 0.35));
+          html += _line(nbTranches + ' tranche(s) × 4,5 m² — Coût matériau total', fmtEUR(coutMat));
         }
       }
 
       // Façonnage
       if (lignesFaconnage.length > 0) {
-        html += '<div style="font-size:.72rem;color:var(--stone-light);margin:10px 0 4px;font-weight:600;">Façonnage</div>';
+        html += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Façonnage</div>';
         lignesFaconnage.forEach(l => {
-          html += '<div class="detail-row"><span class="dk">' + l.label + (l.pfa ? ' × ' + l.pfa.toFixed(2) + ' €' : ' <em>(prix non renseigné)</em>') + '</span><span class="dv">' + (l.cout ? fmtEUR(l.cout) : '—') + '</span></div>';
+          const detail = l.pfa ? l.label + ' × ' + l.pfa.toFixed(2) + ' €' : l.label + ' <em style="font-size:.7rem;">(prix non renseigné)</em>';
+          html += _line(detail, l.cout ? fmtEUR(l.cout) : '—');
         });
       }
 
@@ -2685,17 +2691,17 @@ async function showQuoteDetail(id) {
       if (q.options?.['pose-installation'] > 0) services100.push('Pose & installation');
       if (q.livraison) services100.push('Livraison');
       if (services100.length > 0) {
-        html += '<div style="font-size:.72rem;color:var(--stone-light);margin:10px 0 4px;font-weight:600;">Services (100% marge)</div>';
+        html += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Services (100% marge)</div>';
         services100.forEach(s => {
-          html += '<div class="detail-row"><span class="dk">' + s + '</span><span class="dv" style="color:#2d7a4f;">0 € coût</span></div>';
+          html += _line(s, '<span style="color:#2d7a4f;">0 € coût</span>');
         });
       }
 
       // Totaux
-      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--cream-dark);">';
-      html += '<div class="detail-row"><span class="dk">Coût total fournisseurs</span><span class="dv">' + fmtEUR(coutTotal) + '</span></div>';
-      html += '<div class="detail-row"><span class="dk">Prix de vente HT</span><span class="dv">' + fmtEUR(pv) + '</span></div>';
-      html += '<div class="detail-row"><span class="dk" style="font-weight:600;">Marge brute</span><span class="dv" style="font-weight:700;color:' + col + ';">' + fmtEUR(marge) + ' (' + pct.toFixed(1) + '%)</span></div>';
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #ede6d6;">';
+      html += _line('Coût total fournisseurs', fmtEUR(coutTotal));
+      html += _line('Prix de vente HT', fmtEUR(pv));
+      html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:.85rem;"><span style="color:#1a1814;font-weight:600;">Marge brute</span><span style="font-weight:700;color:' + col + ';">' + fmtEUR(marge) + ' (' + pct.toFixed(1) + '%)</span></div>';
       html += '</div></div>';
       return html;
     })()}
