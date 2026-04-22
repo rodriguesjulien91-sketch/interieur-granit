@@ -2604,6 +2604,98 @@ function showQuoteDetail(id) {
         })()}
       </div>
     </div>
+    ${(function(){
+      // Section coûts fournisseurs — visible admin uniquement
+      const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
+      if (!pa) return '';
+      const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+
+      // Coût matériau
+      const coutMat = calcCoutAchat(q.materiau, surf, pa);
+      const isGC = (q.materiau||'').startsWith('gc-');
+      const TRANCHE = 4.5;
+      const nbTranches = isGC ? null : Math.ceil(surf / TRANCHE);
+      const chute = isGC ? 0 : (nbTranches * TRANCHE) - surf;
+
+      // Coût façonnage
+      let lignesFaconnage = [];
+      if (q.options) {
+        for (const [key, qty] of Object.entries(q.options)) {
+          if (!qty || key === 'coupe-onglet-ml') continue;
+          const pfa = fCache[key];
+          const label = PRIX.options[key]?.label || key;
+          const cout = pfa ? pfa * qty : null;
+          lignesFaconnage.push({ label: label + ' × ' + qty, cout, pfa });
+        }
+      }
+      if (q.options?.['coupe-onglet-ml'] && fCache['coupe-onglet']) {
+        const ml = (q.options['coupe-onglet-ml'] / 1000).toFixed(2);
+        const cout = fCache['coupe-onglet'] * (q.options['coupe-onglet-ml'] / 1000);
+        lignesFaconnage.push({ label: "Coupe d'onglet " + ml + ' ml', cout, pfa: fCache['coupe-onglet'] });
+      }
+      if (q.chant?.type && q.chant?.longueur) {
+        const chantKeyMap = {
+          'Droit chanfreiné':'chant-droit-chanfreine','Arrondi 1/4 de rond':'chant-arrondi-quart',
+          'Arrondi 1/2 rond':'chant-arrondi-demi',"Droit 4 à 10 cm coupe d'onglet":'chant-droit-onglet',
+          'Droit 4 à 10 cm rapporté':'chant-droit-rapporte','Droit 2 + 2 cm chanfreiné':'chant-droit-2-2-chanfreine',
+          "Aile d'avion":'chant-aile-avion','Rainurage encastré':'chant-rainurage',
+        };
+        const ck = chantKeyMap[q.chant.type];
+        const ml = (q.chant.longueur / 1000).toFixed(2);
+        const cout = ck && fCache[ck] ? fCache[ck] * (q.chant.longueur / 1000) : null;
+        lignesFaconnage.push({ label: q.chant.type + ' ' + ml + ' ml', cout, pfa: ck ? fCache[ck] : null });
+      }
+
+      const coutFaconnage = lignesFaconnage.reduce((s, l) => s + (l.cout || 0), 0);
+      const coutTotal = coutMat + coutFaconnage;
+      const pv = q.totalHT || 0;
+      const marge = pv - coutTotal;
+      const pct = pv ? (marge / pv * 100) : 0;
+      const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+
+      let html = '<div style="margin-top:18px;padding:14px 16px;background:#f8f5ef;border-radius:4px;border:1px solid var(--cream-dark);">';
+      html += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">💰 Analyse des coûts fournisseurs</div>';
+
+      // Matériau
+      html += '<div style="font-size:.72rem;color:var(--stone-light);margin-bottom:4px;font-weight:600;">Matériau</div>';
+      if (isGC) {
+        html += '<div class="detail-row"><span class="dk">' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²</span><span class="dv">' + fmtEUR(coutMat) + '</span></div>';
+      } else {
+        html += '<div class="detail-row"><span class="dk">Matière utile — ' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²</span><span class="dv">' + fmtEUR(surf * pa) + '</span></div>';
+        if (chute > 0) {
+          html += '<div class="detail-row"><span class="dk">Chute — ' + chute.toFixed(2) + ' m² × ' + (pa * 0.35).toFixed(2) + ' €/m² (35%)</span><span class="dv">' + fmtEUR(chute * pa * 0.35) + '</span></div>';
+          html += '<div class="detail-row"><span class="dk" style="font-style:italic;">' + nbTranches + ' tranche(s) × 4,5 m²</span><span class="dv" style="font-weight:600;">' + fmtEUR(coutMat) + '</span></div>';
+        }
+      }
+
+      // Façonnage
+      if (lignesFaconnage.length > 0) {
+        html += '<div style="font-size:.72rem;color:var(--stone-light);margin:10px 0 4px;font-weight:600;">Façonnage</div>';
+        lignesFaconnage.forEach(l => {
+          html += '<div class="detail-row"><span class="dk">' + l.label + (l.pfa ? ' × ' + l.pfa.toFixed(2) + ' €' : ' <em>(prix non renseigné)</em>') + '</span><span class="dv">' + (l.cout ? fmtEUR(l.cout) : '—') + '</span></div>';
+        });
+      }
+
+      // Services 100% marge
+      const services100 = [];
+      if (q.options?.['prise-de-cote'] > 0) services100.push('Prise de cote');
+      if (q.options?.['pose-installation'] > 0) services100.push('Pose & installation');
+      if (q.livraison) services100.push('Livraison');
+      if (services100.length > 0) {
+        html += '<div style="font-size:.72rem;color:var(--stone-light);margin:10px 0 4px;font-weight:600;">Services (100% marge)</div>';
+        services100.forEach(s => {
+          html += '<div class="detail-row"><span class="dk">' + s + '</span><span class="dv" style="color:#2d7a4f;">0 € coût</span></div>';
+        });
+      }
+
+      // Totaux
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--cream-dark);">';
+      html += '<div class="detail-row"><span class="dk">Coût total fournisseurs</span><span class="dv">' + fmtEUR(coutTotal) + '</span></div>';
+      html += '<div class="detail-row"><span class="dk">Prix de vente HT</span><span class="dv">' + fmtEUR(pv) + '</span></div>';
+      html += '<div class="detail-row"><span class="dk" style="font-weight:600;">Marge brute</span><span class="dv" style="font-weight:700;color:' + col + ';">' + fmtEUR(marge) + ' (' + pct.toFixed(1) + '%)</span></div>';
+      html += '</div></div>';
+      return html;
+    })()}
     ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'admin') : ''}
     ${q.commentaire?`<div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);font-size:.82rem;color:var(--stone-light);">${q.commentaire}</div>`:''}
     ${q.commande ? `
@@ -5314,7 +5406,7 @@ var fCache = {};   // { "evier-encastre": 45.00, "chant-Droit chanfreiné": 8.50
 var fLoaded = false;
 
 const FACONNAGE_ITEMS = [
-  // Prix fixes (unité)
+  // Prix fixes (unité) — prestations avec coût fournisseur
   { key: 'plaque-cuisson',    label: 'Découpe plaque de cuisson',    unite: 'unité' },
   { key: 'evier-encastre',    label: 'Évier encastré sur plan',      unite: 'unité' },
   { key: 'evier-sous-plan',   label: 'Bac évier collé sous plan',    unite: 'unité' },
@@ -5326,8 +5418,7 @@ const FACONNAGE_ITEMS = [
   { key: 'rainurage',         label: 'Rainurage encastré',           unite: 'unité' },
   { key: 'decoupe-arrondi',   label: 'Découpe arrondi',              unite: 'unité' },
   { key: 'coupe-onglet',      label: "Coupe d'onglet",               unite: 'ml' },
-  { key: 'prise-de-cote',     label: 'Prise de cote / gabarit',      unite: 'unité' },
-  { key: 'pose-installation', label: 'Pose & installation',          unite: 'unité' },
+  // Pose, prise de cote, livraison = 100% marge (honoraires) → pas de coût fournisseur
   // Chants (ml)
   { key: 'chant-droit-chanfreine',        label: 'Chant — Droit chanfreiné',              unite: 'ml' },
   { key: 'chant-arrondi-quart',           label: 'Chant — Arrondi 1/4 de rond',           unite: 'ml' },
