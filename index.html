@@ -752,7 +752,6 @@ textarea { resize: vertical; min-height: 80px; }
                 <option value="gc-quartz">Quartz Unistone (Gamme Courte IG)</option>
                 <option value="gc-uniceramica">Uniceramica (Gamme Courte IG)</option>
                 <option value="gc-neolith">Neolith (Gamme Courte IG)</option>
-                <option value="gc-laminam">Laminam (Gamme Courte IG)</option>
               </optgroup>
               <optgroup label="── Catalogue complet ──">
                 <option value="granit">Granit</option>
@@ -1260,7 +1259,6 @@ const PRIX = {
     'gc-quartz':      { label: 'Quartz Unistone — Gamme Courte IG', epaisseurs: { '12': 265, '20': 265, '30': 334 } },
     'gc-uniceramica': { label: 'Uniceramica — Gamme Courte IG',     epaisseurs: { '12': 265, '20': 416 } },
     'gc-neolith':     { label: 'Neolith — Gamme Courte IG',         epaisseurs: { '12': 315, '20': 441 } },
-    'gc-laminam':     { label: 'Laminam — Gamme Courte IG',         epaisseurs: { '20': 281 } },
   },
   credences: { facteur: 1.0 },
   options: {
@@ -2551,8 +2549,8 @@ function buildCoutsSection(q) {
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
   const isGC = (q.materiau||'').startsWith('gc-');
   const coutMat = calcCoutAchat(q.materiau, surf, pa);
-  const nbTranches = isGC ? null : Math.ceil(surf / 4.5);
-  const chute = isGC ? 0 : (nbTranches * 4.5) - surf;
+  const nbTranches = isGC ? null : Math.ceil(surf / 5);
+  const chute = isGC ? 0 : (nbTranches * 5) - surf;
 
   const lignes = [];
   if (q.options) {
@@ -2601,7 +2599,7 @@ function buildCoutsSection(q) {
     h += ln('Matiere utile - '+surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(surf*pa));
     if (chute > 0) {
       h += ln('Chute - '+chute.toFixed(2)+' m2 x '+(pa*0.605).toFixed(2)+' EUR/m2 (60,5%)', fmtEUR(chute*pa*0.605));
-      h += ln(nbTranches+' tranche(s) x 4,5 m2 - Cout materiau total', fmtEUR(coutMat));
+      h += ln(nbTranches+' tranche(s) x 5 m2 - Cout materiau total', fmtEUR(coutMat));
     }
   }
   if (lignes.length > 0) {
@@ -5603,7 +5601,7 @@ function aGetPrix(mat, coloris, finition, epaisseur) {
 // Calcule le coût d'achat réel selon le type de gamme
 // Gamme courte (gc-*) : coût = surface × prix_m2
 // Catalogue complet   : coût = surface × prix_m2 + chute × (prix_m2 × 35%)
-//   avec chute = (nb_tranches × 4.5) - surface, tranche = 4.5 m²
+//   avec chute = (nb_tranches × 5) - surface, tranche = 5 m²
 function calcCoutAchat(mat, surface, prixM2) {
   if (!prixM2 || !surface) return null;
   const isGC = mat.startsWith('gc-');
@@ -5611,8 +5609,8 @@ function calcCoutAchat(mat, surface, prixM2) {
     // Gamme courte : prix simple au m²
     return surface * prixM2;
   } else {
-    // Catalogue complet : calcul par tranches de 4.5 m²
-    const TRANCHE = 4.5;
+    // Catalogue complet : calcul par tranches de 5 m²
+    const TRANCHE = 5;
     const nbTranches = Math.ceil(surface / TRANCHE);
     const totalTranche = nbTranches * TRANCHE;
     const chute = totalTranche - surface;
@@ -5798,7 +5796,7 @@ async function renderAchatsTab() {
       const mCell = document.createElement('div');
       mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
       if (r.prixAchat && r.prixVente) {
-        const surfEx = r.mat.startsWith('gc-') ? 1 : 4.5;
+        const surfEx = r.mat.startsWith('gc-') ? 1 : 5;
         const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
         const pv = r.prixVente * surfEx;
         const pct = ((pv - cout) / pv * 100);
