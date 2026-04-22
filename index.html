@@ -5411,9 +5411,9 @@ async function renderFaconnageTab() {
         'chant-aile-avion': "Aile d'avion",
         'chant-rainurage': 'Rainurage encastré',
       }[item.key];
-      prixVente = PRICES.chants[chantLabel] || null;
+      prixVente = PRIX.chants[chantLabel] || null;
     } else {
-      prixVente = PRICES.options[item.key]?.prix || null;
+      prixVente = PRIX.options[item.key]?.prix || null;
     }
 
     const prixAchat = fCache[item.key] || null;
