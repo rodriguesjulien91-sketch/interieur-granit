@@ -2544,6 +2544,7 @@ function clearRemiseFromQuote(quoteId, source) {
 }
 
 async function showQuoteDetail(id) {
+  try {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
   if (!q) return;
@@ -2634,6 +2635,7 @@ async function showQuoteDetail(id) {
     </div>` : ''}
   `;
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch(e) { console.error('showQuoteDetail error:', e); alert('Erreur affichage: ' + e.message); }
 }
 
 function updateQuoteStatus(id, status) {
@@ -2894,8 +2896,7 @@ function buildDirectQuoteDetail(quoteId) {
       </div>
     </div>
     ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'direct') : ''}
-
-`;
+    ${buildCoutsSection(q)}`;
 }
 
 function editDirectQuote(quoteId) {
