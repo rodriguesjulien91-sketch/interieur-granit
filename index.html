@@ -410,6 +410,7 @@ textarea { resize: vertical; min-height: 80px; }
         <button class="tab-btn" onclick="switchTab('direct')">Devis particuliers</button>
         <button class="tab-btn" onclick="switchTab('coeff')">Coefficient de vente</button>
         <button class="tab-btn" onclick="switchTab('visuels')">🖼 Visuels coloris</button>
+        <button class="tab-btn" onclick="switchTab('achats')">💰 Prix d'achat</button>
       </div>
       <button class="btn btn-sm btn-secondary" style="margin-bottom:1px;" onclick="renderAdminDashboard()" title="Rafraîchir les données">↺ Rafraîchir</button>
     </div>
@@ -453,7 +454,7 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <table class="data-table" id="quotes-table">
         <thead><tr>
-          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total TTC</th><th>Date</th><th>Statut</th>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Statut</th>
         </tr></thead>
         <tbody id="quotes-tbody"></tbody>
       </table>
@@ -514,6 +515,55 @@ textarea { resize: vertical; min-height: 80px; }
           <button class="btn btn-gold" onclick="saveCoeffDirect()">Enregistrer le coefficient</button>
           <span id="coeff-saved-msg" style="display:none;color:var(--success);font-size:.82rem;">✓ Coefficient enregistré</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Tab : Prix d'achat -->
+    <div id="tab-achats" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Prix d'achat fournisseur</h2>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <select id="achats-mat-filter" onchange="renderAchatsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="all">Tous les matériaux</option>
+            <option value="granit">Granit</option>
+            <option value="marbre">Marbre</option>
+            <option value="pierre">Pierre calcaire</option>
+            <option value="quartz-silestone">Quartz Silestone</option>
+            <option value="quartz-unistone">Quartz Unistone</option>
+            <option value="dekton">Dekton</option>
+            <option value="ceramique-neolith">Neolith</option>
+            <option value="ceramique-laminam">Laminam</option>
+            <option value="ceramique-uniceramica">Uniceramica</option>
+            <option value="ceramique-xstone">Xtone</option>
+            <option value="ceramique-abkstone">ABK-Materia</option>
+            <option value="gc-granit">Granit GC</option>
+            <option value="gc-quartz">Quartz GC</option>
+            <option value="gc-neolith">Neolith GC</option>
+            <option value="gc-uniceramica">Uniceramica GC</option>
+          </select>
+          <select id="achats-status-filter" onchange="renderAchatsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+            <option value="all">Tous</option>
+            <option value="ok">Avec prix</option>
+            <option value="missing">Sans prix</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;">
+        Saisissez vos prix d'achat fournisseur HT en €/m² pour chaque coloris et finition.
+        La marge sera calculée automatiquement sur chaque devis.
+      </p>
+      <div id="achats-stats" style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;"></div>
+      <div id="achats-table"></div>
+
+      <!-- Section façonnage -->
+      <div style="margin-top:36px;">
+        <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);">
+          Façonnage & options
+        </div>
+        <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:14px;">
+          Prix d'achat HT par unité ou par ml pour chaque prestation. La marge s'affiche à droite du champ.
+        </p>
+        <div id="faconnage-table"></div>
       </div>
     </div>
 
@@ -2129,6 +2179,8 @@ function doLogin() {
     .then(async () => {
       await loadAppData();
       await vLoad(); // Charger les visuels coloris pour tous les utilisateurs
+      await aLoad(); // Charger les prix d'achat
+      await fLoad(); // Charger les prix d'achat façonnage
       const user = appCache.users[email];
       if (!user) {
         errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
@@ -2324,6 +2376,19 @@ function renderQuotesTable() {
       <td>${q.materiauLabel||q.materiau}</td>
       <td>${surf} m²</td>
       <td class="price">${q.totalTTC ? fmtEUR(q.totalTTC) : 'Sur devis'}</td>
+      <td class="secondary" style="font-size:.75rem;">${(function(){
+        if (!q.materiau || !q.coloris || !q.finition || !q.epaisseur) return '—';
+        const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
+        if (!pa) return '<span style="color:var(--stone-light);">—</span>';
+        const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+        const coutAchat = calcCoutAchat(q.materiau, surf, pa);
+        const pv = q.totalHT || 0;
+        if (!pv) return '—';
+        const marge = pv - coutAchat;
+        const pct = (marge / pv * 100);
+        const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+        return '<span style="color:' + col + ';font-weight:500;">' + marge.toFixed(0) + '€ (' + pct.toFixed(0) + '%)</span>';
+      })()}</td>
       <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
       <td>${statusTag(q.status)}</td>
     </tr>`;
@@ -2550,7 +2615,7 @@ function statusTag(status) {
 }
 
 function switchTab(tab) {
-  const tabs = ['clients','quotes','direct','coeff','visuels'];
+  const tabs = ['clients','quotes','direct','coeff','visuels','achats'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
   tabs.forEach(t => {
     const el = document.getElementById('tab-'+t);
@@ -2559,6 +2624,7 @@ function switchTab(tab) {
   if (tab === 'direct') renderDevisDirectTab();
   if (tab === 'coeff') renderCoeffTab();
   if (tab === 'visuels') renderVisuelsTab();
+  if (tab === 'achats') { renderAchatsTab(); renderFaconnageTab(); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -5202,6 +5268,395 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════
+//  PRIX D'ACHAT FOURNISSEUR — sauvegarde Firestore
+//  Clé: mat__coloris__finition__epaisseur → prix HT €/m²
+// ═══════════════════════════════════════════════════════════════
+var aCache = {};    // { "quartz-silestone__MARENGO__POLI__20": 245.00 }
+var aLoaded = false;
+
+function aKeyToDocId(key) {
+  return key.replace(/\|/g, '__').replace(/\//g, '--').replace(/ /g, '_');
+}
+
+// Prix d'achat façonnage — stockés dans Firestore collection 'achats-faconnage'
+var fCache = {};   // { "evier-encastre": 45.00, "chant-Droit chanfreiné": 8.50, ... }
+var fLoaded = false;
+
+const FACONNAGE_ITEMS = [
+  // Prix fixes (unité)
+  { key: 'plaque-cuisson',    label: 'Découpe plaque de cuisson',    unite: 'unité' },
+  { key: 'evier-encastre',    label: 'Évier encastré sur plan',      unite: 'unité' },
+  { key: 'evier-sous-plan',   label: 'Bac évier collé sous plan',    unite: 'unité' },
+  { key: 'percage-mitigeur',  label: 'Perçage mitigeur / bonde',     unite: 'unité' },
+  { key: 'percage-bar',       label: 'Perçage bar / snack',          unite: 'unité' },
+  { key: 'prise-plan',        label: 'Prise électrique sur plan',    unite: 'unité' },
+  { key: 'prise-credence',    label: 'Prise électrique crédence',    unite: 'unité' },
+  { key: 'poubelle',          label: 'Poubelle encastrée',           unite: 'unité' },
+  { key: 'rainurage',         label: 'Rainurage encastré',           unite: 'unité' },
+  { key: 'decoupe-arrondi',   label: 'Découpe arrondi',              unite: 'unité' },
+  { key: 'coupe-onglet',      label: "Coupe d'onglet",               unite: 'ml' },
+  { key: 'prise-de-cote',     label: 'Prise de cote / gabarit',      unite: 'unité' },
+  { key: 'pose-installation', label: 'Pose & installation',          unite: 'unité' },
+  // Chants (ml)
+  { key: 'chant-droit-chanfreine',        label: 'Chant — Droit chanfreiné',              unite: 'ml' },
+  { key: 'chant-arrondi-quart',           label: 'Chant — Arrondi 1/4 de rond',           unite: 'ml' },
+  { key: 'chant-arrondi-demi',            label: 'Chant — Arrondi 1/2 rond',              unite: 'ml' },
+  { key: 'chant-droit-onglet',            label: "Chant — Droit 4 à 10 cm coupe d'onglet", unite: 'ml' },
+  { key: 'chant-droit-rapporte',          label: 'Chant — Droit 4 à 10 cm rapporté',      unite: 'ml' },
+  { key: 'chant-droit-2-2-chanfreine',    label: 'Chant — Droit 2+2 cm chanfreiné',       unite: 'ml' },
+  { key: 'chant-aile-avion',              label: "Chant — Aile d'avion",                  unite: 'ml' },
+  { key: 'chant-rainurage',              label: 'Chant — Rainurage encastré',             unite: 'ml' },
+];
+
+async function fLoad() {
+  if (fLoaded) return;
+  fCache = {};
+  try {
+    const snap = await fbDb.collection('achats-faconnage').get();
+    snap.forEach(doc => { fCache[doc.id] = doc.data().prix || null; });
+  } catch(e) {}
+  fLoaded = true;
+}
+
+async function fSaveOne(key, prix) {
+  try {
+    if (!prix || isNaN(prix) || prix < 0) {
+      await fbDb.collection('achats-faconnage').doc(key).delete();
+      delete fCache[key];
+    } else {
+      await fbDb.collection('achats-faconnage').doc(key).set({ prix: parseFloat(prix) });
+      fCache[key] = parseFloat(prix);
+    }
+    return true;
+  } catch(e) {
+    alert("Erreur sauvegarde : " + e.message);
+    return false;
+  }
+}
+
+async function fSaveInput(key, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const val = parseFloat(input.value.replace(',', '.'));
+  input.style.borderColor = 'var(--gold)';
+  const ok = await fSaveOne(key, val);
+  if (ok) {
+    input.style.borderColor = isNaN(val) || val < 0 ? '' : 'var(--success)';
+    setTimeout(() => { input.style.borderColor = ''; }, 1200);
+  } else {
+    input.style.borderColor = '#c0392b';
+  }
+}
+
+async function renderFaconnageTab() {
+  await fLoad();
+  const table = document.getElementById('faconnage-table');
+  if (!table) return;
+
+  table.innerHTML = '';
+
+  // En-tête
+  const thead = document.createElement('div');
+  thead.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);';
+  ['Prestation', 'Unité', 'Prix vente', "Prix d'achat"].forEach(h => {
+    const c = document.createElement('div');
+    c.style.cssText = 'font-size:.68rem;font-weight:600;color:var(--stone-light);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;';
+    c.textContent = h;
+    thead.appendChild(c);
+  });
+  table.appendChild(thead);
+
+  FACONNAGE_ITEMS.forEach(item => {
+    // Prix de vente depuis PRICES
+    let prixVente = null;
+    if (item.key.startsWith('chant-')) {
+      const chantLabel = {
+        'chant-droit-chanfreine': 'Droit chanfreiné',
+        'chant-arrondi-quart': 'Arrondi 1/4 de rond',
+        'chant-arrondi-demi': 'Arrondi 1/2 rond',
+        'chant-droit-onglet': "Droit 4 à 10 cm coupe d'onglet",
+        'chant-droit-rapporte': 'Droit 4 à 10 cm rapporté',
+        'chant-droit-2-2-chanfreine': 'Droit 2 + 2 cm chanfreiné',
+        'chant-aile-avion': "Aile d'avion",
+        'chant-rainurage': 'Rainurage encastré',
+      }[item.key];
+      prixVente = PRICES.chants[chantLabel] || null;
+    } else {
+      prixVente = PRICES.options[item.key]?.prix || null;
+    }
+
+    const prixAchat = fCache[item.key] || null;
+    const eid = 'fa_' + item.key.replace(/-/g, '_');
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(237,230,214,.4);';
+
+    // Label
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:.8rem;color:var(--stone);padding:4px 6px;';
+    lbl.textContent = item.label;
+    row.appendChild(lbl);
+
+    // Unité
+    const uCell = document.createElement('div');
+    uCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
+    uCell.textContent = item.unite;
+    row.appendChild(uCell);
+
+    // Prix vente
+    const pvCell = document.createElement('div');
+    pvCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;';
+    pvCell.textContent = prixVente ? prixVente.toFixed(2) + ' €' : '—';
+    row.appendChild(pvCell);
+
+    // Prix achat (input)
+    const paCell = document.createElement('div');
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = eid;
+    input.placeholder = '0.00';
+    input.step = '0.01';
+    input.min = '0';
+    input.value = prixAchat ? prixAchat.toFixed(2) : '';
+    input.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
+    input.onblur = function() { fSaveInput(item.key, eid); };
+    input.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
+    paCell.appendChild(input);
+
+    // Marge si prix vente et achat connus
+    if (prixVente && prixAchat) {
+      const marge = prixVente - prixAchat;
+      const pct = (marge / prixVente * 100);
+      const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+      const badge = document.createElement('span');
+      badge.style.cssText = 'margin-left:6px;font-size:.68rem;color:' + col + ';font-weight:500;';
+      badge.textContent = pct.toFixed(0) + '%';
+      paCell.appendChild(badge);
+    }
+
+    row.appendChild(paCell);
+    table.appendChild(row);
+  });
+}
+
+async function initFaconnage() { await fLoad(); }
+
+async function aLoad() {
+  if (aLoaded) return;
+  aCache = {};
+  try {
+    const snap = await fbDb.collection('achats').get();
+    snap.forEach(doc => { aCache[doc.id] = doc.data().prix || null; });
+  } catch(e) {}
+  aLoaded = true;
+}
+
+async function aSaveOne(key, prix) {
+  try {
+    const docId = aKeyToDocId(key);
+    if (!prix || isNaN(prix) || prix <= 0) {
+      await fbDb.collection('achats').doc(docId).delete();
+      delete aCache[key];
+    } else {
+      await fbDb.collection('achats').doc(docId).set({ prix: parseFloat(prix) });
+      aCache[key] = parseFloat(prix);
+    }
+    return true;
+  } catch(e) {
+    alert("Erreur sauvegarde prix : " + e.message);
+    return false;
+  }
+}
+
+function aGetPrix(mat, coloris, finition, epaisseur) {
+  const key = aKeyToDocId(mat + '|' + coloris + '|' + finition + '|' + epaisseur);
+  return aCache[key] || null;
+}
+
+// Calcule le coût d'achat réel selon le type de gamme
+// Gamme courte (gc-*) : coût = surface × prix_m2
+// Catalogue complet   : coût = surface × prix_m2 + chute × (prix_m2 × 35%)
+//   avec chute = (nb_tranches × 4.5) - surface, tranche = 4.5 m²
+function calcCoutAchat(mat, surface, prixM2) {
+  if (!prixM2 || !surface) return null;
+  const isGC = mat.startsWith('gc-');
+  if (isGC) {
+    // Gamme courte : prix simple au m²
+    return surface * prixM2;
+  } else {
+    // Catalogue complet : calcul par tranches de 4.5 m²
+    const TRANCHE = 4.5;
+    const nbTranches = Math.ceil(surface / TRANCHE);
+    const totalTranche = nbTranches * TRANCHE;
+    const chute = totalTranche - surface;
+    // Matière utile au prix plein + chute à 35% du prix
+    return (surface * prixM2) + (chute * prixM2 * 0.35);
+  }
+}
+
+async function aSaveInput(key, inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const val = parseFloat(input.value.replace(',', '.'));
+  input.style.borderColor = 'var(--gold)';
+  const ok = await aSaveOne(key, val);
+  if (ok) {
+    input.style.borderColor = isNaN(val) || val <= 0 ? '' : 'var(--success)';
+    setTimeout(() => { input.style.borderColor = ''; }, 1200);
+  } else {
+    input.style.borderColor = '#c0392b';
+  }
+}
+
+async function renderAchatsTab() {
+  await aLoad();
+  const matF    = (document.getElementById('achats-mat-filter')    || {}).value || 'all';
+  const statusF = (document.getElementById('achats-status-filter') || {}).value || 'all';
+  const table   = document.getElementById('achats-table');
+  const statsEl = document.getElementById('achats-stats');
+  if (!table) return;
+
+  const matLabels = {
+    'granit':'Granit','marbre':'Marbre','pierre':'Pierre calcaire',
+    'quartz-silestone':'Quartz Silestone','quartz-unistone':'Quartz Unistone',
+    'dekton':'Dekton','ceramique-neolith':'Neolith','ceramique-laminam':'Laminam',
+    'ceramique-uniceramica':'Uniceramica','ceramique-xstone':'Xtone',
+    'ceramique-abkstone':'ABK-Materia','gc-granit':'Granit GC',
+    'gc-quartz':'Quartz GC','gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
+  };
+
+  // Construire la liste des lignes mat/coloris/finition/epaisseur
+  const rows = [];
+  for (const [mat, cols] of Object.entries(COLORIS_DATA)) {
+    if (matF !== 'all' && mat !== matF) continue;
+    for (const [coloris, fins] of Object.entries(cols)) {
+      for (const finObj of fins) {
+        const fin = finObj.f;
+        for (const ep of Object.keys(finObj.e)) {
+          const key = mat + '|' + coloris + '|' + fin + '|' + ep;
+          const docId = aKeyToDocId(key);
+          const prixAchat = aCache[docId] || null;
+          const prixVente = finObj.e[ep];
+          if (statusF === 'ok'      && !prixAchat) continue;
+          if (statusF === 'missing' &&  prixAchat) continue;
+          rows.push({ mat, coloris, fin, ep, key, docId, prixAchat, prixVente });
+        }
+      }
+    }
+  }
+
+  const totalRows = Object.values(COLORIS_DATA).reduce((s, cols) =>
+    s + Object.values(cols).reduce((s2, fins) =>
+      s2 + fins.reduce((s3, f) => s3 + Object.keys(f.e).length, 0), 0), 0);
+  const withPrix = Object.keys(aCache).length;
+  if (statsEl) statsEl.textContent = withPrix + ' / ' + totalRows + " combinaisons avec prix d'achat — " + rows.length + ' affichées';
+
+  table.innerHTML = '';
+
+  if (rows.length === 0) {
+    table.innerHTML = '<p style="color:var(--stone-light);font-style:italic;">Aucune combinaison à afficher.</p>';
+    return;
+  }
+
+  // Grouper par matériau
+  const byMat = {};
+  rows.forEach(r => { if (!byMat[r.mat]) byMat[r.mat] = []; byMat[r.mat].push(r); });
+
+  for (const [mat, matRows] of Object.entries(byMat)) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:24px;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);';
+    title.textContent = matLabels[mat] || mat;
+    section.appendChild(title);
+
+    // En-tête tableau
+    const thead = document.createElement('div');
+    thead.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;';
+    ['Coloris','Finition','Ép. (mm)','Prix vente','Prix achat','Marge'].forEach(h => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'font-size:.68rem;font-weight:600;color:var(--stone-light);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;';
+      cell.textContent = h;
+      thead.appendChild(cell);
+    });
+    section.appendChild(thead);
+
+    matRows.forEach(r => {
+      const eid = r.docId.replace(/[^a-zA-Z0-9]/g, '_');
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:4px;margin-bottom:3px;align-items:center;';
+
+      // Coloris
+      const cCell = document.createElement('div');
+      cCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      cCell.title = r.coloris;
+      cCell.textContent = r.coloris;
+      row.appendChild(cCell);
+
+      // Finition
+      const fCell = document.createElement('div');
+      fCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
+      fCell.textContent = r.fin;
+      row.appendChild(fCell);
+
+      // Épaisseur
+      const eCell = document.createElement('div');
+      eCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
+      eCell.textContent = r.ep + ' mm';
+      row.appendChild(eCell);
+
+      // Prix vente
+      const pvCell = document.createElement('div');
+      pvCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;';
+      pvCell.textContent = r.prixVente.toFixed(2) + ' €';
+      row.appendChild(pvCell);
+
+      // Prix achat (input)
+      const paCell = document.createElement('div');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.id = 'pa_' + eid;
+      input.placeholder = '0.00';
+      input.step = '0.01';
+      input.min = '0';
+      input.value = r.prixAchat ? r.prixAchat.toFixed(2) : '';
+      input.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
+      input.onblur = function() { aSaveInput(r.key, 'pa_' + eid); };
+      input.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
+      paCell.appendChild(input);
+      row.appendChild(paCell);
+
+      // Marge
+      const mCell = document.createElement('div');
+      mCell.id = 'marge_' + eid;
+      mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
+      if (r.prixAchat && r.prixVente) {
+        // Calculer sur 1 tranche (4.5m²) pour avoir un ratio représentatif
+        const surfEx = r.mat.startsWith('gc-') ? 1 : 4.5;
+        const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
+        const pv = r.prixVente * surfEx;
+        const marge = pv - cout;
+        const pct = (marge / pv * 100);
+        mCell.textContent = pct.toFixed(0) + '%';
+        mCell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€ / Marge=' + marge.toFixed(0) + '€';
+        mCell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+      } else {
+        mCell.textContent = '—';
+        mCell.style.color = 'var(--stone-light)';
+      }
+      row.appendChild(mCell);
+
+      section.appendChild(row);
+    });
+    table.appendChild(section);
+  }
+}
+
+async function initAchats() { await aLoad(); }
+
 // ═══════════════════════════════════════════════════════════════
 //  VISUELS COLORIS — ajout manuel, sauvegarde Firestore
 // ═══════════════════════════════════════════════════════════════
@@ -5498,6 +5953,8 @@ function closeNotif() {
 getDB(); // initialise la DB si vide
 initCounterPrices();
 initVisuels();
+initAchats();
+initFaconnage();
 
 // Fermer modals en cliquant hors
 document.getElementById('modal-new-client').addEventListener('click', function(e) {
