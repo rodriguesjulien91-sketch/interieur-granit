@@ -2156,8 +2156,12 @@ function setupRealtimeListeners() {
     snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
     quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
     appCache.quotes = quotes;
+    // Mettre à jour la vue active
     if (document.getElementById('view-admin')?.classList.contains('active')) {
       renderAdminDashboard();
+    }
+    if (document.getElementById('view-pro')?.classList.contains('active')) {
+      renderProQuotes();
     }
   }, err => console.warn('onSnapshot error:', err));
 }
@@ -2190,7 +2194,7 @@ function doLogin() {
       }
       currentUser = user;
       if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); }
-      else showProView();
+      else { showProView(); setupRealtimeListeners(); }
     })
     .catch(() => {
       errEl.textContent = 'Email ou mot de passe incorrect.';
@@ -2383,6 +2387,7 @@ function renderQuotesTable() {
         const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
         // Coût matériau (formule tranches catalogue ou GC)
         let cout = calcCoutAchat(q.materiau, surf, pa);
+        // Prix de vente = HT net après remise éventuelle
         // Coût façonnage (options + chant + coupe d'onglet)
         // Pose, livraison, prise de cote = 100% marge → pas de coût achat
         if (q.options) {
@@ -2411,7 +2416,8 @@ function renderQuotesTable() {
           const ck = chantKeyMap[q.chant.type];
           if (ck && fCache[ck]) cout += fCache[ck] * (q.chant.longueur / 1000);
         }
-        const pv = q.totalHT || 0;
+        const _t = computeQuoteTotals(q);
+        const pv = _t.htNet || 0;
         if (!pv) return '—';
         const marge = pv - cout;
         const pct = (marge / pv * 100);
