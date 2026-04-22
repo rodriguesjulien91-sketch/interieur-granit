@@ -2671,7 +2671,7 @@ async function showQuoteDetail(id) {
       } else {
         html += _line('Matière utile — ' + surf.toFixed(2) + ' m² × ' + pa.toFixed(2) + ' €/m²', fmtEUR(surf * pa));
         if (chute > 0) {
-          html += _line('Chute — ' + chute.toFixed(2) + ' m² × ' + (pa * 0.35).toFixed(2) + ' €/m² (35%)', fmtEUR(chute * pa * 0.35));
+          html += _line('Chute — ' + chute.toFixed(2) + ' m² × ' + (pa * 0.605).toFixed(2) + ' €/m² (60,5%)', fmtEUR(chute * pa * 0.605));
           html += _line(nbTranches + ' tranche(s) × 4,5 m² — Coût matériau total', fmtEUR(coutMat));
         }
       }
@@ -5620,8 +5620,8 @@ function calcCoutAchat(mat, surface, prixM2) {
     const nbTranches = Math.ceil(surface / TRANCHE);
     const totalTranche = nbTranches * TRANCHE;
     const chute = totalTranche - surface;
-    // Matière utile au prix plein + chute à 35% du prix
-    return (surface * prixM2) + (chute * prixM2 * 0.35);
+    // Matière utile au prix plein + chute à 60,5% du prix (remise ~39,5% fournisseur)
+    return (surface * prixM2) + (chute * prixM2 * 0.605);
   }
 }
 
