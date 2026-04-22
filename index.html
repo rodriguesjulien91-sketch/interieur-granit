@@ -2381,10 +2381,39 @@ function renderQuotesTable() {
         const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
         if (!pa) return '<span style="color:var(--stone-light);">—</span>';
         const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
-        const coutAchat = calcCoutAchat(q.materiau, surf, pa);
+        // Coût matériau (formule tranches catalogue ou GC)
+        let cout = calcCoutAchat(q.materiau, surf, pa);
+        // Coût façonnage (options + chant + coupe d'onglet)
+        // Pose, livraison, prise de cote = 100% marge → pas de coût achat
+        if (q.options) {
+          for (const [key, qty] of Object.entries(q.options)) {
+            if (!qty || key === 'coupe-onglet-ml') continue;
+            const pfa = fCache[key];
+            if (pfa) cout += pfa * qty;
+          }
+        }
+        // Coupe d'onglet (ml → en mètres)
+        if (q.options && q.options['coupe-onglet-ml'] && fCache['coupe-onglet']) {
+          cout += fCache['coupe-onglet'] * (q.options['coupe-onglet-ml'] / 1000);
+        }
+        // Chant (ml)
+        if (q.chant && q.chant.type && q.chant.longueur) {
+          const chantKeyMap = {
+            'Droit chanfreiné': 'chant-droit-chanfreine',
+            'Arrondi 1/4 de rond': 'chant-arrondi-quart',
+            'Arrondi 1/2 rond': 'chant-arrondi-demi',
+            "Droit 4 à 10 cm coupe d'onglet": 'chant-droit-onglet',
+            'Droit 4 à 10 cm rapporté': 'chant-droit-rapporte',
+            'Droit 2 + 2 cm chanfreiné': 'chant-droit-2-2-chanfreine',
+            "Aile d'avion": 'chant-aile-avion',
+            'Rainurage encastré': 'chant-rainurage',
+          };
+          const ck = chantKeyMap[q.chant.type];
+          if (ck && fCache[ck]) cout += fCache[ck] * (q.chant.longueur / 1000);
+        }
         const pv = q.totalHT || 0;
         if (!pv) return '—';
-        const marge = pv - coutAchat;
+        const marge = pv - cout;
         const pct = (marge / pv * 100);
         const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
         return '<span style="color:' + col + ';font-weight:500;">' + marge.toFixed(0) + '€ (' + pct.toFixed(0) + '%)</span>';
