@@ -2651,7 +2651,10 @@ async function showQuoteDetail(id) {
 
       const coutFaconnage = lignesFaconnage.reduce((s, l) => s + (l.cout || 0), 0);
       const coutTotal = coutMat + coutFaconnage;
-      const pv = q.totalHT || 0;
+      // Utiliser le HT net après remise éventuelle
+      const _totals = computeQuoteTotals(q);
+      const pv = _totals.htNet || 0;
+      const remiseInfo = _totals.remiseAmt > 0 ? ' <em style="font-size:.7rem;color:#c9a84c;">(après remise − ' + fmtEUR(_totals.remiseAmt) + ')</em>' : '';
       const marge = pv - coutTotal;
       const pct = pv ? (marge / pv * 100) : 0;
       const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
@@ -2700,7 +2703,7 @@ async function showQuoteDetail(id) {
       // Totaux
       html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #ede6d6;">';
       html += _line('Coût total fournisseurs', fmtEUR(coutTotal));
-      html += _line('Prix de vente HT', fmtEUR(pv));
+      html += '<div style="' + _row + '"><span style="' + _dk + '">Prix de vente HT' + remiseInfo + '</span><span style="' + _dv + '">' + fmtEUR(pv) + '</span></div>';
       html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:.85rem;"><span style="color:#1a1814;font-weight:600;">Marge brute</span><span style="font-weight:700;color:' + col + ';">' + fmtEUR(marge) + ' (' + pct.toFixed(1) + '%)</span></div>';
       html += '</div></div>';
       return html;
