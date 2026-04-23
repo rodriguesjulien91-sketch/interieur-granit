@@ -1272,7 +1272,7 @@ const PRIX = {
     'poubelle':          { label: 'Poubelle encastrée',             prix: 63 },
     'rainurage':         { label: 'Rainurage encastré',             prix: 168 },
     'decoupe-arrondi':   { label: 'Découpe arrondi',               prix: 60 },
-    'coupe-onglet':      { label: "Coupe d'onglet",                prix: 60, unite: 'ml' },
+    'coupe-onglet':      { label: "Coupe d'onglet",                prix: 120, unite: 'ml' },
     'prise-de-cote':     { label: 'Prise de cote / gabarit',        prix: 150 },
     'pose-installation': { label: 'Pose & installation',            prix: 472 },
   },
@@ -3558,8 +3558,10 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   updateColoris();
   updatePriceBadge();
   setV('coloris', q.coloris);
+  onColorisChange();
   setV('finition', q.finition);
   setV('epaisseur', q.epaisseur);
+  onFinitionChange();
 
   // Étape 3 — Dimensions (si stockées)
   if (q.plans && q.plans.length > 0) {
