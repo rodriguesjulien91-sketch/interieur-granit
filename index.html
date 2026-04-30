@@ -4802,7 +4802,7 @@ async function exportDevisParticulier(quoteId) {
   // 3. Chant
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
-    const puChant = Math.round(PRIX.chants[q.chant.type] * coeff);
+    const puChant = PRIX.chants[q.chant.type];
     const htChant = Math.round(ml * puChant);
     ligneNum++;
     lignesRows += `<tr>
@@ -4820,7 +4820,7 @@ async function exportDevisParticulier(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const pu = Math.round(opt.prix * coeff);
+          const pu = opt.prix;
           const ht = Math.round(ml * pu);
           ligneNum++;
           lignesRows += `<tr>
@@ -4834,7 +4834,7 @@ async function exportDevisParticulier(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const pu = Math.round(opt.prix * coeff);
+        const pu = opt.prix;
         const ht = Math.round(pu * v);
         ligneNum++;
         lignesRows += `<tr>
@@ -4849,7 +4849,7 @@ async function exportDevisParticulier(quoteId) {
 
   // 5. Livraison (corrigé : utilise PRIX.pose et non PRIX.livraison)
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
-    const pu = Math.round(PRIX.pose.rdc * coeff);
+    const pu = PRIX.pose.rdc;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
@@ -4858,7 +4858,7 @@ async function exportDevisParticulier(quoteId) {
       <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
-    const pu = Math.round(PRIX.pose.etage * coeff);
+    const pu = PRIX.pose.etage;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
@@ -5479,7 +5479,7 @@ async function genererFactureDirecte(quoteId) {
   // 3. Chant
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
-    const puChant = Math.round(PRIX.chants[q.chant.type] * coeff);
+    const puChant = PRIX.chants[q.chant.type];
     const htChant = Math.round(ml * puChant);
     ligneNum++;
     lignesRows += `<tr>
@@ -5497,7 +5497,7 @@ async function genererFactureDirecte(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const pu = Math.round(opt.prix * coeff);
+          const pu = opt.prix;
           const ht = Math.round(ml * pu);
           ligneNum++;
           lignesRows += `<tr>
@@ -5511,7 +5511,7 @@ async function genererFactureDirecte(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const pu = Math.round(opt.prix * coeff);
+        const pu = opt.prix;
         const ht = Math.round(pu * v);
         ligneNum++;
         lignesRows += `<tr>
@@ -5526,7 +5526,7 @@ async function genererFactureDirecte(quoteId) {
 
   // 5. Livraison
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
-    const pu = Math.round(PRIX.pose.rdc * coeff);
+    const pu = PRIX.pose.rdc;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
@@ -5535,7 +5535,7 @@ async function genererFactureDirecte(quoteId) {
       <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
-    const pu = Math.round(PRIX.pose.etage * coeff);
+    const pu = PRIX.pose.etage;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
