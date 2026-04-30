@@ -3959,19 +3959,20 @@ function changeCount(btn, delta) {
 
 function initCounterPrices() {
   const P = getCurrentPrix();
-  const _coeff = quoteMode === 'direct' ? getCoeffDirect() : 1;
+  // En mode direct, le coeff ne s'applique plus sur le façonnage ni la pose/livraison
+  // Pour le cuisiniste, getCurrentPrix() applique déjà le coeff sur P.options
   document.querySelectorAll('.counter-price[data-key]').forEach(el => {
     const key = el.getAttribute('data-key');
     if (P.options[key]) {
       const unite = P.options[key].unite === 'ml' ? '€ HT / ml' : '€ HT / unité';
-      el.textContent = Math.round(P.options[key].prix * _coeff) + ' ' + unite;
+      el.textContent = Math.round(P.options[key].prix) + ' ' + unite;
     }
   });
-  // Labels livraison avec prix
+  // Labels livraison avec prix (jamais de coeff)
   const rdcEl = document.getElementById('lbl-rdc');
   const etageEl = document.getElementById('lbl-etage');
-  if (rdcEl && P.pose?.rdc) rdcEl.textContent = fmt2(P.pose.rdc * _coeff) + ' € HT';
-  if (etageEl && P.pose?.etage) etageEl.textContent = fmt2(P.pose.etage * _coeff) + ' € HT';
+  if (rdcEl && P.pose?.rdc) rdcEl.textContent = fmt2(P.pose.rdc) + ' € HT';
+  if (etageEl && P.pose?.etage) etageEl.textContent = fmt2(P.pose.etage) + ' € HT';
 }
 
 function updateLiveSurface() {
@@ -4045,8 +4046,11 @@ function computePrice() {
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
-  // Coeff : direct = coeff global, pro = coeff cuisiniste si actif, sinon 1
-  const coeff = quoteMode === 'direct' ? getCoeffDirect()
+  // Coeff matière : pour devis direct (particulier) ET pour cuisiniste avec coeff actif
+  // En mode direct, le coeff s'applique uniquement sur la matière (déjà appliqué via getColorisPrixDirect)
+  // Pour le reste (chants/options/livraison) : pas de coeff en mode direct, coeff cuisiniste si actif
+  const coeff = quoteMode === 'direct'
+    ? 1
     : (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? currentUser.coeffVente : 1);
   if (chantType && chantLongueur > 0 && P.chants[chantType]) {
     const prixChant = Math.round(P.chants[chantType] * coeff);
@@ -4068,12 +4072,11 @@ function computePrice() {
     lines.push({ cat:'Options', label:`Coupe d'onglet — ${coupeOngletMl.toFixed(2)} ml × ${prixOnglet} €/ml`, ht: coupeOngletMl * prixOnglet });
   }
 
+  // Livraison/pose : jamais de coefficient (ni en direct, ni en cuisiniste)
   if (livraison === 'rdc' && P.pose.rdc) {
-    const prixPose = Math.round(P.pose.rdc * coeff);
-    lines.push({ cat:'Livraison', label:'Livraison rez-de-chaussée', ht: prixPose });
+    lines.push({ cat:'Livraison', label:'Livraison rez-de-chaussée', ht: P.pose.rdc });
   } else if (livraison === 'etage' && P.pose.etage) {
-    const prixPose = Math.round(P.pose.etage * coeff);
-    lines.push({ cat:'Livraison', label:'Livraison étage / Paris', ht: prixPose });
+    lines.push({ cat:'Livraison', label:'Livraison étage / Paris', ht: P.pose.etage });
   }
 
   const totalHT = lines.every(l => l.ht !== null) && lines.length > 0
