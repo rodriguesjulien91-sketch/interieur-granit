@@ -1866,7 +1866,16 @@ function getColorisFinitionData(mat, coloris, finition) {
   const fins = getColorisFinitions(mat, coloris);
   if (fins.length === 0) return null;
   if (!finition) return fins[0]; // défaut = première finition
-  return fins.find(f => f.f === finition) || fins[0];
+  // Correspondance exacte d'abord
+  const exact = fins.find(f => f.f === finition);
+  if (exact) return exact;
+  // Correspondance partielle : la finition sélectionnée est un fragment
+  // d'une chaîne combinée (ex: "POLI" dans "POLI - SUEDE" ou "POLI/VELLUTO")
+  const partial = fins.find(f => {
+    const parts = f.f.split(/\s*[-\/]\s*/).map(s => s.trim());
+    return parts.includes(finition);
+  });
+  return partial || fins[0];
 }
 
 // Helper: prix par coloris+finition ou fallback PRIX.materiaux
@@ -3841,10 +3850,15 @@ function onColorisChange() {
   const coloris = document.getElementById('coloris').value;
   const finSel = document.getElementById('finition');
   const fins = getColorisFinitions(mat, coloris);
-  if (fins.length > 1) {
-    finSel.innerHTML = fins.map(f => '<option value="' + f.f + '">' + f.f + '</option>').join('');
-  } else if (fins.length === 1) {
-    finSel.innerHTML = '<option value="' + fins[0].f + '" selected>' + fins[0].f + '</option>';
+  // Éclater les chaînes combinées (ex: "POLI - SUEDE", "POLI/VELLUTO", "POLI / LETANO")
+  // en options individuelles, tout en dédoublonnant
+  const expanded = [];
+  fins.forEach(f => {
+    const parts = f.f.split(/\s*[-\/]\s*/).map(s => s.trim()).filter(Boolean);
+    parts.forEach(p => { if (!expanded.includes(p)) expanded.push(p); });
+  });
+  if (expanded.length > 0) {
+    finSel.innerHTML = expanded.map(p => '<option value="' + p + '">' + p + '</option>').join('');
   } else {
     finSel.innerHTML = '<option value="">—</option>';
   }
@@ -5883,8 +5897,21 @@ async function aSaveOne(key, prix) {
 }
 
 function aGetPrix(mat, coloris, finition, epaisseur) {
+  // Essai clé exacte (finition saisie telle quelle)
   const key = aKeyToDocId(mat + '|' + coloris + '|' + finition + '|' + epaisseur);
-  return aCache[key] || null;
+  if (aCache[key]) return aCache[key];
+  // Fallback : la finition sélectionnée est un fragment d'une chaîne combinée
+  // (ex: "POLI" sélectionné, clé Firestore stockée sous "POLI - SUEDE")
+  const fins = getColorisFinitions(mat, coloris);
+  const match = fins.find(f => {
+    const parts = f.f.split(/\s*[-\/]\s*/).map(s => s.trim());
+    return parts.includes(finition);
+  });
+  if (match) {
+    const fallbackKey = aKeyToDocId(mat + '|' + coloris + '|' + match.f + '|' + epaisseur);
+    return aCache[fallbackKey] || null;
+  }
+  return null;
 }
 
 // Calcule le coût d'achat réel selon le type de gamme
