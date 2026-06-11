@@ -411,6 +411,7 @@ textarea { resize: vertical; min-height: 80px; }
         <button class="tab-btn" onclick="switchTab('coeff')">Coefficient de vente</button>
         <button class="tab-btn" onclick="switchTab('visuels')">🖼 Visuels coloris</button>
         <button class="tab-btn" onclick="switchTab('achats')">💰 Prix d'achat</button>
+        <button class="tab-btn" onclick="switchTab('catalogue')">📦 Catalogue</button>
       </div>
       <button class="btn btn-sm btn-secondary" style="margin-bottom:1px;" onclick="renderAdminDashboard()" title="Rafraîchir les données">↺ Rafraîchir</button>
     </div>
@@ -525,21 +526,6 @@ textarea { resize: vertical; min-height: 80px; }
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <select id="achats-mat-filter" onchange="renderAchatsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
             <option value="all">Tous les matériaux</option>
-            <option value="granit">Granit</option>
-            <option value="marbre">Marbre</option>
-            <option value="pierre">Pierre calcaire</option>
-            <option value="quartz-silestone">Quartz Silestone</option>
-            <option value="quartz-unistone">Quartz Unistone</option>
-            <option value="dekton">Dekton</option>
-            <option value="ceramique-neolith">Neolith</option>
-            <option value="ceramique-laminam">Laminam</option>
-            <option value="ceramique-uniceramica">Uniceramica</option>
-            <option value="ceramique-xstone">Xtone</option>
-            <option value="ceramique-abkstone">ABK-Materia</option>
-            <option value="gc-granit">Granit GC</option>
-            <option value="gc-quartz">Quartz GC</option>
-            <option value="gc-neolith">Neolith GC</option>
-            <option value="gc-uniceramica">Uniceramica GC</option>
           </select>
           <select id="achats-status-filter" onchange="renderAchatsTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
             <option value="all">Tous</option>
@@ -601,6 +587,28 @@ textarea { resize: vertical; min-height: 80px; }
       </p>
       <div id="visuels-stats" style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;"></div>
       <div id="visuels-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;"></div>
+    </div>
+
+    <!-- Tab : Catalogue -->
+    <div id="tab-catalogue" class="tab-content">
+      <div class="section-header">
+        <h2 class="section-title">Gestion du catalogue</h2>
+        <button class="btn btn-gold btn-sm" onclick="openAddMaterialModal()">+ Nouveau matériau</button>
+      </div>
+      <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:20px;">
+        Ajoutez, modifiez ou supprimez des coloris par matériau. Les modifications s'appliquent par-dessus le catalogue de base et se synchronisent automatiquement avec tous les cuisinistes.
+      </p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+        <select id="cat-mat-filter" onchange="renderCatalogueTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+          <option value="all">Tous les matériaux</option>
+        </select>
+        <select id="cat-show-filter" onchange="renderCatalogueTab()" style="width:auto;padding:7px 12px;font-size:.8rem;">
+          <option value="all">Tous les coloris</option>
+          <option value="added">Ajouts uniquement</option>
+          <option value="deleted">Suppressions uniquement</option>
+        </select>
+      </div>
+      <div id="catalogue-content"></div>
     </div>
 
   </div>
@@ -1253,6 +1261,65 @@ textarea { resize: vertical; min-height: 80px; }
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     MODAL : AJOUT / ÉDITION COLORIS (catalogue)
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-catalogue-coloris" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:580px;">
+    <h2 id="modal-cat-title">Ajouter un coloris</h2>
+    <input type="hidden" id="modal-cat-mat">
+    <input type="hidden" id="modal-cat-coloris-key">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Matériau</label>
+        <div id="modal-cat-mat-label" style="font-size:.88rem;font-weight:500;padding:6px 0;color:var(--stone);"></div>
+      </div>
+      <div class="field">
+        <label>Nom du coloris *</label>
+        <input type="text" id="modal-cat-coloris-name" placeholder="ex: CALACATTA IVORY" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <label>Finitions — une ligne par finition</label>
+        <span class="field-hint" style="margin-bottom:6px;display:block;">Chaque finition peut avoir ses propres épaisseurs et prix. Ex : NAT, POLI, SOFT - LUX</span>
+        <div id="modal-cat-finitions-container" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <button class="btn-add-row" style="margin-top:8px;" onclick="addFinitionBlock()">+ Ajouter une finition</button>
+      </div>
+    </div>
+    <div id="modal-cat-error" style="color:#c0392b;font-size:.82rem;margin-top:10px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeAddColorisModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="saveColoris()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL : NOUVEAU MATÉRIAU / MARQUE (catalogue)
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-catalogue-mat" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:460px;">
+    <h2>Nouveau matériau / marque</h2>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Nom affiché *</label>
+        <input type="text" id="modal-mat-label" placeholder="ex: Quartz NouvellMarque">
+      </div>
+      <div class="field">
+        <label>Groupe dans la liste matériaux</label>
+        <select id="modal-mat-group">
+          <option value="Catalogue complet">Catalogue complet</option>
+          <option value="Gamme Courte Intérieur Granit">Gamme Courte Intérieur Granit</option>
+        </select>
+      </div>
+    </div>
+    <div id="modal-mat-error" style="color:#c0392b;font-size:.82rem;margin-top:10px;display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeAddMaterialModal()">Annuler</button>
+      <button class="btn btn-gold" onclick="saveNewMaterial()">Créer le matériau</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      JAVASCRIPT
 ═══════════════════════════════════════════════════════════════ -->
 <script>
@@ -1853,7 +1920,7 @@ const COLORIS_DATA = {
 
 // Helper: liste des noms de coloris pour un matériau
 function getColorisList(mat) {
-  return COLORIS_DATA[mat] ? Object.keys(COLORIS_DATA[mat]) : [];
+  return COLORIS_DATA[mat] ? Object.keys(COLORIS_DATA[mat]).sort((a,b) => a.localeCompare(b, 'fr')) : [];
 }
 
 // Helper: tableau de finitions pour un coloris [{f, e}]
@@ -1878,31 +1945,49 @@ function getColorisFinitionData(mat, coloris, finition) {
   return partial || fins[0];
 }
 
-// Helper: prix par coloris+finition ou fallback PRIX.materiaux
+// Helper: prix par coloris+épaisseur (cherche dans toutes les finitions si besoin)
 function getColorisPrice(mat, coloris, ep, finition) {
+  // 1. Chercher dans la finition sélectionnée
   const fd = getColorisFinitionData(mat, coloris, finition);
   if (fd && fd.e && fd.e[ep] !== undefined) {
-    // Appliquer le coeff si actif pour ce cuisiniste
     const base = fd.e[ep];
     if (currentUser && currentUser.role === 'pro' && currentUser.coeffVenteActif && currentUser.coeffVente > 1) {
       return Math.round(base * currentUser.coeffVente);
     }
     return base;
   }
-  // Fallback: getCurrentPrix().materiaux (inclut le coeff si actif)
+  // 2. Si non trouvé, chercher l'épaisseur dans toutes les finitions du coloris
+  const fins = getColorisFinitions(mat, coloris);
+  for (const f of fins) {
+    if (f.e && f.e[ep] !== undefined) {
+      const base = f.e[ep];
+      if (currentUser && currentUser.role === 'pro' && currentUser.coeffVenteActif && currentUser.coeffVente > 1) {
+        return Math.round(base * currentUser.coeffVente);
+      }
+      return base;
+    }
+  }
+  // 3. Fallback: getCurrentPrix().materiaux
   const P = getCurrentPrix();
   const md = P.materiaux[mat];
   if (md && md.epaisseurs && md.epaisseurs[ep] !== undefined) return md.epaisseurs[ep];
   return null;
 }
 
-// Helper: épaisseurs disponibles pour un coloris+finition (ou fallback matériau)
+// Helper: épaisseurs disponibles pour un coloris (union de toutes les finitions + fallback matériau)
 function getAvailableEpaisseurs(mat, coloris, finition) {
-  const fd = getColorisFinitionData(mat, coloris, finition);
-  if (fd && fd.e && Object.keys(fd.e).length > 0) return Object.keys(fd.e);
+  const fins = getColorisFinitions(mat, coloris);
+  if (fins.length > 0) {
+    // Agréger les épaisseurs de TOUTES les finitions (union dédoublonnée)
+    // Cela garantit que même si les épaisseurs sont réparties sur plusieurs entrées de finition,
+    // elles sont toutes proposées au cuisiniste
+    const epSet = new Set();
+    fins.forEach(f => Object.keys(f.e || {}).forEach(ep => epSet.add(ep)));
+    if (epSet.size > 0) return [...epSet].sort((a,b) => parseFloat(a) - parseFloat(b));
+  }
   // Fallback: toutes les épaisseurs du matériau
   const md = PRIX.materiaux[mat];
-  if (md && md.epaisseurs) return Object.keys(md.epaisseurs);
+  if (md && md.epaisseurs) return Object.keys(md.epaisseurs).sort((a,b) => parseFloat(a)-parseFloat(b));
   return [];
 }
 
@@ -2105,6 +2190,9 @@ function getColorisPrixDirect(mat, coloris, ep, finition) {
 //      }
 //    }
 //  }
+// Snapshot immuable du catalogue de base (avant tout override admin)
+const COLORIS_DATA_BASE = JSON.parse(JSON.stringify(COLORIS_DATA));
+
 // ═══════════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyCoaUpaDDXKOQ0ry2JjQlZW4mETn3ocIBM",
@@ -2226,6 +2314,29 @@ function setupRealtimeListeners() {
   }, err => console.warn('onSnapshot error:', err));
 }
 
+// Listener temps réel sur le catalogue (coloris + matériaux personnalisés)
+let unsubCatalogue = null;
+function setupCatalogueListener() {
+  if (unsubCatalogue) unsubCatalogue();
+  unsubCatalogue = fbDb.collection('catalogue').onSnapshot(snap => {
+    snap.forEach(doc => {
+      if (doc.id === 'overrides')         catalogueOverrides = doc.data() || {};
+      if (doc.id === 'custom_materials')  customMaterials    = doc.data() || {};
+    });
+    applyCatalogueOverrides();
+    // Rafraîchir la vue active si elle dépend du catalogue
+    const adminActive = document.getElementById('view-admin')?.classList.contains('active');
+    const proActive   = document.getElementById('view-pro')?.classList.contains('active');
+    if (adminActive) {
+      if (document.getElementById('tab-visuels')?.classList.contains('active')) renderVisuelsTab();
+      if (document.getElementById('tab-catalogue')?.classList.contains('active')) renderCatalogueTab();
+    }
+    if (proActive) {
+      renderProQuotes();
+    }
+  }, err => console.warn('Catalogue listener error:', err));
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  AUTHENTIFICATION (Firebase Auth)
 // ═══════════════════════════════════════════════════════════════
@@ -2246,6 +2357,7 @@ function doLogin() {
       await vLoad(); // Charger les visuels coloris pour tous les utilisateurs
       await aLoad(); // Charger les prix d'achat
       await fLoad(); // Charger les prix d'achat façonnage
+      await loadCatalogueOverrides(); // Charger les overrides catalogue (coloris/matériaux personnalisés)
       const user = appCache.users[email];
       if (!user) {
         errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
@@ -2254,8 +2366,8 @@ function doLogin() {
         return;
       }
       currentUser = user;
-      if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); }
-      else { showProView(); setupRealtimeListeners(); }
+      if (user.role === 'admin') { showAdminView(); setupRealtimeListeners(); setupCatalogueListener(); }
+      else { showProView(); setupRealtimeListeners(); setupCatalogueListener(); }
     })
     .catch(() => {
       errEl.textContent = 'Email ou mot de passe incorrect.';
@@ -2283,7 +2395,8 @@ function sendResetForClient(email) {
 }
 
 function doLogout() {
-  if (unsubQuotes) { unsubQuotes(); unsubQuotes = null; }
+  if (unsubQuotes)    { unsubQuotes();    unsubQuotes    = null; }
+  if (unsubCatalogue) { unsubCatalogue(); unsubCatalogue = null; }
   fbAuth.signOut().catch(() => {});
   currentUser = null;
   appCache = { users: {}, quotes: [] };
@@ -2856,7 +2969,7 @@ function statusTag(status) {
 }
 
 function switchTab(tab) {
-  const tabs = ['clients','quotes','direct','coeff','visuels','achats'];
+  const tabs = ['clients','quotes','direct','coeff','visuels','achats','catalogue'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
   tabs.forEach(t => {
     const el = document.getElementById('tab-'+t);
@@ -2865,7 +2978,8 @@ function switchTab(tab) {
   if (tab === 'direct') renderDevisDirectTab();
   if (tab === 'coeff') renderCoeffTab();
   if (tab === 'visuels') renderVisuelsTab();
-  if (tab === 'achats') { renderAchatsTab(); renderFaconnageTab(); }
+  if (tab === 'achats') { aLoaded = false; renderAchatsTab(); fLoaded = false; renderFaconnageTab(); }
+  if (tab === 'catalogue') renderCatalogueTab();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3374,6 +3488,17 @@ function filterProQuotes() {
   displayFilteredQuotes(filtered);
 }
 
+// Retourne un Set des "mat::coloris" actuellement supprimés du catalogue
+function getDeletedColorisSet() {
+  const deleted = new Set();
+  for (const [mat, colorisMap] of Object.entries(catalogueOverrides || {})) {
+    for (const [col, val] of Object.entries(colorisMap)) {
+      if (val === '__DELETE__') deleted.add(mat + '::' + col);
+    }
+  }
+  return deleted;
+}
+
 function displayFilteredQuotes(quotes) {
   const listEl = document.getElementById('pro-quotes-list');
   const total = allProQuotes.length;
@@ -3389,16 +3514,50 @@ function displayFilteredQuotes(quotes) {
     listEl.innerHTML = '<div class="empty-state" style="background:var(--white);border:1px solid var(--cream-dark);border-radius:4px;padding:32px 20px;">Aucun résultat pour cette recherche.</div>';
     return;
   }
-  listEl.innerHTML = quotes.map(q => {
+
+  // Vérifier si des devis contiennent des coloris supprimés du catalogue
+  const deletedSet = getDeletedColorisSet();
+  const affectedQuotes = allProQuotes.filter(q =>
+    q.materiau && q.coloris && deletedSet.has(q.materiau + '::' + q.coloris)
+  );
+
+  let alertBanner = '';
+  if (affectedQuotes.length > 0) {
+    const lines = affectedQuotes.map(q => {
+      const clientName = [q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || 'Client inconnu';
+      return `<li style="margin:3px 0;"><strong>${q.coloris}</strong> (${q.materiauLabel||q.materiau}) — ${clientName}, ${q.client?.ville||''} <span style="color:var(--stone-light);font-size:.75rem;">${q.client?.ref||('Réf. '+q.id.slice(-6))}</span></li>`;
+    }).join('');
+    alertBanner = `<div style="background:#fff8f0;border:1px solid #f0b97a;border-radius:4px;padding:16px 18px;margin-bottom:18px;animation:fadeIn .3s ease;">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <span style="font-size:1.2rem;flex-shrink:0;">⚠️</span>
+        <div>
+          <div style="font-weight:600;font-size:.88rem;color:#8a4a00;margin-bottom:6px;">
+            ${affectedQuotes.length} devis contient${affectedQuotes.length>1?'nent':''} un coloris qui n'est plus disponible au catalogue
+          </div>
+          <div style="font-size:.8rem;color:#7a5020;margin-bottom:8px;">
+            Ces coloris ont été retirés par Intérieur Granit. Les prix affichés sont conservés mais le coloris ne peut plus être sélectionné pour un nouveau chiffrage. Contactez Intérieur Granit pour connaître les alternatives.
+          </div>
+          <ul style="font-size:.81rem;color:var(--stone);padding-left:18px;margin:0;">${lines}</ul>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  listEl.innerHTML = alertBanner + quotes.map(q => {
     const clientName = [q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
     const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    const isAffected = q.materiau && q.coloris && deletedSet.has(q.materiau + '::' + q.coloris);
+    const warningBadge = isAffected
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#fff0e0;border:1px solid #f0b97a;border-radius:10px;font-size:.7rem;color:#8a4a00;padding:2px 9px;margin-left:6px;">⚠ Coloris retiré</span>`
+      : '';
+    const cardBorder = isAffected ? 'border-color:#f0b97a;' : '';
     const cmdBtn = (q.status === 'devise')
       ? `<button class="btn btn-sm btn-commande qc-commander" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>`
       : '';
-    return `<div class="quote-card fade-in" onclick="showProQuoteDetail('${q.id}')">
+    return `<div class="quote-card fade-in" style="${cardBorder}" onclick="showProQuoteDetail('${q.id}')">
       <div>
         <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
-        <div class="qc-client">${clientName} — ${q.client?.ville||''}</div>
+        <div class="qc-client">${clientName} — ${q.client?.ville||''}${warningBadge}</div>
         <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}</div>
         ${cmdBtn}
       </div>
@@ -5949,22 +6108,48 @@ async function aSaveInput(key, inputId) {
   }
 }
 
+function updateMargeCell(cellId, r) {
+  const cell = document.getElementById(cellId);
+  if (!cell) return;
+  if (r.prixAchat && r.prixVente) {
+    const surfEx = r.mat.startsWith('gc-') ? 1 : 5;
+    const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
+    const pv = r.prixVente * surfEx;
+    const pct = ((pv - cout) / pv * 100);
+    cell.textContent = pct.toFixed(0) + '%';
+    cell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
+    cell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+  } else {
+    cell.textContent = '—';
+    cell.style.color = 'var(--stone-light)';
+  }
+}
+
 async function renderAchatsTab() {
   await aLoad();
-  const matF    = (document.getElementById('achats-mat-filter')    || {}).value || 'all';
+  const matFilterEl = document.getElementById('achats-mat-filter');
+  const matF    = (matFilterEl || {}).value || 'all';
   const statusF = (document.getElementById('achats-status-filter') || {}).value || 'all';
   const table   = document.getElementById('achats-table');
   const statsEl = document.getElementById('achats-stats');
   if (!table) return;
 
-  const matLabels = {
-    'granit':'Granit','marbre':'Marbre','pierre':'Pierre calcaire',
-    'quartz-silestone':'Quartz Silestone','quartz-unistone':'Quartz Unistone',
-    'dekton':'Dekton','ceramique-neolith':'Neolith','ceramique-laminam':'Laminam',
-    'ceramique-uniceramica':'Uniceramica','ceramique-xstone':'Xtone',
-    'ceramique-abkstone':'ABK-Materia','gc-granit':'Granit GC',
-    'gc-quartz':'Quartz GC','gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
-  };
+  // Reconstruire dynamiquement le filtre matériaux (inclut les matériaux custom)
+  if (matFilterEl) {
+    const prevVal = matFilterEl.value;
+    matFilterEl.innerHTML = '<option value="all">Tous les matériaux</option>';
+    for (const [key, data] of Object.entries(PRIX.materiaux)) {
+      if (!COLORIS_DATA[key] || Object.keys(COLORIS_DATA[key]).length === 0) continue;
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = data.label || key;
+      if (key === prevVal) opt.selected = true;
+      matFilterEl.appendChild(opt);
+    }
+  }
+
+  const matLabels = {};
+  for (const [key, data] of Object.entries(PRIX.materiaux)) matLabels[key] = data.label || key;
 
   const rows = [];
   for (const [mat, cols] of Object.entries(COLORIS_DATA)) {
@@ -6103,11 +6288,31 @@ async function renderAchatsTab() {
       eCell.style.cssText = 'font-size:.75rem;color:var(--stone-light);padding:4px 6px;';
       eCell.textContent = r.ep + ' mm'; row.appendChild(eCell);
 
-      // Prix achat — affichage seul
+      // Prix achat — éditable
       const paCell = document.createElement('div');
-      paCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;';
-      paCell.textContent = r.prixAchat ? r.prixAchat.toFixed(2) + ' €' : '—';
-      row.appendChild(paCell);
+      const paInput = document.createElement('input');
+      paInput.type = 'number'; paInput.id = 'pa_' + eid;
+      paInput.placeholder = '—'; paInput.step = '0.01'; paInput.min = '0';
+      paInput.value = r.prixAchat ? r.prixAchat.toFixed(2) : '';
+      paInput.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
+      paInput.title = 'Prix d\'achat fournisseur HT (€/m²)';
+      paInput.onblur = async function() {
+        const newVal = parseFloat(this.value) || 0;
+        const old = r.prixAchat || 0;
+        if (Math.abs(newVal - old) < 0.001) return;
+        this.style.borderColor = 'var(--gold)';
+        const ok = await aSaveOne(r.key, newVal > 0 ? newVal : null);
+        if (ok) {
+          r.prixAchat = newVal > 0 ? newVal : null;
+          this.style.borderColor = 'var(--success)';
+          setTimeout(() => { this.style.borderColor = ''; }, 1200);
+          updateMargeCell('marge_' + eid, r);
+        } else {
+          this.style.borderColor = '#c0392b';
+        }
+      };
+      paInput.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
+      paCell.appendChild(paInput); row.appendChild(paCell);
 
       // Prix vente — éditable individuellement
       const pvCell = document.createElement('div');
@@ -6123,8 +6328,12 @@ async function renderAchatsTab() {
           r.finObj.e[r.ep] = newVal; r.prixVente = newVal;
           fbDb.collection('settings').doc('prix-vente-overrides')
             .set({ [aKeyToDocId(r.key)]: newVal }, { merge: true })
-            .then(() => { this.style.borderColor = 'var(--success)'; setTimeout(() => { this.style.borderColor = ''; }, 1200); })
-            .catch(e => { this.style.borderColor = '#c0392b'; });
+            .then(() => {
+              this.style.borderColor = 'var(--success)';
+              setTimeout(() => { this.style.borderColor = ''; }, 1200);
+              updateMargeCell('marge_' + eid, r);
+            })
+            .catch(() => { this.style.borderColor = '#c0392b'; });
         }
       };
       pvInput.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
@@ -6132,6 +6341,7 @@ async function renderAchatsTab() {
 
       // Marge calculée
       const mCell = document.createElement('div');
+      mCell.id = 'marge_' + eid;
       mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
       if (r.prixAchat && r.prixVente) {
         const surfEx = r.mat.startsWith('gc-') ? 1 : 5;
@@ -6141,10 +6351,7 @@ async function renderAchatsTab() {
         mCell.textContent = pct.toFixed(0) + '%';
         mCell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
         mCell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
-      } else {
-        mCell.textContent = '—';
-        mCell.style.color = 'var(--stone-light)';
-      }
+      } else { mCell.textContent = '—'; mCell.style.color = 'var(--stone-light)'; }
       row.appendChild(mCell);
       section.appendChild(row);
     });
@@ -6495,6 +6702,477 @@ document.getElementById('modal-societe').addEventListener('click', function(e) {
 document.getElementById('modal-pro-profil').addEventListener('click', function(e) {
   if (e.target === this) closeProProfilModal();
 });
+document.getElementById('modal-catalogue-coloris').addEventListener('click', function(e) {
+  if (e.target === this) closeAddColorisModal();
+});
+document.getElementById('modal-catalogue-mat').addEventListener('click', function(e) {
+  if (e.target === this) closeAddMaterialModal();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  CATALOGUE — Gestion dynamique des coloris (admin)
+// ═══════════════════════════════════════════════════════════════
+
+// Overrides Firestore : { [mat]: { [colorisName]: [{f,e}] | '__DELETE__' } }
+let catalogueOverrides = {};
+// Matériaux personnalisés : { [matKey]: { label, group } }
+let customMaterials = {};
+
+async function loadCatalogueOverrides() {
+  try {
+    const [ovSnap, matSnap] = await Promise.all([
+      fbDb.collection('catalogue').doc('overrides').get(),
+      fbDb.collection('catalogue').doc('custom_materials').get()
+    ]);
+    catalogueOverrides = ovSnap.exists ? (ovSnap.data() || {}) : {};
+    customMaterials    = matSnap.exists ? (matSnap.data() || {}) : {};
+    applyCatalogueOverrides();
+  } catch(e) {
+    console.warn('Erreur chargement catalogue:', e);
+  }
+}
+
+function applyCatalogueOverrides() {
+  // Réinitialiser COLORIS_DATA depuis la copie de base (idempotence)
+  for (const key of Object.keys(COLORIS_DATA)) delete COLORIS_DATA[key];
+  for (const [key, val] of Object.entries(COLORIS_DATA_BASE)) {
+    COLORIS_DATA[key] = JSON.parse(JSON.stringify(val));
+  }
+
+  // Appliquer les matériaux personnalisés dans COLORIS_DATA et PRIX
+  for (const [matKey, matData] of Object.entries(customMaterials)) {
+    if (!COLORIS_DATA[matKey]) COLORIS_DATA[matKey] = {};
+    if (!PRIX.materiaux[matKey]) {
+      PRIX.materiaux[matKey] = { label: matData.label, epaisseurs: {} };
+    }
+  }
+
+  // Appliquer les overrides de coloris sur COLORIS_DATA
+  for (const [mat, colorisMap] of Object.entries(catalogueOverrides)) {
+    if (!COLORIS_DATA[mat]) COLORIS_DATA[mat] = {};
+    for (const [colorisName, val] of Object.entries(colorisMap)) {
+      if (val === '__DELETE__') {
+        delete COLORIS_DATA[mat][colorisName];
+      } else if (Array.isArray(val)) {
+        COLORIS_DATA[mat][colorisName] = val;
+      }
+    }
+    if (Object.keys(COLORIS_DATA[mat]).length === 0) delete COLORIS_DATA[mat];
+  }
+
+  updateMateriauxSelects();
+}
+
+function updateMateriauxSelects() {
+  // Mise à jour du select #materiau dans le formulaire
+  const matSelect = document.getElementById('materiau');
+  if (matSelect) {
+    matSelect.querySelectorAll('option[data-custom]').forEach(o => o.remove());
+    matSelect.querySelectorAll('optgroup[data-custom]').forEach(og => og.remove());
+
+    const byGroup = {};
+    for (const [key, data] of Object.entries(customMaterials)) {
+      const g = data.group || 'Catalogue complet';
+      if (!byGroup[g]) byGroup[g] = [];
+      byGroup[g].push({ key, label: data.label });
+    }
+    for (const [group, items] of Object.entries(byGroup)) {
+      const isGC = group.includes('Gamme');
+      let optgroup = null;
+      matSelect.querySelectorAll('optgroup').forEach(og => {
+        if (isGC && og.label.includes('Gamme Courte')) optgroup = og;
+        else if (!isGC && og.label.includes('complet')) optgroup = og;
+      });
+      if (!optgroup) {
+        optgroup = document.createElement('optgroup');
+        optgroup.label = '── ' + group + ' ──';
+        optgroup.dataset.custom = '1';
+        matSelect.appendChild(optgroup);
+      }
+      items.forEach(({ key, label }) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = label;
+        opt.dataset.custom = '1';
+        optgroup.appendChild(opt);
+      });
+    }
+  }
+
+  // Mise à jour des selects de filtres (visuels, achats, catalogue)
+  ['visuels-mat-filter', 'achats-mat-filter', 'cat-mat-filter'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.querySelectorAll('option[data-custom]').forEach(o => o.remove());
+    for (const [key, data] of Object.entries(customMaterials)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = data.label;
+      opt.dataset.custom = '1';
+      sel.appendChild(opt);
+    }
+  });
+}
+
+// ─── Rendu de l'onglet Catalogue ──────────────────────────────
+function renderCatalogueTab() {
+  // Peupler le filtre matériau
+  const filterSel = document.getElementById('cat-mat-filter');
+  if (filterSel) {
+    const current = filterSel.value;
+    filterSel.innerHTML = '<option value="all">Tous les matériaux</option>';
+    const allLabels = {};
+    for (const [k, v] of Object.entries(PRIX.materiaux)) allLabels[k] = v.label;
+    for (const [k, v] of Object.entries(customMaterials)) allLabels[k] = v.label;
+    for (const [key, label] of Object.entries(allLabels)) {
+      const opt = document.createElement('option');
+      opt.value = key; opt.textContent = label;
+      filterSel.appendChild(opt);
+    }
+    filterSel.value = (filterSel.querySelector(`option[value="${current}"]`)) ? current : 'all';
+  }
+
+  const selectedMat  = document.getElementById('cat-mat-filter')?.value || 'all';
+  const showFilter   = document.getElementById('cat-show-filter')?.value || 'all';
+  const container    = document.getElementById('catalogue-content');
+  if (!container) return;
+
+  const matLabels = {};
+  for (const [k, v] of Object.entries(PRIX.materiaux)) matLabels[k] = v.label;
+  for (const [k, v] of Object.entries(customMaterials)) matLabels[k] = v.label;
+
+  const allMatKeys = Object.keys(COLORIS_DATA).sort((a,b) => (matLabels[a]||a).localeCompare(matLabels[b]||b));
+  const matsToShow = selectedMat === 'all' ? allMatKeys : [selectedMat].filter(m => COLORIS_DATA[m] || customMaterials[m]);
+
+  let html = '';
+  for (const mat of matsToShow) {
+    const cols = COLORIS_DATA[mat] || {};
+    const label = matLabels[mat] || mat;
+    const isCustomMat = !!customMaterials[mat];
+    const overridesForMat = catalogueOverrides[mat] || {};
+    const addedKeys   = Object.keys(overridesForMat).filter(k => overridesForMat[k] !== '__DELETE__');
+    const deletedKeys = Object.keys(overridesForMat).filter(k => overridesForMat[k] === '__DELETE__');
+
+    let badges = '';
+    if (addedKeys.length > 0)   badges += ` <span style="background:rgba(45,122,79,.12);color:#2d7a4f;font-size:.7rem;padding:2px 8px;border-radius:10px;">+${addedKeys.length} ajouté${addedKeys.length>1?'s':''}</span>`;
+    if (deletedKeys.length > 0) badges += ` <span style="background:rgba(192,57,43,.1);color:#c0392b;font-size:.7rem;padding:2px 8px;border-radius:10px;">−${deletedKeys.length} supprimé${deletedKeys.length>1?'s':''}</span>`;
+    if (isCustomMat) badges += ` <span style="background:rgba(201,168,76,.18);color:#8a6d1a;font-size:.7rem;padding:2px 8px;border-radius:10px;">Personnalisé</span>`;
+
+    // Appliquer le filtre d'affichage
+    let colorisToShow = Object.keys(cols).sort();
+    if (showFilter === 'added')   colorisToShow = colorisToShow.filter(c => addedKeys.includes(c));
+    if (showFilter === 'deleted') colorisToShow = deletedKeys;
+
+    if (showFilter !== 'all' && colorisToShow.length === 0) continue;
+
+    html += `<div class="prix-section" style="margin-bottom:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--cream-dark);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:300;">${label}</span>
+          <span style="font-size:.75rem;color:var(--stone-light);">${Object.keys(cols).length} coloris</span>
+          ${badges}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button class="btn btn-sm btn-gold" onclick="openAddColorisModal('${mat}')">+ Coloris</button>
+          ${isCustomMat ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomMaterial('${mat}')">✕ Supprimer ce matériau</button>` : ''}
+        </div>
+      </div>`;
+
+    if (colorisToShow.length === 0 && showFilter === 'all') {
+      html += `<div style="font-size:.82rem;color:var(--stone-light);font-style:italic;padding:10px 0;">Aucun coloris actif. Cliquez "+ Coloris" pour en ajouter.</div>`;
+    } else {
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;">`;
+      for (const colName of colorisToShow) {
+        const isAdded   = addedKeys.includes(colName);
+        const isDeleted = deletedKeys.includes(colName);
+        const finEntries = isDeleted ? [] : (cols[colName] || []);
+        const finLabel  = finEntries.map(e => e.f).join(' · ');
+        const epLabel   = [...new Set(finEntries.flatMap(e => Object.keys(e.e||{})))].map(e=>e+'mm').join(', ');
+        const borderColor = isDeleted ? '#e8c8c5' : isAdded ? 'rgba(45,122,79,.35)' : 'var(--cream-dark)';
+        const bgColor    = isDeleted ? '#fdf6f5' : 'var(--white)';
+        const nameStyle  = isDeleted ? 'text-decoration:line-through;color:var(--stone-light);' : '';
+
+        html += `<div style="display:flex;align-items:center;justify-content:space-between;background:${bgColor};border:1px solid ${borderColor};border-radius:4px;padding:9px 12px;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${nameStyle}">${isDeleted ? '<s>' + colName + '</s>' : colName}</div>
+            <div style="font-size:.7rem;color:var(--stone-light);">${isDeleted ? 'Supprimé' : (finLabel || '—') + (epLabel ? ' · ' + epLabel : '')}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            ${!isDeleted ? `<button class="btn btn-sm btn-secondary" style="padding:4px 10px;font-size:.72rem;" onclick="openEditColorisModal('${mat}','${colName.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">✏</button>` : ''}
+            ${!isDeleted
+              ? `<button class="btn btn-sm btn-danger" style="padding:4px 10px;font-size:.72rem;" onclick="deleteColoris('${mat}','${colName.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">✕</button>`
+              : `<button class="btn btn-sm btn-secondary" style="padding:4px 10px;font-size:.72rem;" onclick="restoreColoris('${mat}','${colName.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">↩ Restaurer</button>`
+            }
+          </div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  container.innerHTML = html || '<div class="empty-state">Aucun matériau à afficher.</div>';
+}
+
+// ─── Modal ajout / édition coloris ────────────────────────────
+function openAddColorisModal(mat) {
+  document.getElementById('modal-cat-title').textContent = 'Ajouter un coloris';
+  document.getElementById('modal-cat-mat').value = mat;
+  document.getElementById('modal-cat-coloris-key').value = '';
+  const nameInput = document.getElementById('modal-cat-coloris-name');
+  nameInput.value = '';
+  nameInput.disabled = false;
+  document.getElementById('modal-cat-error').style.display = 'none';
+  const label = PRIX.materiaux[mat]?.label || customMaterials[mat]?.label || mat;
+  document.getElementById('modal-cat-mat-label').textContent = label;
+  document.getElementById('modal-cat-finitions-container').innerHTML = '';
+  addFinitionBlock();
+  document.getElementById('modal-catalogue-coloris').classList.add('active');
+}
+
+function openEditColorisModal(mat, colorisName) {
+  const data = COLORIS_DATA[mat]?.[colorisName];
+  if (!data) return;
+  document.getElementById('modal-cat-title').textContent = 'Modifier un coloris';
+  document.getElementById('modal-cat-mat').value = mat;
+  document.getElementById('modal-cat-coloris-key').value = colorisName;
+  const nameInput = document.getElementById('modal-cat-coloris-name');
+  nameInput.value = colorisName;
+  nameInput.disabled = true;
+  document.getElementById('modal-cat-error').style.display = 'none';
+  const label = PRIX.materiaux[mat]?.label || customMaterials[mat]?.label || mat;
+  document.getElementById('modal-cat-mat-label').textContent = label;
+  document.getElementById('modal-cat-finitions-container').innerHTML = '';
+  data.forEach(entry => {
+    addFinitionBlock(entry.f, entry.e);
+  });
+  if (data.length === 0) addFinitionBlock();
+  document.getElementById('modal-catalogue-coloris').classList.add('active');
+}
+
+function closeAddColorisModal() {
+  document.getElementById('modal-catalogue-coloris').classList.remove('active');
+}
+
+function addFinitionBlock(finName='', epaisseurs={}) {
+  const container = document.getElementById('modal-cat-finitions-container');
+  const block = document.createElement('div');
+  block.style.cssText = 'background:var(--cream);border:1px solid var(--cream-dark);border-radius:4px;padding:12px 14px;';
+
+  // Si aucune épaisseur fournie, on crée une ligne vide pour guider l'utilisateur
+  const epEntries = Object.entries(epaisseurs);
+  if (epEntries.length === 0) epEntries.push(['', '']);
+
+  const epRows = epEntries.map(([ep, px]) =>
+    `<div class="fin-ep-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <input type="number" placeholder="mm" value="${ep}" min="1" class="ep-mm" style="width:80px;padding:7px 10px;font-size:.84rem;">
+      <input type="number" placeholder="Prix €/m²" value="${px}" min="0" step="0.01" class="ep-prix" style="flex:1;padding:7px 10px;font-size:.84rem;">
+      <button type="button" onclick="this.closest('.fin-ep-row').remove()" style="color:#c0392b;background:none;border:none;cursor:pointer;font-size:1rem;padding:4px;">✕</button>
+    </div>`
+  ).join('');
+
+  block.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="field" style="flex:1;margin:0;">
+        <label>Nom de la finition</label>
+        <input type="text" class="fin-name" placeholder="ex: NAT, POLI, SOFT - LUX" value="${finName}" style="font-size:.84rem;">
+      </div>
+      <button type="button" onclick="this.closest('.fin-block').remove()" style="color:#c0392b;background:none;border:none;cursor:pointer;font-size:1.1rem;margin-top:20px;padding:4px 6px;" title="Supprimer cette finition">✕</button>
+    </div>
+    <label style="margin-bottom:6px;display:block;">Épaisseurs et prix HT (€/m²) — ajoutez une ligne par épaisseur disponible</label>
+    <div class="fin-ep-container">${epRows}</div>
+    <button class="btn-add-row" style="margin-top:6px;" type="button" onclick="addEpRow(this)">+ Ajouter une épaisseur</button>
+  `;
+  block.classList.add('fin-block');
+  container.appendChild(block);
+}
+
+function addEpRow(btn) {
+  // Cherche le container frère le plus proche, quelle que soit la structure DOM
+  const epContainer = btn.closest('.fin-block').querySelector('.fin-ep-container');
+  const row = document.createElement('div');
+  row.className = 'fin-ep-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+  row.innerHTML = `
+    <input type="number" placeholder="mm" min="1" class="ep-mm" style="width:80px;padding:7px 10px;font-size:.84rem;">
+    <input type="number" placeholder="Prix €/m²" min="0" step="0.01" class="ep-prix" style="flex:1;padding:7px 10px;font-size:.84rem;">
+    <button type="button" onclick="this.closest('.fin-ep-row').remove()" style="color:#c0392b;background:none;border:none;cursor:pointer;font-size:1rem;padding:4px;">✕</button>
+  `;
+  epContainer.appendChild(row);
+}
+
+async function saveColoris() {
+  const mat         = document.getElementById('modal-cat-mat').value;
+  const existingKey = document.getElementById('modal-cat-coloris-key').value;
+  const nameRaw     = document.getElementById('modal-cat-coloris-name').value.trim().toUpperCase();
+  const errEl       = document.getElementById('modal-cat-error');
+  errEl.style.display = 'none';
+
+  if (!nameRaw) {
+    errEl.textContent = 'Le nom du coloris est obligatoire.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Construire le tableau d'entrées [{f, e}, ...]
+  const blocks = document.querySelectorAll('#modal-cat-finitions-container .fin-block');
+  const entries = [];
+  let valid = true;
+  blocks.forEach(block => {
+    const finName = block.querySelector('.fin-name')?.value?.trim();
+    if (!finName) { valid = false; return; }
+    const e = {};
+    block.querySelectorAll('.fin-ep-row').forEach(row => {
+      const mm  = row.querySelector('.ep-mm')?.value?.trim();
+      const px  = row.querySelector('.ep-prix')?.value?.trim();
+      if (mm && px) e[mm] = parseFloat(px);
+    });
+    if (Object.keys(e).length === 0) { valid = false; return; }
+    entries.push({ f: finName, e });
+  });
+
+  if (!valid || entries.length === 0) {
+    errEl.textContent = 'Chaque finition doit avoir un nom et au moins une épaisseur avec son prix.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const colorisKey = existingKey || nameRaw;
+  if (!catalogueOverrides[mat]) catalogueOverrides[mat] = {};
+  catalogueOverrides[mat][colorisKey] = entries;
+  if (!COLORIS_DATA[mat]) COLORIS_DATA[mat] = {};
+  COLORIS_DATA[mat][colorisKey] = entries;
+
+  try {
+    await fbDb.collection('catalogue').doc('overrides').set(
+      cleanForFirestore(catalogueOverrides), { merge: true }
+    );
+    closeAddColorisModal();
+    renderCatalogueTab();
+    showCatalogueToast('✓ Coloris enregistré');
+  } catch(e) {
+    errEl.textContent = 'Erreur de sauvegarde : ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function deleteColoris(mat, colorisName) {
+  const label = PRIX.materiaux[mat]?.label || customMaterials[mat]?.label || mat;
+  if (!confirm(`Supprimer "${colorisName}" du catalogue ${label} ?\n\nIl ne sera plus visible par les cuisinistes.`)) return;
+
+  if (!catalogueOverrides[mat]) catalogueOverrides[mat] = {};
+  catalogueOverrides[mat][colorisName] = '__DELETE__';
+  if (COLORIS_DATA[mat]) delete COLORIS_DATA[mat][colorisName];
+
+  try {
+    await fbDb.collection('catalogue').doc('overrides').set(
+      cleanForFirestore(catalogueOverrides), { merge: true }
+    );
+    renderCatalogueTab();
+    showCatalogueToast('✓ Coloris supprimé');
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  }
+}
+
+async function restoreColoris(mat, colorisName) {
+  if (!catalogueOverrides[mat]) return;
+  // Supprimer localement
+  delete catalogueOverrides[mat][colorisName];
+  applyCatalogueOverrides();
+
+  try {
+    // FieldValue.delete() est indispensable ici : set/merge ne supprime pas un champ imbriqué
+    await fbDb.collection('catalogue').doc('overrides').update({
+      [`${mat}.${colorisName}`]: firebase.firestore.FieldValue.delete()
+    });
+    renderCatalogueTab();
+    showCatalogueToast('✓ Coloris restauré');
+  } catch(e) {
+    alert('Erreur lors de la restauration : ' + e.message);
+  }
+}
+
+// ─── Matériaux personnalisés ──────────────────────────────────
+function openAddMaterialModal() {
+  document.getElementById('modal-mat-label').value = '';
+  document.getElementById('modal-mat-group').value = 'Catalogue complet';
+  document.getElementById('modal-mat-error').style.display = 'none';
+  document.getElementById('modal-catalogue-mat').classList.add('active');
+}
+function closeAddMaterialModal() {
+  document.getElementById('modal-catalogue-mat').classList.remove('active');
+}
+
+async function saveNewMaterial() {
+  const label = document.getElementById('modal-mat-label').value.trim();
+  const group = document.getElementById('modal-mat-group').value;
+  const errEl = document.getElementById('modal-mat-error');
+  errEl.style.display = 'none';
+
+  if (!label) {
+    errEl.textContent = 'Le nom du matériau est obligatoire.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const key = 'custom-' + label.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+  if (customMaterials[key] || PRIX.materiaux[key]) {
+    errEl.textContent = 'Un matériau similaire existe déjà (clé : ' + key + ').';
+    errEl.style.display = 'block'; return;
+  }
+
+  customMaterials[key] = { label, group };
+  COLORIS_DATA[key] = {};
+  PRIX.materiaux[key] = { label, epaisseurs: {} };
+
+  try {
+    await fbDb.collection('catalogue').doc('custom_materials').set(customMaterials, { merge: true });
+    closeAddMaterialModal();
+    updateMateriauxSelects();
+    renderCatalogueTab();
+    showCatalogueToast('✓ Matériau créé — ajoutez maintenant ses coloris');
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function deleteCustomMaterial(matKey) {
+  const label = customMaterials[matKey]?.label || matKey;
+  if (!confirm(`Supprimer le matériau "${label}" et tous ses coloris personnalisés ?\n\nCette action est irréversible.`)) return;
+
+  delete customMaterials[matKey];
+  delete COLORIS_DATA[matKey];
+  delete PRIX.materiaux[matKey];
+
+  try {
+    await fbDb.collection('catalogue').doc('custom_materials').update({
+      [matKey]: firebase.firestore.FieldValue.delete()
+    });
+    // Supprimer aussi les overrides liés
+    if (catalogueOverrides[matKey]) {
+      delete catalogueOverrides[matKey];
+      await fbDb.collection('catalogue').doc('overrides').update({
+        [matKey]: firebase.firestore.FieldValue.delete()
+      });
+    }
+    updateMateriauxSelects();
+    renderCatalogueTab();
+    showCatalogueToast('✓ Matériau supprimé');
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  }
+}
+
+// ─── Toast catalogue ──────────────────────────────────────────
+function showCatalogueToast(msg) {
+  const el = document.getElementById('soc-saved-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2800);
+}
 </script>
 <div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
   <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
