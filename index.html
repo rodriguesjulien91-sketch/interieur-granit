@@ -292,6 +292,7 @@ textarea { resize: vertical; min-height: 80px; }
 .plan-row input { padding: 9px 11px; font-size: .84rem; }
 .counter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .counter-item { display: flex; align-items: center; justify-content: space-between; background: var(--cream); border: 1px solid var(--cream-dark); border-radius: var(--radius); padding: 9px 13px; }
+.counter-item.fac-hidden { display: none !important; }
 .counter-info { display: flex; flex-direction: column; gap: 1px; }
 .counter-name { font-size: .79rem; }
 .counter-price { font-size: .69rem; color: var(--stone-light); }
@@ -903,17 +904,17 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="section-block">
         <h3>Évidements & perçages</h3>
         <div class="counter-grid" id="counters">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item" id="coupe-onglet-item"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet"></span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:'DM Sans',sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
+          <div class="counter-item" data-fac-key="plaque-cuisson"><div class="counter-info"><span class="counter-name">Plaque de cuisson</span><span class="counter-price" data-key="plaque-cuisson"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="evier-encastre"><div class="counter-info"><span class="counter-name">Évier encastré sur plan</span><span class="counter-price" data-key="evier-encastre"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="evier-sous-plan"><div class="counter-info"><span class="counter-name">Bac évier collé sous plan</span><span class="counter-price" data-key="evier-sous-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="percage-mitigeur"><div class="counter-info"><span class="counter-name">Perçage mitigeur / bonde</span><span class="counter-price" data-key="percage-mitigeur"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="percage-bar"><div class="counter-info"><span class="counter-name">Perçage bar / snack</span><span class="counter-price" data-key="percage-bar"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="prise-plan"><div class="counter-info"><span class="counter-name">Prise électrique sur plan</span><span class="counter-price" data-key="prise-plan"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="prise-credence"><div class="counter-info"><span class="counter-name">Prise électrique crédence</span><span class="counter-price" data-key="prise-credence"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="poubelle"><div class="counter-info"><span class="counter-name">Poubelle encastrée</span><span class="counter-price" data-key="poubelle"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="rainurage"><div class="counter-info"><span class="counter-name">Rainurage encastré</span><span class="counter-price" data-key="rainurage"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="decoupe-arrondi"><div class="counter-info"><span class="counter-name">Découpe arrondi</span><span class="counter-price" data-key="decoupe-arrondi"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" id="coupe-onglet-item" data-fac-key="coupe-onglet"><div class="counter-info"><span class="counter-name">Coupe d'onglet</span><span class="counter-price" data-key="coupe-onglet"></span></div><div class="counter-controls" style="gap:6px;"><input type="number" id="coupe-onglet-ml" min="0" step="1" value="0" placeholder="mm" style="width:70px;padding:6px 8px;font-size:.84rem;text-align:right;border:1px solid var(--cream-dark);border-radius:var(--radius);font-family:'DM Sans',sans-serif;" onchange="this.value=Math.max(0,this.value)"> <span style="font-size:.75rem;color:var(--stone-light);">mm</span></div></div>
         </div>
       </div>
       <div class="section-block">
@@ -2191,7 +2192,14 @@ function getColorisPrixDirect(mat, coloris, ep, finition) {
 //    }
 //  }
 // Snapshot immuable du catalogue de base (avant tout override admin)
-const COLORIS_DATA_BASE = JSON.parse(JSON.stringify(COLORIS_DATA));
+const COLORIS_DATA_BASE  = JSON.parse(JSON.stringify(COLORIS_DATA));
+const PRIX_OPTIONS_BASE  = JSON.parse(JSON.stringify(PRIX.options));
+const PRIX_CHANTS_BASE   = JSON.parse(JSON.stringify(PRIX.chants));
+
+// Déclarés tôt pour éviter la temporal dead zone JavaScript (let = TDZ jusqu'à exécution)
+let catalogueOverrides = {};
+let customMaterials    = {};
+var faconnageOverrides = { deleted: [], pv: {}, custom: [] };
 
 // ═══════════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
@@ -2320,10 +2328,15 @@ function setupCatalogueListener() {
   if (unsubCatalogue) unsubCatalogue();
   unsubCatalogue = fbDb.collection('catalogue').onSnapshot(snap => {
     snap.forEach(doc => {
-      if (doc.id === 'overrides')         catalogueOverrides = doc.data() || {};
-      if (doc.id === 'custom_materials')  customMaterials    = doc.data() || {};
+      if (doc.id === 'overrides')         catalogueOverrides  = doc.data() || {};
+      if (doc.id === 'custom_materials')  customMaterials     = doc.data() || {};
+      if (doc.id === 'faconnage') {
+        const d = doc.data() || {};
+        faconnageOverrides = { deleted: d.deleted||[], pv: d.pv||{}, custom: d.custom||[] };
+      }
     });
     applyCatalogueOverrides();
+    applyFaconnageOverrides();
     // Rafraîchir la vue active si elle dépend du catalogue
     const adminActive = document.getElementById('view-admin')?.classList.contains('active');
     const proActive   = document.getElementById('view-pro')?.classList.contains('active');
@@ -2357,7 +2370,8 @@ function doLogin() {
       await vLoad(); // Charger les visuels coloris pour tous les utilisateurs
       await aLoad(); // Charger les prix d'achat
       await fLoad(); // Charger les prix d'achat façonnage
-      await loadCatalogueOverrides(); // Charger les overrides catalogue (coloris/matériaux personnalisés)
+      await loadCatalogueOverrides();  // Charger les overrides catalogue (coloris/matériaux personnalisés)
+      await loadFaconnageOverrides();  // Charger les overrides façonnage/options
       const user = appCache.users[email];
       if (!user) {
         errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
@@ -3804,6 +3818,7 @@ function startNewQuote() {
   document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
   document.getElementById('banner-email').textContent = currentUser.email || '';
   showView('view-form');
+  rebuildDevisFormOptions();
   initCounterPrices();
 }
 
@@ -3822,6 +3837,7 @@ function startDirectQuote() {
   document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
   document.getElementById('banner-email').textContent = currentUser.email || '';
   showView('view-form');
+  rebuildDevisFormOptions();
   initCounterPrices();
 }
 
@@ -3925,6 +3941,7 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
   document.getElementById('banner-email').textContent = currentUser.email || '';
   showView('view-form');
+  rebuildDevisFormOptions();
   initCounterPrices();
 }
 
@@ -5870,6 +5887,217 @@ function aKeyToDocId(key) {
 var fCache = {};   // { "evier-encastre": 45.00, "chant-Droit chanfreiné": 8.50, ... }
 var fLoaded = false;
 
+// ─── Façonnage overrides ─────────────────────────────────────
+// (faconnageOverrides déclaré plus haut pour éviter la TDZ)
+
+const CHANT_KEY_TO_LABEL = {
+  'chant-droit-chanfreine':       'Droit chanfreiné',
+  'chant-arrondi-quart':          'Arrondi 1/4 de rond',
+  'chant-arrondi-demi':           'Arrondi 1/2 rond',
+  'chant-droit-onglet':           "Droit 4 à 10 cm coupe d'onglet",
+  'chant-droit-rapporte':         'Droit 4 à 10 cm rapporté',
+  'chant-droit-2-2-chanfreine':   'Droit 2 + 2 cm chanfreiné',
+  'chant-aile-avion':             "Aile d'avion",
+  'chant-rainurage':              'Rainurage encastré',
+};
+
+async function loadFaconnageOverrides() {
+  try {
+    const snap = await fbDb.collection('catalogue').doc('faconnage').get();
+    if (snap.exists) {
+      const d = snap.data() || {};
+      faconnageOverrides = { deleted: d.deleted||[], pv: d.pv||{}, custom: d.custom||[] };
+    }
+  } catch(e) {}
+  applyFaconnageOverrides();
+}
+
+function applyFaconnageOverrides() {
+  // Reset PRIX.options et PRIX.chants depuis les bases immuables
+  for (const k of Object.keys(PRIX.options)) delete PRIX.options[k];
+  Object.assign(PRIX.options, JSON.parse(JSON.stringify(PRIX_OPTIONS_BASE)));
+  for (const k of Object.keys(PRIX.chants)) delete PRIX.chants[k];
+  Object.assign(PRIX.chants, JSON.parse(JSON.stringify(PRIX_CHANTS_BASE)));
+
+  const deleted = new Set(faconnageOverrides.deleted || []);
+
+  // Appliquer les overrides de prix de vente sur les items de base
+  for (const [key, val] of Object.entries(faconnageOverrides.pv || {})) {
+    if (PRIX.options[key])           PRIX.options[key].prix = val;
+    else if (CHANT_KEY_TO_LABEL[key]) PRIX.chants[CHANT_KEY_TO_LABEL[key]] = val;
+  }
+
+  // Ajouter les prestations custom (sauf supprimées)
+  for (const item of faconnageOverrides.custom || []) {
+    if (deleted.has(item.key)) continue;
+    const pv = (faconnageOverrides.pv && faconnageOverrides.pv[item.key] !== undefined)
+      ? faconnageOverrides.pv[item.key] : (item.pv || 0);
+    if (item.category === 'option') {
+      PRIX.options[item.key] = { label: item.label, prix: pv };
+    } else if (item.category === 'chant') {
+      PRIX.chants[item.label] = pv;
+    }
+  }
+
+  // Supprimer les items masqués
+  for (const key of deleted) {
+    if (PRIX.options[key]) delete PRIX.options[key];
+    if (CHANT_KEY_TO_LABEL[key]) delete PRIX.chants[CHANT_KEY_TO_LABEL[key]];
+  }
+
+  rebuildDevisFormOptions();
+}
+
+function rebuildDevisFormOptions() {
+  const deleted = new Set(faconnageOverrides.deleted || []);
+
+  // Masquer/afficher les counter items via classe CSS (plus fiable que style.display)
+  document.querySelectorAll('.counter-item[data-fac-key]').forEach(item => {
+    item.classList.toggle('fac-hidden', deleted.has(item.dataset.facKey));
+  });
+
+  // Ajouter les counter items custom (catégorie option)
+  const countersEl = document.getElementById('counters');
+  if (countersEl) {
+    const validCustomKeys = new Set((faconnageOverrides.custom || []).map(c => c.key));
+
+    // Supprimer du DOM les items custom qui n'existent plus dans faconnageOverrides.custom
+    countersEl.querySelectorAll('[data-fac-key]').forEach(el => {
+      const k = el.dataset.facKey;
+      if (k && k.startsWith('custom-fac-') && !validCustomKeys.has(k)) el.remove();
+    });
+
+    // Ajouter/mettre à jour les items custom actifs
+    for (const item of faconnageOverrides.custom || []) {
+      if (item.category !== 'option') continue;
+      let el = countersEl.querySelector(`[data-fac-key="${item.key}"]`);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'counter-item';
+        el.dataset.facKey = item.key;
+        el.innerHTML = `<div class="counter-info"><span class="counter-name">${item.label}</span><span class="counter-price" data-key="${item.key}"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div>`;
+        countersEl.appendChild(el);
+      }
+      el.classList.toggle('fac-hidden', deleted.has(item.key));
+    }
+  }
+
+  // Reconstruire le select de chant
+  const chantSelect = document.getElementById('chant');
+  if (chantSelect) {
+    const prevVal = chantSelect.value;
+    chantSelect.innerHTML = '<option value="">Sans chant particulier</option>';
+    for (const [key, label] of Object.entries(CHANT_KEY_TO_LABEL)) {
+      if (deleted.has(key)) continue;
+      const opt = document.createElement('option');
+      opt.value = label; opt.textContent = label;
+      if (label === prevVal) opt.selected = true;
+      chantSelect.appendChild(opt);
+    }
+    for (const item of faconnageOverrides.custom || []) {
+      if (item.category !== 'chant' || deleted.has(item.key)) continue;
+      const opt = document.createElement('option');
+      opt.value = item.label; opt.textContent = item.label;
+      if (item.label === prevVal) opt.selected = true;
+      chantSelect.appendChild(opt);
+    }
+    chantSelect.value = prevVal;
+  }
+
+  // Mettre à jour l'affichage des prix dans les compteurs
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const p = PRIX.options[el.dataset.key]?.prix;
+    if (p) el.textContent = p.toFixed(0) + ' €';
+  });
+}
+
+function getEffectiveFaconnageItems() {
+  const deleted = new Set(faconnageOverrides.deleted || []);
+  const base    = FACONNAGE_ITEMS.filter(item => !deleted.has(item.key));
+  const custom  = (faconnageOverrides.custom || []).map(c => ({ ...c, isCustom: true }));
+  return [...base, ...custom];
+}
+
+async function saveFaconnagePv(key, val) {
+  if (!faconnageOverrides.pv) faconnageOverrides.pv = {};
+  if (val === null || val === undefined) delete faconnageOverrides.pv[key];
+  else faconnageOverrides.pv[key] = val;
+  applyFaconnageOverrides();
+  try {
+    await fbDb.collection('catalogue').doc('faconnage').set(cleanForFirestore(faconnageOverrides), { merge: true });
+  } catch(e) { alert('Erreur sauvegarde : ' + e.message); }
+}
+
+async function deleteFaconnageItem(key) {
+  const items = getEffectiveFaconnageItems();
+  const item  = [...FACONNAGE_ITEMS, ...(faconnageOverrides.custom||[])].find(i => i.key === key);
+  if (!confirm('Masquer "' + (item?.label||key) + '" du formulaire de devis et du tableau ?\n\nTu pourras le restaurer.')) return;
+  if (!faconnageOverrides.deleted) faconnageOverrides.deleted = [];
+  if (!faconnageOverrides.deleted.includes(key)) faconnageOverrides.deleted.push(key);
+  applyFaconnageOverrides();
+  try {
+    await fbDb.collection('catalogue').doc('faconnage').set(cleanForFirestore(faconnageOverrides), { merge: true });
+    renderFaconnageTab(); showCatalogueToast('✓ Prestation masquée');
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+async function restoreFaconnageItem(key) {
+  faconnageOverrides.deleted = (faconnageOverrides.deleted || []).filter(k => k !== key);
+  applyFaconnageOverrides();
+  try {
+    await fbDb.collection('catalogue').doc('faconnage').set(cleanForFirestore(faconnageOverrides), { merge: true });
+    renderFaconnageTab(); showCatalogueToast('✓ Prestation restaurée');
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+async function deleteCustomFaconnageItem(key) {
+  if (!confirm('Supprimer définitivement cette prestation ? Cette action est irréversible.')) return;
+  faconnageOverrides.custom  = (faconnageOverrides.custom  || []).filter(c => c.key !== key);
+  faconnageOverrides.deleted = (faconnageOverrides.deleted || []).filter(k => k !== key);
+  if (faconnageOverrides.pv) delete faconnageOverrides.pv[key];
+  // Supprimer l'élément DOM immédiatement (pas juste le cacher)
+  document.querySelectorAll(`[data-fac-key="${key}"]`).forEach(el => el.remove());
+  applyFaconnageOverrides();
+  try {
+    await fbDb.collection('catalogue').doc('faconnage').set(cleanForFirestore(faconnageOverrides), { merge: true });
+    renderFaconnageTab(); showCatalogueToast('✓ Prestation supprimée');
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function openFaconnageAddModal() {
+  document.getElementById('modal-fac-label').value    = '';
+  document.getElementById('modal-fac-category').value = 'option';
+  document.getElementById('modal-fac-unite').value    = 'unité';
+  document.getElementById('modal-fac-pv').value       = '';
+  document.getElementById('modal-fac-error').style.display = 'none';
+  document.getElementById('modal-faconnage-add').classList.add('active');
+}
+function closeFaconnageAddModal() {
+  document.getElementById('modal-faconnage-add').classList.remove('active');
+}
+async function saveFaconnageAddModal() {
+  const label    = document.getElementById('modal-fac-label').value.trim();
+  const category = document.getElementById('modal-fac-category').value;
+  const unite    = document.getElementById('modal-fac-unite').value;
+  const pv       = parseFloat(document.getElementById('modal-fac-pv').value) || 0;
+  const errEl    = document.getElementById('modal-fac-error');
+  errEl.style.display = 'none';
+  if (!label) { errEl.textContent = 'Le nom de la prestation est obligatoire.'; errEl.style.display='block'; return; }
+  const key = 'custom-fac-' + label.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  if ((faconnageOverrides.custom||[]).find(c=>c.key===key)) {
+    errEl.textContent = 'Une prestation similaire existe déjà.'; errEl.style.display='block'; return;
+  }
+  if (!faconnageOverrides.custom) faconnageOverrides.custom = [];
+  faconnageOverrides.custom.push({ key, label, unite, category, pv });
+  applyFaconnageOverrides();
+  try {
+    await fbDb.collection('catalogue').doc('faconnage').set(cleanForFirestore(faconnageOverrides), { merge: true });
+    closeFaconnageAddModal(); renderFaconnageTab(); showCatalogueToast('✓ Prestation ajoutée');
+  } catch(e) { errEl.textContent = 'Erreur : ' + e.message; errEl.style.display='block'; }
+}
+
 const FACONNAGE_ITEMS = [
   // Prix fixes (unité) — prestations avec coût fournisseur
   { key: 'plaque-cuisson',    label: 'Découpe plaque de cuisson',    unite: 'unité' },
@@ -5939,13 +6167,26 @@ async function renderFaconnageTab() {
   await fLoad();
   const table = document.getElementById('faconnage-table');
   if (!table) return;
-
   table.innerHTML = '';
 
-  // En-tête
+  const deleted    = new Set(faconnageOverrides.deleted || []);
+  const allItems   = getEffectiveFaconnageItems();
+  const deletedItems = [...FACONNAGE_ITEMS, ...(faconnageOverrides.custom||[])].filter(i => deleted.has(i.key));
+
+  // ── Bouton ajouter ──────────────────────────────────────────
+  const addBar = document.createElement('div');
+  addBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;';
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ Ajouter une prestation';
+  addBtn.style.cssText = 'background:var(--gold);color:#1a1814;border:none;border-radius:4px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;';
+  addBtn.onclick = openFaconnageAddModal;
+  addBar.appendChild(addBtn);
+  table.appendChild(addBar);
+
+  // ── En-tête colonnes ────────────────────────────────────────
   const thead = document.createElement('div');
-  thead.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);';
-  ['Prestation', 'Unité', 'Prix vente', "Prix d'achat"].forEach(h => {
+  thead.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr 1fr 36px;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--cream-dark);';
+  ['Prestation','Unité','Prix vente','Prix achat','Marge',''].forEach(h => {
     const c = document.createElement('div');
     c.style.cssText = 'font-size:.68rem;font-weight:600;color:var(--stone-light);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;';
     c.textContent = h;
@@ -5953,35 +6194,29 @@ async function renderFaconnageTab() {
   });
   table.appendChild(thead);
 
-  FACONNAGE_ITEMS.forEach(item => {
-    // Prix de vente depuis PRICES
+  // ── Lignes actives ──────────────────────────────────────────
+  allItems.forEach(item => {
     let prixVente = null;
-    if (item.key.startsWith('chant-')) {
-      const chantLabel = {
-        'chant-droit-chanfreine': 'Droit chanfreiné',
-        'chant-arrondi-quart': 'Arrondi 1/4 de rond',
-        'chant-arrondi-demi': 'Arrondi 1/2 rond',
-        'chant-droit-onglet': "Droit 4 à 10 cm coupe d'onglet",
-        'chant-droit-rapporte': 'Droit 4 à 10 cm rapporté',
-        'chant-droit-2-2-chanfreine': 'Droit 2 + 2 cm chanfreiné',
-        'chant-aile-avion': "Aile d'avion",
-        'chant-rainurage': 'Rainurage encastré',
-      }[item.key];
-      prixVente = PRIX.chants[chantLabel] || null;
+    if (item.isCustom) {
+      if (item.category === 'chant') prixVente = PRIX.chants[item.label] || null;
+      else prixVente = PRIX.options[item.key]?.prix || null;
+    } else if (item.key.startsWith('chant-')) {
+      prixVente = PRIX.chants[CHANT_KEY_TO_LABEL[item.key]] || null;
     } else {
       prixVente = PRIX.options[item.key]?.prix || null;
     }
 
     const prixAchat = fCache[item.key] || null;
-    const eid = 'fa_' + item.key.replace(/-/g, '_');
+    const eid = 'fa_' + item.key.replace(/[^a-zA-Z0-9]/g, '_');
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr;gap:4px;margin-bottom:4px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(237,230,214,.4);';
+    row.style.cssText = 'display:grid;grid-template-columns:3fr 1fr 1fr 1fr 1fr 36px;gap:4px;margin-bottom:3px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(237,230,214,.4);';
 
     // Label
     const lbl = document.createElement('div');
     lbl.style.cssText = 'font-size:.8rem;color:var(--stone);padding:4px 6px;';
-    lbl.textContent = item.label;
+    lbl.textContent = item.label + (item.isCustom ? ' ✦' : '');
+    lbl.title = item.isCustom ? 'Prestation personnalisée' : '';
     row.appendChild(lbl);
 
     // Unité
@@ -5990,40 +6225,105 @@ async function renderFaconnageTab() {
     uCell.textContent = item.unite;
     row.appendChild(uCell);
 
-    // Prix vente
+    // Prix vente — éditable
     const pvCell = document.createElement('div');
-    pvCell.style.cssText = 'font-size:.78rem;color:var(--stone);padding:4px 6px;';
-    pvCell.textContent = prixVente ? prixVente.toFixed(2) + ' €' : '—';
+    const pvInput = document.createElement('input');
+    pvInput.type = 'number'; pvInput.step = '0.01'; pvInput.min = '0';
+    pvInput.value = prixVente != null ? prixVente.toFixed(2) : '';
+    pvInput.placeholder = '—';
+    pvInput.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
+    pvInput.onblur = (function(key, r) {
+      return async function() {
+        const newVal = parseFloat(this.value);
+        const old    = r.pv;
+        if (isNaN(newVal) || Math.abs(newVal - (old||0)) < 0.001) return;
+        this.style.borderColor = 'var(--gold)';
+        r.pv = newVal;
+        await saveFaconnagePv(key, newVal);
+        this.style.borderColor = 'var(--success)';
+        setTimeout(() => { this.style.borderColor = ''; }, 1200);
+        // Recalcul marge
+        const mCell = document.getElementById('fmarge_' + eid);
+        if (mCell && fCache[key]) {
+          const pct = ((newVal - fCache[key]) / newVal * 100);
+          const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+          mCell.textContent = pct.toFixed(0) + '%';
+          mCell.style.color = col;
+        }
+      };
+    })(item.key, { pv: prixVente });
+    pvInput.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
+    pvCell.appendChild(pvInput);
     row.appendChild(pvCell);
 
-    // Prix achat (input)
+    // Prix achat — éditable
     const paCell = document.createElement('div');
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.id = eid;
-    input.placeholder = '0.00';
-    input.step = '0.01';
-    input.min = '0';
-    input.value = prixAchat ? prixAchat.toFixed(2) : '';
-    input.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
-    input.onblur = function() { fSaveInput(item.key, eid); };
-    input.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
-    paCell.appendChild(input);
-
-    // Marge si prix vente et achat connus
-    if (prixVente && prixAchat) {
-      const marge = prixVente - prixAchat;
-      const pct = (marge / prixVente * 100);
-      const col = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
-      const badge = document.createElement('span');
-      badge.style.cssText = 'margin-left:6px;font-size:.68rem;color:' + col + ';font-weight:500;';
-      badge.textContent = pct.toFixed(0) + '%';
-      paCell.appendChild(badge);
-    }
-
+    const paInput = document.createElement('input');
+    paInput.type = 'number'; paInput.id = eid; paInput.placeholder = '0.00';
+    paInput.step = '0.01'; paInput.min = '0';
+    paInput.value = prixAchat ? prixAchat.toFixed(2) : '';
+    paInput.style.cssText = 'width:100%;font-size:.75rem;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:3px;text-align:right;';
+    paInput.onblur = function() { fSaveInput(item.key, eid); };
+    paInput.onkeydown = function(e) { if (e.key === 'Enter') this.blur(); };
+    paCell.appendChild(paInput);
     row.appendChild(paCell);
+
+    // Marge
+    const mCell = document.createElement('div');
+    mCell.id = 'fmarge_' + eid;
+    mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
+    if (prixVente && prixAchat) {
+      const pct = ((prixVente - prixAchat) / prixVente * 100);
+      mCell.textContent = pct.toFixed(0) + '%';
+      mCell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
+    } else { mCell.textContent = '—'; mCell.style.color = 'var(--stone-light)'; }
+    row.appendChild(mCell);
+
+    // Bouton supprimer/masquer
+    const actCell = document.createElement('div');
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '🗑';
+    delBtn.title = item.isCustom ? 'Supprimer définitivement' : 'Masquer du catalogue';
+    delBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:.9rem;padding:4px;opacity:.6;';
+    delBtn.onmouseenter = function() { this.style.opacity='1'; };
+    delBtn.onmouseleave = function() { this.style.opacity='.6'; };
+    delBtn.onclick = item.isCustom
+      ? () => deleteCustomFaconnageItem(item.key)
+      : () => deleteFaconnageItem(item.key);
+    actCell.appendChild(delBtn);
+    row.appendChild(actCell);
+
     table.appendChild(row);
   });
+
+  // ── Items masqués (restaurables) ───────────────────────────
+  if (deletedItems.length > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'margin-top:24px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--cream-dark);font-size:.72rem;font-weight:600;color:var(--stone-light);text-transform:uppercase;letter-spacing:.08em;';
+    sep.textContent = 'Prestations masquées';
+    table.appendChild(sep);
+    deletedItems.forEach(item => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 8px;margin-bottom:3px;background:rgba(0,0,0,.15);border-radius:4px;opacity:.7;';
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-size:.78rem;color:var(--stone-light);flex:1;text-decoration:line-through;';
+      lbl.textContent = item.label;
+      row.appendChild(lbl);
+      const restBtn = document.createElement('button');
+      restBtn.textContent = '↩ Restaurer';
+      restBtn.style.cssText = 'font-size:.72rem;padding:4px 10px;background:var(--cream-dark);border:none;border-radius:3px;cursor:pointer;color:var(--stone);';
+      restBtn.onclick = () => restoreFaconnageItem(item.key);
+      row.appendChild(restBtn);
+      if (item.isCustom) {
+        const permBtn = document.createElement('button');
+        permBtn.textContent = '✕ Suppr.';
+        permBtn.style.cssText = 'font-size:.72rem;padding:4px 10px;background:none;border:1px solid #c0392b;border-radius:3px;cursor:pointer;color:#c0392b;';
+        permBtn.onclick = () => deleteCustomFaconnageItem(item.key);
+        row.appendChild(permBtn);
+      }
+      table.appendChild(row);
+    });
+  }
 }
 
 async function initFaconnage() { await fLoad(); }
@@ -6708,15 +7008,16 @@ document.getElementById('modal-catalogue-coloris').addEventListener('click', fun
 document.getElementById('modal-catalogue-mat').addEventListener('click', function(e) {
   if (e.target === this) closeAddMaterialModal();
 });
+document.getElementById('modal-faconnage-add').addEventListener('click', function(e) {
+  if (e.target === this) closeFaconnageAddModal();
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  CATALOGUE — Gestion dynamique des coloris (admin)
 // ═══════════════════════════════════════════════════════════════
 
-// Overrides Firestore : { [mat]: { [colorisName]: [{f,e}] | '__DELETE__' } }
-let catalogueOverrides = {};
-// Matériaux personnalisés : { [matKey]: { label, group } }
-let customMaterials = {};
+// Déclarés ici pour éviter la temporal dead zone (référencés tôt dans getDeletedColorisSet)
+// (initialisés dans loadCatalogueOverrides puis mis à jour par setupCatalogueListener)
 
 async function loadCatalogueOverrides() {
   try {
@@ -7178,6 +7479,40 @@ function showCatalogueToast(msg) {
   <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
   <img id="coloris-lightbox-img" src="" alt="">
   <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
+
+<!-- Modal : Ajouter une prestation façonnage -->
+<div class="modal-backdrop" id="modal-faconnage-add">
+  <div class="modal fade-in" style="max-width:440px;">
+    <h2>Ajouter une prestation</h2>
+    <div class="field">
+      <label>Intitulé *</label>
+      <input type="text" id="modal-fac-label" placeholder="ex: Découpe robinet, Chant biseauté...">
+    </div>
+    <div class="field">
+      <label>Catégorie *</label>
+      <select id="modal-fac-category">
+        <option value="option">Façonnage / Option</option>
+        <option value="chant">Chant (apparaîtra dans la liste des chants)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Unité *</label>
+      <select id="modal-fac-unite">
+        <option value="unité">Par unité</option>
+        <option value="ml">Au mètre linéaire (ml)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Prix de vente HT (€)</label>
+      <input type="number" id="modal-fac-pv" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <p id="modal-fac-error" style="color:#c0392b;font-size:.8rem;display:none;margin-top:8px;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeFaconnageAddModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveFaconnageAddModal()">Ajouter</button>
+    </div>
+  </div>
 </div>
 </body>
 </html>
