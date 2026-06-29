@@ -5261,6 +5261,11 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
   <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
 </div>
 
+<div class="mention-box" style="margin-top:10px;">
+  <strong>Conditions de règlement :</strong><br>
+  ${(()=>{ const t1=Math.round(totalTTC*0.30); const t2=t1; const t3=Math.round((totalTTC-t1-t2)*100)/100; return `• 30 % d'acompte à la commande : <strong>${t1} €</strong><br>  • 30 % à la prise de côte : <strong>${t2} €</strong><br>  • 40 % le jour de la pose : <strong>${fmtEUR(t3)}</strong>`; })()}
+</div>
+
 <div class="sigs">
   <div class="sig-box">
     <div class="sig-lbl">${s.raisonSociale || 'Intérieur Granit'}</div>
