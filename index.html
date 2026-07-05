@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-storage-compat.js"></script>
 <style>
 /* ═══ VARIABLES ═══════════════════════════════════════════════════ */
 :root {
@@ -2214,8 +2215,9 @@ const FIREBASE_CONFIG = {
 
 // Initialisation Firebase (app principale)
 firebase.initializeApp(FIREBASE_CONFIG);
-const fbAuth = firebase.auth();
-const fbDb   = firebase.firestore();
+const fbAuth    = firebase.auth();
+const fbDb      = firebase.firestore();
+const fbStorage = firebase.storage();
 
 // La création de comptes cuisinistes utilise l'API REST Firebase Auth
 // (pas besoin d'app secondaire — la session admin reste intacte)
@@ -2950,13 +2952,13 @@ async function showQuoteDetail(id) {
       <div class="detail-row"><span class="dk">Date d'installation</span><span class="dv">${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</span></div>
       ${q.commande.notes ? `<div class="detail-row"><span class="dk">Notes</span><span class="dv">${q.commande.notes}</span></div>` : ''}
       ${q.commande.planFile ? `<div class="detail-row"><span class="dk">📐 Plan cuisine</span><span class="dv">${
-        q.commande.planFileData
-          ? `<a href="${q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.planFile}</a>`
+        (q.commande.planUrl || q.commande.planFileData)
+          ? `<a href="${q.commande.planUrl || q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.planFile}</a>`
           : `<em>${q.commande.planFile}</em>`
       }</span></div>` : ''}
       ${q.commande.devisFile ? `<div class="detail-row"><span class="dk">✍️ Devis signé</span><span class="dv">${
-        q.commande.devisFileData
-          ? `<a href="${q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.devisFile}</a>`
+        (q.commande.devisUrl || q.commande.devisFileData)
+          ? `<a href="${q.commande.devisUrl || q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">⬇ ${q.commande.devisFile}</a>`
           : `<em>${q.commande.devisFile}</em>`
       }</span></div>` : ''}
     </div>` : ''}
@@ -3607,13 +3609,13 @@ function showProQuoteDetail(id) {
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
          ${q.commande.notes ? `<br><span style="color:var(--stone-light);">Note : ${q.commande.notes}</span>` : ''}
          ${q.commande.planFile
-           ? `<br>📐 Plan : ${q.commande.planFileData
-               ? `<a href="${q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.planFile}</a>`
+           ? `<br>📐 Plan : ${(q.commande.planUrl || q.commande.planFileData)
+               ? `<a href="${q.commande.planUrl || q.commande.planFileData}" download="${q.commande.planFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.planFile}</a>`
                : `<em>${q.commande.planFile}</em>`}`
            : ''}
          ${q.commande.devisFile
-           ? `<br>✍️ Devis signé : ${q.commande.devisFileData
-               ? `<a href="${q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.devisFile}</a>`
+           ? `<br>✍️ Devis signé : ${(q.commande.devisUrl || q.commande.devisFileData)
+               ? `<a href="${q.commande.devisUrl || q.commande.devisFileData}" download="${q.commande.devisFile}" target="_blank" style="color:var(--gold);text-decoration:underline;">${q.commande.devisFile}</a>`
                : `<em>${q.commande.devisFile}</em>`}`
            : ''}
        </div>` : '';
@@ -3716,16 +3718,16 @@ function handleFileSelect(input, dropZoneId, labelId) {
   reader.readAsDataURL(file);
 }
 
-function confirmCommande() {
+async function confirmCommande() {
+  const errEl = document.getElementById('modal-commande-error');
+  const confirmBtn = document.querySelector('#modal-commande .btn-commande');
   try {
     const quoteId = document.getElementById('commande-quote-id').value;
     const dateInstall = document.getElementById('commande-date-install').value;
     const notes = document.getElementById('commande-notes').value.trim();
-    const errEl = document.getElementById('modal-commande-error');
 
     if (!dateInstall) { errEl.textContent = 'Veuillez indiquer une date d\'installation souhaitée.'; errEl.style.display = 'block'; return; }
 
-    // Vérifier que les fichiers sélectionnés ont bien fini de se charger
     const planInputHasFile = document.getElementById('file-plan').files.length > 0;
     const devisInputHasFile = document.getElementById('file-devis').files.length > 0;
     if ((planInputHasFile && !pendingFiles.plan) || (devisInputHasFile && !pendingFiles.devis)) {
@@ -3740,23 +3742,46 @@ function confirmCommande() {
 
     const isDirectQuote = db.quotes[idx].type === 'direct';
 
+    // Désactiver le bouton pendant l'upload
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = '⏳ Envoi en cours…'; }
+
+    // Upload des fichiers dans Firebase Storage
+    function dataUrlToBlob(dataUrl) {
+      const arr = dataUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      return new Blob([u8arr], { type: mime });
+    }
+    async function uploadFile(fileObj, path) {
+      if (!fileObj) return null;
+      const ref = fbStorage.ref(path);
+      const blob = dataUrlToBlob(fileObj.dataUrl);
+      await ref.put(blob, { contentType: blob.type });
+      return await ref.getDownloadURL();
+    }
+
+    const planUrl  = await uploadFile(pendingFiles.plan,  `commandes/${quoteId}/plan_${Date.now()}_${pendingFiles.plan?.name||''}`);
+    const devisUrl = await uploadFile(pendingFiles.devis, `commandes/${quoteId}/devis_${Date.now()}_${pendingFiles.devis?.name||''}`);
+
     db.quotes[idx].status = 'commande';
     db.quotes[idx].commande = {
       dateInstall,
       notes,
-      planFile:      pendingFiles.plan  ? pendingFiles.plan.name    : null,
-      planFileData:  pendingFiles.plan  ? pendingFiles.plan.dataUrl : null,
-      devisFile:     pendingFiles.devis ? pendingFiles.devis.name   : null,
-      devisFileData: pendingFiles.devis ? pendingFiles.devis.dataUrl: null,
+      planFile:  pendingFiles.plan  ? pendingFiles.plan.name  : null,
+      planUrl,
+      devisFile: pendingFiles.devis ? pendingFiles.devis.name : null,
+      devisUrl,
       createdAt: new Date().toISOString()
     };
     pendingFiles = { plan: null, devis: null };
 
     saveDB(db);
-    // Persister dans Firestore
     const savedQuote = db.quotes[idx];
     const { id: _qid, ...commandeData } = savedQuote;
-    fbDb.collection('quotes').doc(quoteId).set(cleanForFirestore(commandeData)).catch(console.error);
+    await fbDb.collection('quotes').doc(quoteId).set(cleanForFirestore(commandeData));
 
     closeCommandeModal();
 
@@ -3772,7 +3797,10 @@ function confirmCommande() {
     }
   } catch(e) {
     console.error('Erreur confirmCommande:', e);
-    alert('Erreur lors du passage en commande : ' + e.message);
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = '🛒 Confirmer la commande'; }
   }
 }
 
@@ -6631,6 +6659,7 @@ async function renderAchatsTab() {
         if (!isNaN(newVal) && newVal > 0 && newVal !== r.prixVente) {
           this.style.borderColor = 'var(--gold)';
           r.finObj.e[r.ep] = newVal; r.prixVente = newVal;
+          pvOverridesRaw[aKeyToDocId(r.key)] = newVal;
           fbDb.collection('settings').doc('prix-vente-overrides')
             .set({ [aKeyToDocId(r.key)]: newVal }, { merge: true })
             .then(() => {
@@ -6669,24 +6698,28 @@ async function initAchats() { await aLoad(); }
 
 // ═══ PRIX DE VENTE OVERRIDES ═══════════════════════════════════
 // Permet à l'admin de modifier les prix de vente depuis l'onglet Prix d'achat
+var pvOverridesRaw = {}; // cache en mémoire des prix de vente personnalisés
+
+function applyPvOverridesToColorisData() {
+  for (const [docId, newPrix] of Object.entries(pvOverridesRaw)) {
+    const key = docId.replace(/__/g, '|').replace(/--/g, '/').replace(/_/g, ' ');
+    const parts = key.split('|');
+    if (parts.length !== 4) continue;
+    const [mat, coloris, fin, ep] = parts;
+    if (!COLORIS_DATA[mat]?.[coloris]) continue;
+    const finObj = COLORIS_DATA[mat][coloris].find(f => f.f === fin);
+    if (finObj && finObj.e && finObj.e[ep] !== undefined) {
+      finObj.e[ep] = newPrix;
+    }
+  }
+}
+
 async function loadPrixVenteOverrides() {
   try {
     const doc = await fbDb.collection('settings').doc('prix-vente-overrides').get();
     if (!doc.exists) return;
-    const data = doc.data();
-    // Appliquer les overrides dans COLORIS_DATA
-    for (const [docId, newPrix] of Object.entries(data)) {
-      // docId format: mat__coloris__fin__ep (avec __ au lieu de |)
-      const key = docId.replace(/__/g, '|').replace(/--/g, '/').replace(/_/g, ' ');
-      const parts = key.split('|');
-      if (parts.length !== 4) continue;
-      const [mat, coloris, fin, ep] = parts;
-      if (!COLORIS_DATA[mat]?.[coloris]) continue;
-      const finObj = COLORIS_DATA[mat][coloris].find(f => f.f === fin);
-      if (finObj && finObj.e && finObj.e[ep] !== undefined) {
-        finObj.e[ep] = newPrix;
-      }
-    }
+    pvOverridesRaw = doc.data() || {};
+    applyPvOverridesToColorisData();
   } catch(e) {}
 }
 
@@ -7065,6 +7098,9 @@ function applyCatalogueOverrides() {
     }
     if (Object.keys(COLORIS_DATA[mat]).length === 0) delete COLORIS_DATA[mat];
   }
+
+  // Réappliquer les prix de vente personnalisés (effacés par le reset ci-dessus)
+  applyPvOverridesToColorisData();
 
   updateMateriauxSelects();
 }
