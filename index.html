@@ -4799,7 +4799,7 @@ async function exportBonDeCommande(quoteId) {
   .footer{margin-top:22px;padding-top:10px;border-top:1px solid #ede6d6;font-size:8.5px;color:#7a6f62;text-align:center;}
   @media print{
     body{padding:0;}
-    @page{margin:16mm 15mm;size:A4;}
+    @page{margin:0;size:A4;}body{padding:16mm 15mm;}
   }
 </style>
 </head>
@@ -5186,7 +5186,7 @@ async function exportDevisParticulier(quoteId) {
   .sig-date{display:flex;align-items:center;gap:5px;margin-top:5px;font-size:8px;}
   .sig-date span{flex:1;border-bottom:1px solid #7a6f62;}
   .footer{margin-top:10px;padding-top:6px;border-top:1px solid #ede6d6;font-size:6.5px;color:#7a6f62;text-align:center;line-height:1.6;}
-  @media print{body{padding:0;}@page{margin:10mm 11mm;size:A4;}}
+  @media print{body{padding:10mm 11mm;}@page{margin:0;size:A4;}}
 </style>
 </head>
 <body>
@@ -5537,7 +5537,7 @@ async function genererFacture(quoteId) {
   /* mentions */
   .mentions{font-size:8px;color:#7a6f62;margin-top:14px;line-height:1.6;padding-top:10px;border-top:1px solid #ede6d6;}
   .footer{margin-top:12px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
-  @media print{body{padding:0;}@page{margin:14mm 13mm;size:A4;}}
+  @media print{body{padding:14mm 13mm;}@page{margin:0;size:A4;}}
 </style>
 </head>
 <body>
@@ -5833,7 +5833,7 @@ async function genererFactureDirecte(quoteId) {
   .rib-val{font-family:monospace;font-size:9px;}
   .mentions{font-size:7.5px;color:#7a6f62;margin-top:12px;line-height:1.65;padding-top:10px;border-top:1px solid #ede6d6;}
   .footer{margin-top:10px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
-  @media print{body{padding:0;}@page{margin:14mm 13mm;size:A4;}}
+  @media print{body{padding:14mm 13mm;}@page{margin:0;size:A4;}}
 </style>
 </head>
 <body>
