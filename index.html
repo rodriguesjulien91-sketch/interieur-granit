@@ -469,9 +469,16 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="tab-direct" class="tab-content">
       <div class="section-header">
         <h2 class="section-title">Devis vente directe particuliers</h2>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <div class="search-bar-wrapper" style="min-width:220px;max-width:280px;">
-            <input type="text" id="admin-direct-search" placeholder="Rechercher (client, ville, adresse…)" oninput="renderDevisDirectTab()">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:0;align-items:center;border:1px solid var(--cream-dark);border-radius:4px;overflow:hidden;background:var(--white);">
+            <input type="text" id="admin-direct-search" placeholder="Rechercher un client…" oninput="renderDevisDirectTab()" style="border:none;padding:7px 10px;font-size:.8rem;min-width:180px;outline:none;background:transparent;color:var(--stone);">
+            <select id="admin-direct-status-filter" onchange="renderDevisDirectTab()" style="padding:7px 8px;font-size:.78rem;border:none;border-left:1px solid var(--cream-dark);background:var(--white);color:var(--stone);cursor:pointer;outline:none;">
+              <option value="all">Tous</option>
+              <option value="devise">Devisé</option>
+              <option value="commande">Commandé</option>
+              <option value="facture">Facturé</option>
+              <option value="cloture">Clôturé</option>
+            </select>
           </div>
           <button class="btn btn-gold btn-sm" onclick="startDirectQuote()">+ Nouveau devis particulier</button>
         </div>
@@ -3054,6 +3061,10 @@ function renderDevisDirectTab() {
   let directQuotes = db.quotes.filter(q => q.type === 'direct' || !q.proSociete);
   directQuotes.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
   const searchTerm = (document.getElementById('admin-direct-search')?.value || '').toLowerCase().trim();
+  const statusFilter = document.getElementById('admin-direct-status-filter')?.value || 'all';
+  if (statusFilter !== 'all') {
+    directQuotes = directQuotes.filter(q => q.status === statusFilter);
+  }
   if (searchTerm) {
     directQuotes = directQuotes.filter(q => {
       const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].filter(Boolean).join(' ').toLowerCase();
@@ -3086,14 +3097,43 @@ function renderDevisDirectTab() {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;" onclick="event.stopPropagation()">
           ${statusTag(q.status)}
+          ${q.status === 'commande' ? `<button class="btn btn-sm" style="background:var(--stone-light);color:#fff;border:none;" onclick="cloturerDevisDirect('${q.id}')">✓ Clôturer</button>` : ''}
+          ${q.status === 'cloture' ? `<button class="btn btn-sm" style="background:var(--gold);color:#1a1814;border:none;" onclick="rebasculerDevisDirect('${q.id}')">↩ Commandé</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="editDirectQuote('${q.id}')">Modifier</button>
           <button class="btn btn-secondary btn-sm" onclick="duplicateDirectQuote('${q.id}')">Dupliquer</button>
           <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+          ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
           <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis ?')) { deleteQuote('${q.id}','direct'); }" title="Supprimer">🗑</button>
         </div>
       </div>
       <div class="direct-detail-panel" id="ddp-${q.id}"></div>`;
   }).join('');
+}
+
+async function rebasculerDevisDirect(quoteId) {
+  if (!confirm('Rebasculer ce devis en "Commandé" ?')) return;
+  const db = getDB();
+  const idx = db.quotes.findIndex(x => x.id === quoteId);
+  if (idx === -1) return;
+  db.quotes[idx].status = 'commande';
+  saveDB(db);
+  const { id: _id, ...qData } = db.quotes[idx];
+  fbDb.collection('quotes').doc(quoteId).set(cleanForFirestore(qData)).catch(console.error);
+  renderDevisDirectTab();
+  showToast('✓ Devis repassé en commande');
+}
+
+async function cloturerDevisDirect(quoteId) {
+  if (!confirm('Clôturer ce devis ? Le statut passera à "Clôturé".')) return;
+  const db = getDB();
+  const idx = db.quotes.findIndex(x => x.id === quoteId);
+  if (idx === -1) return;
+  db.quotes[idx].status = 'cloture';
+  saveDB(db);
+  const { id: _id, ...qData } = db.quotes[idx];
+  fbDb.collection('quotes').doc(quoteId).set(cleanForFirestore(qData)).catch(console.error);
+  renderDevisDirectTab();
+  showToast('✓ Devis clôturé');
 }
 
 async function toggleDirectQuoteDetail(quoteId, cardEl) {
