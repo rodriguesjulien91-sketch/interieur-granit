@@ -2749,43 +2749,39 @@ function buildCommissionSection(q) {
   if (!pro || !pro.coeffVenteActif || !pro.coeffVente || pro.coeffVente <= 1) return '';
 
   const coeff = pro.coeffVente;
-  const t = computeQuoteTotals(q);
-  // Prix IG (ce qu'on facture au cuisiniste) = HT net après remise
-  const prixIG = t.htNet || 0;
-  if (!prixIG) return '';
 
-  // Recalculer le prix client (avec coefficient) :
-  // prixIG inclut déjà le coeff dans le totalHT sauvegardé
-  // => prix sans coeff = extraire la base
-  // En fait : q.totalHT a été calculé avec coeff, donc prix_base = totalHT / coeff
-  // Et prix_client = prix_base * coeff = totalHT (avec remise éventuelle)
-  // Prix IG = totalHT / coeff (matériau + façonnage) + pose/livraison inchangés
-  // Simplification : on affiche directement les deux valeurs connues
-  const prixClient = t.htNet;   // prix facturé par cuisiniste à son client (avec coeff)
-  const prixIGHT   = Math.round(prixIG / coeff * 100) / 100; // ce qu'on lui facture nous
+  // Recalcul depuis les lignes réelles (cohérent avec le PDF)
+  const { htTotal } = buildLignesCuisiniste(q, pro);
+  const tvaRate = (q.tva || 10) / 100;
+  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
+  const htNet = htTotal - remiseAmt;
+  if (!htNet) return '';
 
-  // Attention : le coeff ne s'applique que sur mat+façonnage, pas pose/livraison
-  // Donc la décomposition exacte nécessite de recalculer
-  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
-  const P = getCurrentPrixSansCoeff(coeff, q);
-  const poseHT = P ? (P.livraison?.[q.livraison]||0) + (q.options?.['prise-de-cote']>0 ? PRIX.options['prise-de-cote']?.prix||0 : 0) + (q.options?.['pose-installation']>0 ? PRIX.options['pose-installation']?.prix||0 : 0) : 0;
-  const matFacHT_coeff = prixClient - poseHT;       // mat+façonnage avec coeff
-  const matFacHT_ig    = matFacHT_coeff / coeff;    // mat+façonnage sans coeff = prix IG
-  const commission     = matFacHT_coeff - matFacHT_ig;
+  // Décomposition : pose/prise-de-cote sans coeff, mat+façonnage avec coeff
+  const livrHT = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
+  const poseHT = livrHT
+    + (q.options?.['prise-de-cote']  > 0 ? (PRIX.options['prise-de-cote']?.prix  || 0) : 0)
+    + (q.options?.['pose-installation'] > 0 ? (PRIX.options['pose-installation']?.prix || 0) : 0);
+  const matFacHT_coeff = htNet - poseHT;       // mat+façonnage au prix client (avec coeff)
+  const matFacHT_ig    = matFacHT_coeff / coeff; // mat+façonnage au prix IG (sans coeff)
+  const commission     = Math.round((matFacHT_coeff - matFacHT_ig) * 100) / 100;
 
   const R = 'display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(200,185,160,.3);font-size:.82rem;';
-  const DK = 'color:#7a6f62;'; const DV = 'color:#1a1814;font-weight:500;';
-  const ln = (l, v, style) => '<div style="'+R+'"><span style="'+DK+'">'+l+'</span><span style="'+(style||DV)+'">'+v+'</span></div>';
+  const DK = 'color:#7a6f62;';
+  const ln = (l, v, style) => '<div style="'+R+'"><span style="'+DK+'">'+l+'</span><span style="'+(style||'color:#fdfaf5;font-weight:500;')+'">'+v+'</span></div>';
 
   let h = '<div style="margin-top:12px;padding:14px 16px;background:#1a1814;border-radius:4px;border:1px solid var(--gold);">';
   h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">Commission cuisiniste — coeff ×'+coeff+'</div>';
-  h += ln('Prix facturé au client final (TTC inclus coeff)', fmtEUR(prixClient * 1.1), 'color:#fdfaf5;font-weight:600;');
-  h += ln('Prix HT facturé par le cuisiniste', fmtEUR(prixClient), 'color:#fdfaf5;font-weight:500;');
-  h += ln('Prix HT Intérieur Granit (à facturer au cuisiniste)', fmtEUR(matFacHT_ig + poseHT), 'color:#c9a84c;font-weight:600;');
+  h += ln('Facturé au client final HT (par IG)', fmtEUR(htNet));
+  h += ln('dont pose / livraison / prise de cote HT', fmtEUR(poseHT), 'color:#a89880;');
+  h += ln('dont mat. + façonnage HT (prix client ×'+coeff+')', fmtEUR(matFacHT_coeff), 'color:#a89880;');
+  h += ln('mat. + façonnage HT (prix IG sans coeff)', fmtEUR(matFacHT_ig), 'color:#a89880;');
+  h += ln('Facturé au client final TTC (par IG)', fmtEUR(htNet * (1 + tvaRate)), 'color:#fdfaf5;font-weight:700;');
   h += '<div style="margin-top:8px;padding:8px 0;border-top:1px solid var(--gold);display:flex;justify-content:space-between;font-size:.9rem;">';
-  h += '<span style="color:#fdfaf5;font-weight:600;">Commission à rétrocéder au cuisiniste</span>';
+  h += '<span style="color:#fdfaf5;font-weight:600;">Commission à rétrocéder au cuisiniste HT</span>';
   h += '<span style="color:#2d7a4f;font-weight:700;font-size:1rem;">'+fmtEUR(commission)+'</span>';
   h += '</div>';
+  h += '<div style="font-size:.73rem;color:#7a6f62;margin-top:5px;">= mat. client ('+fmtEUR(matFacHT_coeff)+') − mat. IG ('+fmtEUR(matFacHT_ig)+')</div>';
   h += '</div>';
   return h;
 }
@@ -3638,12 +3634,43 @@ function showProQuoteDetail(id) {
   panel.dataset.openId = id;
   panel.classList.add('active');
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
-  const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
-  const optLines = Object.entries(q.options||{}).filter(([k,v])=>v>0)
-    .map(([k,v])=>{
-      if (k === 'coupe-onglet-ml') return `<div class="summary-row"><span class="key">Coupe d'onglet</span><span class="val">${(v/1000).toFixed(2)} ml</span></div>`;
-      return `<div class="summary-row"><span class="key">${PRIX.options[k]?.label||k}</span><span class="val">× ${v}</span></div>`;
-    }).join('');
+  const surfNum = (q.surfacePlans||0)+(q.surfaceCred||0);
+  const surf = surfNum.toFixed(2);
+  const coeff = (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1;
+  const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
+  const prixMat = Math.round(prixEp * surfNum * 100) / 100;
+
+  const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
+  let previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
+  if (q.options) {
+    Object.entries(q.options).forEach(([key, qty]) => {
+      if (!qty || exclCoeff.includes(key)) return;
+      const opt = PRIX.options[key]; if (!opt) return;
+      const mt = Math.round(opt.prix * qty * coeff * 100) / 100;
+      previewLines += `<div class="summary-row"><span class="key">${opt.label} × ${qty}</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
+    });
+  }
+  if (q.options?.['coupe-onglet-ml'] > 0) {
+    const ml = q.options['coupe-onglet-ml']/1000;
+    const mt = Math.round(PRIX.options['coupe-onglet'].prix * ml * coeff * 100) / 100;
+    previewLines += `<div class="summary-row"><span class="key">Coupe d'onglet — ${ml.toFixed(2)} ml</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
+  }
+  if (q.chant?.type && q.chant?.longueur) {
+    const ml = q.chant.longueur/1000;
+    const mt = Math.round((PRIX.chants?.[q.chant.type]||0) * ml * coeff * 100) / 100;
+    previewLines += `<div class="summary-row"><span class="key">Chant ${q.chant.type} — ${ml.toFixed(2)} ml</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
+  }
+  const livrPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
+  if (livrPrix) previewLines += `<div class="summary-row"><span class="key">Livraison / accès chantier</span><span class="val">${fmtEUR(livrPrix)} HT</span></div>`;
+  if (q.options?.['prise-de-cote'] > 0) {
+    const px = PRIX.options['prise-de-cote']?.prix || 0;
+    if (px) previewLines += `<div class="summary-row"><span class="key">Prise de cote / gabarit</span><span class="val">${fmtEUR(px)} HT</span></div>`;
+  }
+  if (q.options?.['pose-installation'] > 0) {
+    const px = PRIX.options['pose-installation']?.prix || 0;
+    if (px) previewLines += `<div class="summary-row"><span class="key">Pose & installation</span><span class="val">${fmtEUR(px)} HT</span></div>`;
+  }
+  const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
@@ -3678,12 +3705,9 @@ function showProQuoteDetail(id) {
         ${q.client?.datePose?`<div class="summary-row"><span class="key">Date pose demandée</span><span class="val">${new Date(q.client.datePose).toLocaleDateString('fr-FR')}</span></div>`:''}
       </div>
       <div>
-        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">Matériau & prix d'achat</div>
-        <div class="summary-row"><span class="key">Matériau</span><span class="val">${q.materiauLabel} — ${q.coloris||'—'}</span></div>
-        <div class="summary-row"><span class="key">Surface</span><span class="val">${surf} m²</span></div>
-        ${q.chant?.type?`<div class="summary-row"><span class="key">Chant</span><span class="val">${q.chant.type}</span></div>`:''}
-        ${optLines}
-        <div class="summary-row" style="margin-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${q.totalHT?fmtEUR(computeQuoteTotals(q).htNet):'—'}</span></div>
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">${q.materiauLabel} — ${q.coloris||'—'}</div>
+        ${previewLines}
+        <div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(htTotalPreview)}</span></div>
       </div>
     </div>
     ${commandeInfo}
@@ -3691,7 +3715,7 @@ function showProQuoteDetail(id) {
       <button class="btn btn-primary btn-sm" onclick="loadQuoteIntoForm('${id}', false)">✏️ Modifier</button>
       <button class="btn btn-secondary btn-sm" onclick="loadQuoteIntoForm('${id}', true)">⧉ Dupliquer</button>
       ${cmdAction}
-      <button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>
+      ${currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportDevisCuisinistById('${id}')">📋 Devis</button><button class="btn btn-secondary btn-sm" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>` : `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>`}
       <button class="btn btn-danger btn-sm" onclick="deleteQuote('${id}','pro')" title="Supprimer ce devis">🗑 Supprimer</button>
     </div>`;
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -4590,59 +4614,68 @@ function showToast(msg) {
 //  EXPORT BON DE COMMANDE (PDF via impression navigateur)
 // ═══════════════════════════════════════════════════════════════
 // BC détaillé pour cuisinistes avec coefficient de vente
-function exportBonDeCommandeDetaille(q, pro) {
-  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
-  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const ref = q.commande?.ref || ('BC-' + q.id.toUpperCase());
-  const t = computeQuoteTotals(q);
-  const logoHtml = pro.logo ? '<img src="'+pro.logo+'" style="max-height:60px;max-width:140px;object-fit:contain;">' : '';
-  const imgColoris = vGetImage(q.materiau, q.coloris);
+function buildLignesCuisiniste(q, pro) {
   const coeff = pro.coeffVente || 1;
-
-  // Recalculer le détail des lignes
-  const P = PRIX;
-  const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
-  // Utiliser getColorisPrice qui applique déjà le coeff cuisiniste
-  const surf     = (q.surfacePlans||0) + (q.surfaceCred||0);
-  const prixEp   = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
+  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+  const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
   const prixMatCoeff = Math.round(prixEp * surf * 100) / 100;
-
-  // Lignes options
+  let htTotal = prixMatCoeff;
   let optLines = '';
+
+  // Options avec coeff (sauf prise-de-cote et pose-installation traités séparément)
+  const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
   if (q.options) {
     Object.entries(q.options).forEach(([key, qty]) => {
-      if (!qty || key === 'coupe-onglet-ml') return;
+      if (!qty || exclCoeff.includes(key)) return;
       const opt = PRIX.options[key];
       if (!opt) return;
-      const prixBase  = opt.prix * qty;
-      const exclBC = ['prise-de-cote','pose-installation'];
-      const prixCoeff = Math.round(prixBase * (exclBC.includes(key) ? 1 : coeff) * 100) / 100;
+      const prixCoeff = Math.round(opt.prix * qty * coeff * 100) / 100;
+      htTotal += prixCoeff;
       optLines += '<tr><td>'+opt.label+' × '+qty+'</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
     });
   }
   if (q.options?.['coupe-onglet-ml'] > 0) {
     const ml = q.options['coupe-onglet-ml']/1000;
-    const prixBase  = PRIX.options['coupe-onglet'].prix * ml;
-    const prixCoeff = Math.round(prixBase * coeff * 100) / 100;
+    const prixCoeff = Math.round(PRIX.options['coupe-onglet'].prix * ml * coeff * 100) / 100;
+    htTotal += prixCoeff;
     optLines += '<tr><td>Coupe d\'onglet — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
   }
   if (q.chant?.type && q.chant?.longueur) {
     const ml = q.chant.longueur/1000;
-    const prixBase  = PRIX.chants[q.chant.type] * ml;
-    const prixCoeff = Math.round(prixBase * coeff * 100) / 100;
+    const prixCoeff = Math.round(PRIX.chants[q.chant.type] * ml * coeff * 100) / 100;
+    htTotal += prixCoeff;
     optLines += '<tr><td>Chant '+q.chant.type+' — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
   }
-  // Pose/livraison sans coeff
-  const livraisonPrix = PRIX.livraison?.[q.livraison] || 0;
-  if (livraisonPrix) optLines += '<tr><td>Livraison / accès chantier</td><td style="text-align:right;">'+fmtEUR(livraisonPrix)+' HT</td></tr>';
+  // Livraison sans coeff
+  const livraisonPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
+  if (livraisonPrix) { htTotal += livraisonPrix; optLines += '<tr><td>Livraison / accès chantier</td><td style="text-align:right;">'+fmtEUR(livraisonPrix)+' HT</td></tr>'; }
+  // Prise de cote et pose sans coeff (une seule fois)
   if (q.options?.['prise-de-cote'] > 0) {
     const px = PRIX.options['prise-de-cote']?.prix || 0;
-    if (px) optLines += '<tr><td>Prise de cote / gabarit</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>';
+    if (px) { htTotal += px * (q.options['prise-de-cote']||1); optLines += '<tr><td>Prise de cote / gabarit</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>'; }
   }
   if (q.options?.['pose-installation'] > 0) {
     const px = PRIX.options['pose-installation']?.prix || 0;
-    if (px) optLines += '<tr><td>Pose & installation</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>';
+    if (px) { htTotal += px * (q.options['pose-installation']||1); optLines += '<tr><td>Pose & installation</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>'; }
   }
+  return { prixMatCoeff, optLines, htTotal };
+}
+
+function exportBonDeCommandeDetaille(q, pro) {
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const ref = q.commande?.ref || ('BC-' + q.id.toUpperCase());
+  const logoHtml = pro.logo ? '<img src="'+pro.logo+'" style="max-height:60px;max-width:140px;object-fit:contain;">' : '';
+  const imgColoris = vGetImage(q.materiau, q.coloris);
+  const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
+  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+
+  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
+  const tvaRate = (q.tva || 10) / 100;
+  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
+  const htNet = htTotal - remiseAmt;
+  const tvaAmt = htNet * tvaRate;
+  const ttc = htNet + tvaAmt;
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Bon de commande ${ref}</title>
@@ -4709,9 +4742,9 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
     ${optLines}
   </tbody>
   <tfoot>
-    <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(t.htNet)}</td></tr>
-    <tr class="total-row"><td>TVA ${q.tva||10}%</td><td style="text-align:right;">${fmtEUR(t.tvaAmt)}</td></tr>
-    <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(t.ttc)}</td></tr>
+    <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
+    <tr class="total-row"><td>TVA ${q.tva||10}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
   </tfoot>
 </table>
 
@@ -4734,6 +4767,126 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   setTimeout(() => URL.revokeObjectURL(_blobUrl), 60000);
 }
 
+
+function exportDevisCuisiniste(q, pro) {
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const ref = q.client?.ref || ('DEV-' + q.id.slice(-6).toUpperCase());
+  const logoHtml = pro.logo ? '<img src="'+pro.logo+'" style="max-height:60px;max-width:140px;object-fit:contain;">' : '';
+  const imgColoris = vGetImage(q.materiau, q.coloris);
+  const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
+  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+
+  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
+  const tvaRate = (q.tva || 10) / 100;
+  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
+  const htNet = htTotal - remiseAmt;
+  const tvaAmt = htNet * tvaRate;
+  const ttc = htNet + tvaAmt;
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Devis ${ref}</title>
+<style>
+body { font-family:'Gill Sans',Arial,sans-serif; color:#1a1814; margin:0; padding:32px; font-size:13px; }
+.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; border-bottom:2px solid #1a1814; padding-bottom:18px; }
+.title { font-size:28px; letter-spacing:.2em; text-transform:uppercase; font-weight:300; color:#1a1814; }
+.ref { font-size:11px; color:#7a6f62; margin-top:4px; }
+.parties { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+.party { background:#f8f5ef; border-radius:4px; padding:14px 16px; }
+.party-label { font-size:9px; text-transform:uppercase; letter-spacing:.12em; color:#c9a84c; margin-bottom:8px; font-weight:600; }
+.party-name { font-size:14px; font-weight:600; margin-bottom:4px; }
+.party-detail { font-size:11px; color:#7a6f62; line-height:1.6; }
+table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+th { background:#1a1814; color:#fdfaf5; padding:8px 12px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.08em; font-weight:500; }
+td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
+.total-row { font-weight:700; background:#f8f5ef; }
+.total-ttc { font-size:15px; color:#c9a84c; }
+.mention-box { font-size:10px; color:#5a5147; border:1px solid #ede6d6; border-radius:3px; padding:10px 14px; margin-bottom:16px; line-height:1.6; }
+.footer { margin-top:24px; font-size:10px; color:#7a6f62; text-align:center; border-top:1px solid #ede6d6; padding-top:12px; }
+.sign-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:24px; }
+.sign-box { border:1px solid #ede6d6; border-radius:4px; padding:14px 16px; min-height:80px; }
+.sign-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#7a6f62; margin-bottom:8px; }
+</style>
+<script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
+</head><body>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:16px;">
+    ${logoHtml}
+    <div>
+      <div style="font-size:13px;font-weight:600;">${pro.societe||''}</div>
+      <div style="font-size:11px;color:#7a6f62;">${pro.email||''}</div>
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <div class="title">Devis</div>
+    <div class="ref">Réf. ${ref} · ${today}</div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="party">
+    <div class="party-label">Client final</div>
+    <div class="party-name">${clientName}</div>
+    <div class="party-detail">${q.client?.email||''}<br>${q.client?.tel||''}</div>
+  </div>
+  <div class="party">
+    <div class="party-label">Adresse du chantier</div>
+    <div class="party-name">${q.client?.adresse||'—'}</div>
+    <div class="party-detail">${(q.client?.cp||'')+' '+(q.client?.ville||'')}</div>
+  </div>
+</div>
+
+<table>
+  <thead><tr><th>Désignation</th><th style="text-align:right;">Montant HT</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>
+        ${imgColoris ? '<img src="'+imgColoris+'" style="width:80px;height:54px;object-fit:cover;border-radius:2px;vertical-align:middle;margin-right:10px;">' : ''}
+        <strong>${matLabel}</strong> — ${q.coloris||'—'} · ${q.finition||'—'} · ${q.epaisseur||'—'} mm<br>
+        <span style="color:#7a6f62;font-size:11px;">Surface : ${surf.toFixed(2)} m²</span>
+      </td>
+      <td style="text-align:right;">${fmtEUR(prixMatCoeff)} HT</td>
+    </tr>
+    ${optLines}
+  </tbody>
+  <tfoot>
+    <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
+    <tr class="total-row"><td>TVA ${q.tva||10}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
+  </tfoot>
+</table>
+
+<div class="mention-box">
+  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
+</div>
+
+<div class="sign-grid">
+  <div class="sign-box"><div class="sign-label">${pro.societe||'Cuisiniste'} — Bon pour accord</div><br><br>Date : _______________</div>
+  <div class="sign-box"><div class="sign-label">Client — Lu et approuvé</div><br><br>Date : _______________</div>
+</div>
+
+<div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
+  <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
+  Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire, le tribunal compétent étant celui du siège social d'Intérieur Granit.
+</div>
+<div class="footer">Intérieur Granit · Devis · Réf. ${ref} · Émis le ${today}</div>
+</body></html>`;
+
+  const _blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+  const _blobUrl = URL.createObjectURL(_blob);
+  const win = window.open(_blobUrl, '_blank');
+  if (!win) { alert('Veuillez autoriser les pop-ups.'); URL.revokeObjectURL(_blobUrl); return; }
+  setTimeout(() => URL.revokeObjectURL(_blobUrl), 60000);
+}
+
+async function exportDevisCuisinistById(quoteId) {
+  await vLoad();
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
+  exportDevisCuisiniste(q, pro);
+}
 
 async function exportBonDeCommande(quoteId) {
   await vLoad();
