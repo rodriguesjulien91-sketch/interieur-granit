@@ -4523,6 +4523,7 @@ function submitQuote(action) {
       commentaire: document.getElementById('commentaire').value,
       totalHT: totalHT !== null ? totalHT : null,
       totalTTC: totalTTC !== null ? totalTTC : null,
+      prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       status: newStatus,
       type: isDirect ? 'direct' : 'pro'
     };
@@ -5004,11 +5005,12 @@ async function exportDevisParticulier(quoteId) {
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${ep ? ' · ' + ep + ' mm' : ''}`;
 
-  // Prix de vente particulier (avec coefficient appliqué)
-  const prixMatVente = getColorisPrixDirect(mat, coloris, ep, finition);
+  // Prix de vente particulier — prix figé à la création du devis, sinon prix catalogue actuel
+  const prixMatVente = q.prixMatVente ?? getColorisPrixDirect(mat, coloris, ep, finition);
 
   let lignesRows = '';
   let ligneNum = 0;
+  let htBrutPdf = 0;
 
   // 1. Plans de travail — un ligne PAR plan
   if (q.plans && prixMatVente !== null) {
@@ -5016,25 +5018,26 @@ async function exportDevisParticulier(quoteId) {
     plansValid.forEach((p, i) => {
       const surf = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
       if (surf > 0) {
-        const htPlan = Math.round(surf * prixMatVente);
+        const htPlan = surf * prixMatVente;
+        htBrutPdf += htPlan;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">Plan de travail P${i+1} — ${matDesc}<br><span class="li-detail">${p.larg} × ${p.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
           <td class="li-right">${surf.toFixed(2)} m²</td>
           <td class="li-right">${fmt2(prixMatVente)} €</td>
-          <td class="li-right">${htPlan.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmtEUR(htPlan)}</td>
         </tr>`;
       }
     });
   } else if (q.surfacePlans > 0 && prixMatVente !== null) {
-    // Fallback : pas de détail plan par plan, ligne globale
-    const ht = Math.round(q.surfacePlans * prixMatVente);
+    const ht = q.surfacePlans * prixMatVente;
+    htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Plans de travail — ${matDesc}</td>
       <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixMatVente)} €</td>
-      <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(ht)}</td>
     </tr>`;
   }
 
@@ -5045,25 +5048,27 @@ async function exportDevisParticulier(quoteId) {
     credValid.forEach((c, i) => {
       const surf = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
       if (surf > 0) {
-        const htCred = Math.round(surf * prixCred);
+        const htCred = surf * prixCred;
+        htBrutPdf += htCred;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">Crédence C${i+1} — ${matDesc}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
           <td class="li-right">${surf.toFixed(2)} m²</td>
           <td class="li-right">${fmt2(prixCred)} €</td>
-          <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmtEUR(htCred)}</td>
         </tr>`;
       }
     });
   } else if (q.surfaceCred > 0 && prixMatVente !== null) {
     const prixCred = prixMatVente * (PRIX.credences?.facteur || 1);
-    const ht = Math.round(q.surfaceCred * prixCred);
+    const ht = q.surfaceCred * prixCred;
+    htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Crédences — ${matDesc}</td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
-      <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(ht)}</td>
     </tr>`;
   }
 
@@ -5071,13 +5076,14 @@ async function exportDevisParticulier(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
     const puChant = PRIX.chants[q.chant.type];
-    const htChant = Math.round(ml * puChant);
+    const htChant = ml * puChant;
+    htBrutPdf += htChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
       <td class="li-right">${ml.toFixed(2)} ml</td>
-      <td class="li-right">${puChant.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${htChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(puChant)}</td>
+      <td class="li-right">${fmtEUR(htChant)}</td>
     </tr>`;
   }
 
@@ -5089,13 +5095,14 @@ async function exportDevisParticulier(quoteId) {
         if (opt) {
           const ml = (v / 1000).toFixed(2);
           const pu = opt.prix;
-          const ht = Math.round(ml * pu);
+          const ht = ml * pu;
+          htBrutPdf += ht;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
             <td class="li-right">${ml} ml</td>
-            <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-            <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+            <td class="li-right">${fmtEUR(pu)}</td>
+            <td class="li-right">${fmtEUR(ht)}</td>
           </tr>`;
         }
         return;
@@ -5103,59 +5110,63 @@ async function exportDevisParticulier(quoteId) {
       const opt = PRIX.options[k];
       if (opt) {
         const pu = opt.prix;
-        const ht = Math.round(pu * v);
+        const ht = pu * v;
+        htBrutPdf += ht;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
           <td class="li-right">${v}</td>
-          <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-          <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmtEUR(pu)}</td>
+          <td class="li-right">${fmtEUR(ht)}</td>
         </tr>`;
       }
     });
   }
 
-  // 5. Livraison (corrigé : utilise PRIX.pose et non PRIX.livraison)
+  // 5. Livraison
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
     const pu = PRIX.pose.rdc;
+    htBrutPdf += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
       <td class="li-right">1</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
     const pu = PRIX.pose.etage;
+    htBrutPdf += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
       <td class="li-right">1</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
     </tr>`;
   }
 
   // Fallback si aucune ligne n'a pu être générée
   if (ligneNum === 0) {
+    htBrutPdf = q.totalHT || 0;
     const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
     lignesRows = `<tr>
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
       <td class="li-right">1</td>
       <td class="li-right">—</td>
-      <td class="li-right">${q.totalHT ? fmtEUR(q.totalHT) : '—'}</td>
+      <td class="li-right">${htBrutPdf ? fmtEUR(htBrutPdf) : '—'}</td>
     </tr>`;
   }
 
-  // Totaux (avec remise éventuelle)
+  // Totaux calculés depuis les lignes affichées (pas depuis q.totalHT)
   const tvaLabel = q.tva || 20;
-  const _tPdf = computeQuoteTotals(q);
-  const htBrut = _tPdf.htBrut;
-  const remiseAmt = _tPdf.remiseAmt;
-  const htNet = _tPdf.htNet;
-  const tvaAmt = _tPdf.tvaAmt;
-  const totalTTC = _tPdf.ttc;
-  const totalHT = htBrut > 0 ? htBrut : null;
+  const tvaRate = tvaLabel / 100;
+  const remiseAmt = computeRemiseAmount(htBrutPdf, q.remise);
+  const htNet = htBrutPdf - remiseAmt;
+  const tvaAmt = htNet * tvaRate;
+  const totalTTC = htNet + tvaAmt;
+  const htBrut = htBrutPdf;
+  const totalHT = htBrutPdf > 0 ? htBrutPdf : null;
 
   const installDate = q.client?.datePose ? new Date(q.client.datePose).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : null;
 
@@ -5426,26 +5437,26 @@ async function genererFacture(quoteId) {
 
   let prixMat = getColorisPrice(mat, coloris, ep, finition);
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = Math.round(q.surfacePlans * prixMat);
+    const htPlans = q.surfacePlans * prixMat;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
       <td class="li-qty">${q.surfacePlans.toFixed(2)} m²</td>
       <td class="li-pu">${fmt2(prixMat)} €</td>
-      <td class="li-total">${htPlans.toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${fmtEUR(htPlans)}</td>
     </tr>`;
   }
 
   // 2. Crédences
   if (q.surfaceCred > 0 && prixMat !== null) {
     const prixCred = prixMat * (PRIX.credences?.facteur || 1);
-    const htCred = Math.round(q.surfaceCred * prixCred);
+    const htCred = q.surfaceCred * prixCred;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-qty">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-pu">${fmt2(prixCred)} €</td>
-      <td class="li-total">${htCred.toLocaleString('fr-FR')} €</td>
+      <td class="li-total">${fmtEUR(htCred)}</td>
     </tr>`;
   }
 
@@ -5453,13 +5464,13 @@ async function genererFacture(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
     const puChant = PRIX.chants[q.chant.type];
-    const htChant = Math.round(ml * puChant);
+    const htChant = ml * puChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
       <td class="li-qty">${ml.toFixed(2)} ml</td>
-      <td class="li-pu">${puChant.toLocaleString('fr-FR')} €</td>
-      <td class="li-total">${htChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-pu">${fmtEUR(puChant)}</td>
+      <td class="li-total">${fmtEUR(htChant)}</td>
     </tr>`;
   }
 
@@ -5470,13 +5481,13 @@ async function genererFacture(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const ht = Math.round(ml * opt.prix);
+          const ht = ml * opt.prix;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
             <td class="li-qty">${ml} ml</td>
-            <td class="li-pu">${opt.prix.toLocaleString('fr-FR')} €</td>
-            <td class="li-total">${ht.toLocaleString('fr-FR')} €</td>
+            <td class="li-pu">${fmtEUR(opt.prix)}</td>
+            <td class="li-total">${fmtEUR(ht)}</td>
           </tr>`;
         }
         return;
@@ -5489,8 +5500,8 @@ async function genererFacture(quoteId) {
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
           <td class="li-qty">${v}</td>
-          <td class="li-pu">${puOpt.toLocaleString('fr-FR')} €</td>
-          <td class="li-total">${htOpt.toLocaleString('fr-FR')} €</td>
+          <td class="li-pu">${fmtEUR(puOpt)}</td>
+          <td class="li-total">${fmtEUR(htOpt)}</td>
         </tr>`;
       }
     });
@@ -5502,16 +5513,16 @@ async function genererFacture(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
       <td class="li-qty">1</td>
-      <td class="li-pu">${PRIX.pose.rdc.toLocaleString('fr-FR')} €</td>
-      <td class="li-total">${PRIX.pose.rdc.toLocaleString('fr-FR')} €</td>
+      <td class="li-pu">${fmtEUR(PRIX.pose.rdc)}</td>
+      <td class="li-total">${fmtEUR(PRIX.pose.rdc)}</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
       <td class="li-qty">1</td>
-      <td class="li-pu">${PRIX.pose.etage.toLocaleString('fr-FR')} €</td>
-      <td class="li-total">${PRIX.pose.etage.toLocaleString('fr-FR')} €</td>
+      <td class="li-pu">${fmtEUR(PRIX.pose.etage)}</td>
+      <td class="li-total">${fmtEUR(PRIX.pose.etage)}</td>
     </tr>`;
   }
 
@@ -5555,7 +5566,7 @@ async function genererFacture(quoteId) {
   .doc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;}
   .doc-num{font-size:11px;font-weight:500;color:#1a1814;margin-top:5px;}
   .doc-date{font-size:9px;color:#7a6f62;margin-top:3px;}
-  .parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+  .parties{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;}
   .party{border:1px solid #ede6d6;border-radius:3px;padding:12px 14px;}
   .p-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:#c9a84c;font-weight:600;margin-bottom:6px;}
   .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
@@ -5637,6 +5648,15 @@ async function genererFacture(quoteId) {
     <div class="p-legal">
       ${pro.siret ? 'SIRET : ' + pro.siret : ''}
       ${pro.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + pro.tvaIntra : ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Chantier — Client final</div>
+    <div class="p-name">${clientName || '—'}</div>
+    <div class="p-detail">
+      ${q.client?.tel || ''}${q.client?.tel && q.client?.email ? ' &nbsp;·&nbsp; ' : ''}${q.client?.email || ''}
+      ${q.client?.adresse ? '<br>' + q.client.adresse : ''}
+      ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
     </div>
   </div>
 </div>
@@ -5732,26 +5752,26 @@ async function genererFactureDirecte(quoteId) {
 
   // 1. Plans de travail
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = Math.round(q.surfacePlans * prixMat);
+    const htPlans = q.surfacePlans * prixMat;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
       <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixMat)} €</td>
-      <td class="li-right">${htPlans.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(htPlans)}</td>
     </tr>`;
   }
 
   // 2. Crédences
   if (q.surfaceCred > 0 && prixMat !== null) {
     const prixCred = prixMat * (PRIX.credences?.facteur || 1);
-    const htCred = Math.round(q.surfaceCred * prixCred);
+    const htCred = q.surfaceCred * prixCred;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
-      <td class="li-right">${htCred.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(htCred)}</td>
     </tr>`;
   }
 
@@ -5759,13 +5779,13 @@ async function genererFactureDirecte(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
     const puChant = PRIX.chants[q.chant.type];
-    const htChant = Math.round(ml * puChant);
+    const htChant = ml * puChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
       <td class="li-right">${ml.toFixed(2)} ml</td>
-      <td class="li-right">${puChant.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${htChant.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(puChant)}</td>
+      <td class="li-right">${fmtEUR(htChant)}</td>
     </tr>`;
   }
 
@@ -5777,13 +5797,13 @@ async function genererFactureDirecte(quoteId) {
         if (opt) {
           const ml = (v / 1000).toFixed(2);
           const pu = opt.prix;
-          const ht = Math.round(ml * pu);
+          const ht = ml * pu;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
             <td class="li-right">${ml} ml</td>
-            <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-            <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+            <td class="li-right">${fmtEUR(pu)}</td>
+            <td class="li-right">${fmtEUR(ht)}</td>
           </tr>`;
         }
         return;
@@ -5791,13 +5811,13 @@ async function genererFactureDirecte(quoteId) {
       const opt = PRIX.options[k];
       if (opt) {
         const pu = opt.prix;
-        const ht = Math.round(pu * v);
+        const ht = pu * v;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
           <td class="li-right">${v}</td>
-          <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-          <td class="li-right">${ht.toLocaleString('fr-FR')} €</td>
+          <td class="li-right">${fmtEUR(pu)}</td>
+          <td class="li-right">${fmtEUR(ht)}</td>
         </tr>`;
       }
     });
@@ -5810,8 +5830,8 @@ async function genererFactureDirecte(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
       <td class="li-right">1</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
     const pu = PRIX.pose.etage;
@@ -5819,8 +5839,8 @@ async function genererFactureDirecte(quoteId) {
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
       <td class="li-right">1</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
-      <td class="li-right">${pu.toLocaleString('fr-FR')} €</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
+      <td class="li-right">${fmtEUR(pu)}</td>
     </tr>`;
   }
 
