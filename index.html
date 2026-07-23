@@ -399,9 +399,9 @@ textarea { resize: vertical; min-height: 80px; }
     <!-- Stats -->
     <div class="stats-row" id="admin-stats">
       <div class="stat-card"><div class="stat-label">Clients pro</div><div class="stat-val" id="stat-clients">0</div><div class="stat-sub">Comptes actifs</div></div>
-      <div class="stat-card"><div class="stat-label">Chiffrages</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">Total reçus</div></div>
-      <div class="stat-card"><div class="stat-label">En attente</div><div class="stat-val" id="stat-new">0</div><div class="stat-sub">Nouvelles demandes</div></div>
-      <div class="stat-card"><div class="stat-label">CA commandes</div><div class="stat-val" id="stat-ca">—</div><div class="stat-sub">Total HT (commandes)</div></div>
+      <div class="stat-card"><div class="stat-label">Chiffrages cuisinistes</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">Total reçus</div></div>
+      <div class="stat-card"><div class="stat-label">CA cuisinistes HT</div><div class="stat-val" id="stat-ca">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
+      <div class="stat-card"><div class="stat-label">CA particuliers HT</div><div class="stat-val" id="stat-ca-direct">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
     </div>
 
     <!-- Tabs -->
@@ -457,7 +457,7 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <table class="data-table" id="quotes-table">
         <thead><tr>
-          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Statut</th>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Statut</th>
         </tr></thead>
         <tbody id="quotes-tbody"></tbody>
       </table>
@@ -2491,13 +2491,17 @@ function renderAdminDashboard() {
   const proUsers = Object.values(db.users).filter(u => u.role === 'pro');
   const quotes = db.quotes;
   const newQuotes = quotes.filter(q => q.status === 'nouveau');
-  const commandeQuotes = quotes.filter(q => q.status === 'commande');
-  const totalHT_commandes = commandeQuotes.reduce((s,q) => s + (q.totalHT||0), 0);
+  const cuisinisteQuotes = quotes.filter(q => q.proSociete && q.type !== 'direct');
+  const directQuotes = quotes.filter(q => q.type === 'direct' || !q.proSociete);
+  const commandesCuisiniste = cuisinisteQuotes.filter(q => q.status === 'commande');
+  const commandesDirect = directQuotes.filter(q => q.status === 'commande');
+  const caCuisiniste = commandesCuisiniste.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
+  const caDirect = commandesDirect.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
 
   document.getElementById('stat-clients').textContent = proUsers.length;
-  document.getElementById('stat-total').textContent = quotes.length;
-  document.getElementById('stat-new').textContent = newQuotes.length;
-  document.getElementById('stat-ca').textContent = totalHT_commandes > 0 ? fmtEUR(totalHT_commandes) : '—';
+  document.getElementById('stat-total').textContent = cuisinisteQuotes.length;
+  document.getElementById('stat-ca').textContent = caCuisiniste > 0 ? fmtEUR(caCuisiniste) : '—';
+  document.getElementById('stat-ca-direct').textContent = caDirect > 0 ? fmtEUR(caDirect) : '—';
 
   // Clients table
   const tbody = document.getElementById('clients-tbody');
@@ -2564,7 +2568,7 @@ function renderQuotesTable() {
 
   const tbody = document.getElementById('quotes-tbody');
   if (quotes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Aucune demande pour ces critères</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucune demande pour ces critères</td></tr>';
     return;
   }
   tbody.innerHTML = quotes.map(q => {
@@ -2576,7 +2580,8 @@ function renderQuotesTable() {
       <td>${clientName}</td>
       <td>${q.materiauLabel||q.materiau}</td>
       <td>${surf} m²</td>
-      <td class="price">${q.totalTTC ? fmtEUR(q.totalTTC) : 'Sur devis'}</td>
+      <td class="price">${q.totalHT ? fmtEUR(computeQuoteTotals(q).htNet) : 'Sur devis'}</td>
+      <td class="price">${q.totalTTC ? fmtEUR(q.totalTTC) : '—'}</td>
       <td class="secondary" style="font-size:.75rem;">${(function(){
         if (!q.materiau || !q.coloris || !q.finition || !q.epaisseur) return '—';
         const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
