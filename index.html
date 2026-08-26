@@ -171,9 +171,24 @@ textarea { resize: vertical; min-height: 80px; }
 .modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; margin-bottom: 24px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
 
-/* QUOTE DETAIL PANEL */
-.detail-panel { background: var(--stone); color: var(--cream); border-radius: 4px; padding: 28px; margin-top: 20px; display: none; animation: fadeIn .3s ease; }
+/* QUOTE DETAIL PANEL (legacy inline — kept for fallback) */
+.detail-panel { display: none; }
 .detail-panel.active { display: block; }
+
+/* SIDE DRAWER */
+#side-drawer { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+#side-drawer.open { pointer-events: auto; }
+#side-drawer-backdrop { position: absolute; inset: 0; background: rgba(30,25,20,.45); opacity: 0; transition: opacity .3s ease; }
+#side-drawer.open #side-drawer-backdrop { opacity: 1; }
+#side-drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(540px, 96vw); background: var(--white); box-shadow: -4px 0 32px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .32s cubic-bezier(.4,0,.2,1); overflow-y: auto; display: flex; flex-direction: column; }
+#side-drawer.open #side-drawer-panel { transform: translateX(0); }
+#side-drawer-body { flex: 1; padding: 0; }
+/* Adapter les panneaux existants quand dans le drawer */
+#side-drawer-body .detail-panel,
+#side-drawer-body .pro-quote-detail,
+#side-drawer-body .direct-detail-panel { display: block !important; background: transparent; border: none; padding: 0; margin: 0; animation: none; }
+#side-drawer-body .detail-grid { grid-template-columns: 1fr; }
+@media (min-width: 540px) { #side-drawer-body .detail-grid { grid-template-columns: 1fr 1fr; } }
 .detail-panel h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 300; color: var(--gold); margin-bottom: 18px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .detail-section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -181,13 +196,16 @@ textarea { resize: vertical; min-height: 80px; }
 .detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.10); font-size: .83rem; }
 .detail-row .dk { color: rgba(255,255,255,.55); }
 .detail-row .dv { color: var(--cream); font-weight: 500; }
-/* Overrides pour panneaux sur fond clair (pro-quote-detail) */
+/* Overrides pour panneaux sur fond clair (pro-quote-detail + drawer-light) */
 .pro-quote-detail .detail-row { border-bottom: 1px solid var(--cream-dark); }
 .pro-quote-detail .detail-row .dk { color: var(--stone-light); }
 .pro-quote-detail .detail-row .dv { color: var(--stone); font-weight: 600; }
-.pro-quote-detail .summary-row { border-bottom: 1px solid var(--cream-dark); }
-.pro-quote-detail .summary-row .key { color: var(--stone-mid); }
-.pro-quote-detail .summary-row .val { color: var(--stone); font-weight: 600; }
+.pro-quote-detail .summary-row,
+.drawer-light .summary-row { border-bottom: 1px solid var(--cream-dark); }
+.pro-quote-detail .summary-row .key,
+.drawer-light .summary-row .key { color: var(--stone-mid); }
+.pro-quote-detail .summary-row .val,
+.drawer-light .summary-row .val { color: var(--stone); font-weight: 600; }
 .status-select { background: var(--stone-mid); border: 1px solid var(--stone-light); color: var(--cream); padding: 6px 12px; font-size: .8rem; border-radius: var(--radius); cursor: pointer; font-family: 'DM Sans', sans-serif; }
 .price-ttc { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: var(--gold); }
 .price-ht { font-size: .8rem; color: rgba(255,255,255,.50); }
@@ -457,7 +475,7 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <table class="data-table" id="quotes-table">
         <thead><tr>
-          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Statut</th>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Date installation</th><th>Statut</th>
         </tr></thead>
         <tbody id="quotes-tbody"></tbody>
       </table>
@@ -997,6 +1015,29 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
       </div>
       <div class="summary-card" id="price-breakdown"></div>
+
+      <!-- Lignes complémentaires (devis particuliers admin uniquement) -->
+      <div id="lignes-custom-form-section" class="summary-card" style="display:none;">
+        <h3>Lignes complémentaires <span style="font-size:.72rem;color:rgba(255,255,255,.4);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;">évier, prise, dépose…</span></h3>
+        <div id="lignes-custom-form-list" style="margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:flex-end;">
+          <div style="flex:1;min-width:150px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Description</div>
+            <input id="form-cl-label" placeholder="ex: évier, prise, dépose…" style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.82rem;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:var(--cream);">
+          </div>
+          <div style="width:120px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Prix vente HT</div>
+            <input id="form-cl-pu" type="number" step="0.01" min="0" placeholder="€" style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.82rem;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:var(--cream);">
+          </div>
+          <div style="width:120px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Prix achat HT <span style="color:rgba(255,165,0,.6);">●</span></div>
+            <input id="form-cl-pa" type="number" step="0.01" min="0" placeholder="€" style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.82rem;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:var(--cream);">
+          </div>
+          <button type="button" onclick="addFormCustomLine()" class="btn btn-primary btn-sm" style="flex-shrink:0;">+ Ajouter</button>
+        </div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:8px;">● Prix d'achat non visible sur le devis client — utilisé pour le calcul de marge.</div>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="prevStep(5)">← Retour</button>
         <button class="btn btn-gold btn-submit" onclick="submitQuote('valider')">✓ Valider le devis</button>
@@ -2477,7 +2518,8 @@ function computeRemiseAmount(totalHT, remise) {
   return 0;
 }
 function computeQuoteTotals(q) {
-  const htBrut = q.totalHT || 0;
+  const customTotal = (q.lignesCustom||[]).reduce((s,l) => s + (parseFloat(l.pu)||0), 0);
+  const htBrut = (q.totalHT || 0) + customTotal;
   const remiseAmt = computeRemiseAmount(htBrut, q.remise);
   const htNet = htBrut - remiseAmt;
   const tvaRate = (q.tva || 20) / 100;
@@ -2548,10 +2590,20 @@ function renderQuotesTable() {
   const statusFilter = document.getElementById('filter-status')?.value || '';
   const proFilter = document.getElementById('filter-pro')?.value || '';
   const searchTerm = (document.getElementById('admin-quotes-search')?.value || '').toLowerCase().trim();
-  let quotes = [...db.quotes].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  let quotes = [...db.quotes];
   // Exclure devis particuliers (onglet dédié)
   quotes = quotes.filter(q => q.type !== 'direct' && q.proSociete);
   if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
+  // Tri : commandes par date d'installation croissante, sinon par date de création décroissante
+  if (statusFilter === 'commande') {
+    quotes.sort((a,b) => {
+      const da = a.commande?.dateInstall ? new Date(a.commande.dateInstall) : new Date('9999-12-31');
+      const db2 = b.commande?.dateInstall ? new Date(b.commande.dateInstall) : new Date('9999-12-31');
+      return da - db2;
+    });
+  } else {
+    quotes.sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  }
   if (proFilter) quotes = quotes.filter(q => q.proEmail === proFilter);
   if (searchTerm) {
     quotes = quotes.filter(q => {
@@ -2568,7 +2620,7 @@ function renderQuotesTable() {
 
   const tbody = document.getElementById('quotes-tbody');
   if (quotes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucune demande pour ces critères</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Aucune demande pour ces critères</td></tr>';
     return;
   }
   tbody.innerHTML = quotes.map(q => {
@@ -2618,6 +2670,7 @@ function renderQuotesTable() {
           const ck = chantKeyMap[q.chant.type];
           if (ck && fCache[ck]) cout += fCache[ck] * (q.chant.longueur / 1000);
         }
+        cout += (q.lignesCustom||[]).reduce((s,l) => s + (parseFloat(l.pa)||0), 0);
         const _t = computeQuoteTotals(q);
         const pv = _t.htNet || 0;
         if (!pv) return '—';
@@ -2627,6 +2680,7 @@ function renderQuotesTable() {
         return '<span style="color:' + col + ';font-weight:500;">' + marge.toFixed(0) + '€ (' + pct.toFixed(0) + '%)</span>';
       })()}</td>
       <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
+      <td class="secondary" style="font-weight:${q.commande?.dateInstall?'600':'400'};color:${q.commande?.dateInstall?'var(--stone)':'var(--stone-light)'};">${q.commande?.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}</td>
       <td>${statusTag(q.status)}</td>
     </tr>`;
   }).join('');
@@ -2706,15 +2760,10 @@ function applyRemiseToQuote(quoteId, source) {
   // Rafraîchit l'affichage
   if (source === 'direct') {
     renderDevisDirectTab();
-    // Re-ouvrir le panneau pour refléter la mise à jour
-    setTimeout(() => {
-      const card = document.getElementById('dqc-' + quoteId);
-      if (card) toggleDirectQuoteDetail(quoteId, card);
-    }, 50);
+    setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
   } else {
     renderQuotesTable();
     renderAdminDashboard();
-    // Re-ouvrir le panneau détail
     setTimeout(() => showQuoteDetail(quoteId), 50);
   }
 }
@@ -2734,10 +2783,7 @@ function clearRemiseFromQuote(quoteId, source) {
   }).catch(console.error);
   if (source === 'direct') {
     renderDevisDirectTab();
-    setTimeout(() => {
-      const card = document.getElementById('dqc-' + quoteId);
-      if (card) toggleDirectQuoteDetail(quoteId, card);
-    }, 50);
+    setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
   } else {
     renderQuotesTable();
     renderAdminDashboard();
@@ -2834,7 +2880,8 @@ function buildCoutsSection(q) {
   }
 
   const coutFac = lignes.reduce((s, l) => s + (l.cout||0), 0);
-  const coutTotal = coutMat + coutFac;
+  const coutCustom = (q.lignesCustom||[]).reduce((s, l) => s + (parseFloat(l.pa)||0), 0);
+  const coutTotal = coutMat + coutFac + coutCustom;
   const t = computeQuoteTotals(q);
   const pv = t.htNet || 0;
   if (!pv) return '';
@@ -2862,6 +2909,15 @@ function buildCoutsSection(q) {
     h += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Faconnage</div>';
     lignes.forEach(function(l) { h += ln(l.pfa ? l.lbl+' x '+l.pfa.toFixed(2)+' EUR' : l.lbl+' (prix non renseigne)', l.cout ? fmtEUR(l.cout) : '-'); });
   }
+  if ((q.lignesCustom||[]).some(l => l.pa > 0)) {
+    h += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Lignes complémentaires</div>';
+    q.lignesCustom.forEach(l => {
+      h += ln(l.label, l.pa > 0 ? fmtEUR(l.pa) : '<span style="color:#2d7a4f;">PA non renseigné</span>');
+    });
+  } else if ((q.lignesCustom||[]).length > 0) {
+    h += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Lignes complémentaires</div>';
+    q.lignesCustom.forEach(l => { h += ln(l.label, '<span style="color:#2d7a4f;">PA non renseigné</span>'); });
+  }
   const s100 = [];
   if (q.options && q.options['prise-de-cote'] > 0) s100.push('Prise de cote');
   if (q.options && q.options['pose-installation'] > 0) s100.push('Pose et installation');
@@ -2884,8 +2940,6 @@ async function showQuoteDetail(id) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
   if (!q) return;
-  const panel = document.getElementById('quote-detail');
-  panel.classList.add('active');
   // Forcer rechargement des caches prix si nécessaire
   aLoaded = false; await aLoad();
   fLoaded = false; await fLoad();
@@ -2894,9 +2948,9 @@ async function showQuoteDetail(id) {
     if (k === 'coupe-onglet-ml') return `<div class="detail-row"><span class="dk">Coupe d'onglet</span><span class="dv">${(v/1000).toFixed(2)} ml</span></div>`;
     return `<div class="detail-row"><span class="dk">${PRIX.options[k]?.label||k}</span><span class="dv">× ${v}</span></div>`;
   }).join('');
-  panel.innerHTML = `
+  openDrawer(`<div style="background:var(--stone);color:var(--cream);border-radius:4px;padding:24px;min-height:100%;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <h3>Détail — ${clientName}</h3>
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:300;color:var(--gold);margin:0;">Détail — ${clientName}</h3>
       <div style="display:flex;gap:12px;align-items:center;">
         <select class="status-select" onchange="updateQuoteStatus('${id}',this.value)">
           <option value="nouveau" ${q.status==='nouveau'?'selected':''}>Nouvelle</option>
@@ -2908,7 +2962,7 @@ async function showQuoteDetail(id) {
         ${q.status === 'commande' ? `<button class="btn btn-sm btn-gold" onclick="genererFacture('${id}')">🧾 Facture</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="exportBonDeCommande('${id}')">📄 BC</button>
         <button class="btn btn-sm btn-danger" onclick="deleteQuote('${id}','admin')" title="Supprimer ce devis">🗑 Supprimer</button>
-        <button class="btn btn-sm btn-secondary" onclick="document.getElementById('quote-detail').classList.remove('active')">✕ Fermer</button>
+        <button class="btn btn-sm btn-secondary" onclick="closeDrawer()">✕ Fermer</button>
       </div>
     </div>
     <div class="detail-grid">
@@ -2970,8 +3024,7 @@ async function showQuoteDetail(id) {
           : `<em>${q.commande.devisFile}</em>`
       }</span></div>` : ''}
     </div>` : ''}
-  `;
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  </div>`);
 
 }
 
@@ -3089,7 +3142,8 @@ function renderDevisDirectTab() {
     const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
     const matLabel = q.materiauLabel || q.materiau || '—';
     const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('fr-FR') : '—';
-    const prixHT = q.totalHT ? (fmtEUR(q.totalHT) + ' HT') : 'Sur devis';
+    const _t = q.totalHT ? computeQuoteTotals(q) : null;
+    const prixHT = _t ? (fmtEUR(_t.htNet) + ' HT') : 'Sur devis';
     return `
       <div class="direct-quote-card" onclick="toggleDirectQuoteDetail('${q.id}', this)" id="dqc-${q.id}">
         <div>
@@ -3107,7 +3161,7 @@ function renderDevisDirectTab() {
           <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis ?')) { deleteQuote('${q.id}','direct'); }" title="Supprimer">🗑</button>
         </div>
       </div>
-      <div class="direct-detail-panel" id="ddp-${q.id}"></div>`;
+      `;
   }).join('');
 }
 
@@ -3138,20 +3192,16 @@ async function cloturerDevisDirect(quoteId) {
 }
 
 async function toggleDirectQuoteDetail(quoteId, cardEl) {
-  const panel = document.getElementById('ddp-' + quoteId);
-  if (!panel) return;
-  const isOpen = panel.classList.contains('active');
-  document.querySelectorAll('.direct-detail-panel.active').forEach(p => p.classList.remove('active'));
+  const drawer = document.getElementById('side-drawer');
+  const alreadyOpen = drawer?.classList.contains('open') && drawer.dataset.openId === quoteId;
+  // Forcer rechargement des caches prix
+  aLoaded = false; await aLoad();
+  fLoaded = false; await fLoad();
+  if (alreadyOpen) { closeDrawer(); delete drawer.dataset.openId; return; }
+  if (drawer) drawer.dataset.openId = quoteId;
   document.querySelectorAll('.direct-quote-card').forEach(c => c.style.borderColor = '');
-  if (!isOpen) {
-    // Forcer rechargement des caches prix
-    aLoaded = false; await aLoad();
-    fLoaded = false; await fLoad();
-    panel.innerHTML = buildDirectQuoteDetail(quoteId);
-    panel.classList.add('active');
-    if (cardEl) cardEl.style.borderColor = 'var(--gold)';
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
+  if (cardEl) cardEl.style.borderColor = 'var(--gold)';
+  openDrawer(buildDirectQuoteDetail(quoteId));
 }
 
 function buildDirectQuoteDetail(quoteId) {
@@ -3191,7 +3241,7 @@ function buildDirectQuoteDetail(quoteId) {
   const tvaLabel = q.tva ? `TVA ${q.tva}%` : 'TVA 20%';
   const tvaAmt = q.totalHT && q.tva ? fmtEUR(q.totalHT * q.tva / 100) : '—';
 
-  return `
+  return `<div class="drawer-light" style="padding:28px 26px 40px;">
     <div class="direct-detail-title">
       <span>Détail — ${clientName}</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -3208,7 +3258,7 @@ function buildDirectQuoteDetail(quoteId) {
         ${q.status !== 'commande' && q.status !== 'facture' ? `<button class="btn btn-commande btn-sm" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>` : ''}
         ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis définitivement ?')) deleteQuote('${q.id}','direct')">🗑</button>
-        <button class="btn btn-secondary btn-sm" onclick="toggleDirectQuoteDetail('${q.id}')">× Fermer</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeDrawer()">× Fermer</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
@@ -3268,7 +3318,70 @@ function buildDirectQuoteDetail(quoteId) {
     </div>
     ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'direct') : ''}
     ${buildCoutsSection(q)}
-    ${buildCommissionSection(q)}`;
+    ${buildCommissionSection(q)}
+    ${(function(){ try { return buildLignesCustomEditor(q); } catch(e){ console.error('buildLignesCustomEditor:', e); return ''; } })()}
+  </div>`;
+}
+
+function buildLignesCustomEditor(q) {
+  if (!q) return '';
+  const lignes = q.lignesCustom || [];
+  const rows = lignes.map((l,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--cream-dark);font-size:.83rem;">
+      <span style="color:var(--stone);">${l.label}</span>
+      <span style="display:flex;align-items:center;gap:10px;color:var(--stone);font-weight:500;">
+        ${fmtEUR(parseFloat(l.pu)||0)} HT
+        <button onclick="removeCustomLine('${q.id}',${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;padding:0 2px;" title="Supprimer">×</button>
+      </span>
+    </div>`).join('');
+  return `<div style="margin-top:14px;padding:14px 16px;background:var(--cream);border-radius:4px;border:1px solid var(--cream-dark);">
+    <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;font-weight:600;">Lignes complémentaires</div>
+    ${rows || '<div style="font-size:.8rem;color:var(--stone-light);margin-bottom:10px;">Aucune ligne ajoutée</div>'}
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:150px;">
+        <div style="font-size:.7rem;color:var(--stone-light);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Description</div>
+        <input id="cl-label-${q.id}" placeholder="ex: évier, prise, dépose…" style="width:100%;box-sizing:border-box;padding:7px 10px;font-size:.82rem;border:1px solid var(--cream-dark);border-radius:4px;background:var(--white);color:var(--stone);">
+      </div>
+      <div style="width:110px;">
+        <div style="font-size:.7rem;color:var(--stone-light);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Prix vente HT</div>
+        <input id="cl-pu-${q.id}" type="number" step="0.01" min="0" placeholder="€" style="width:100%;box-sizing:border-box;padding:7px 10px;font-size:.82rem;border:1px solid var(--cream-dark);border-radius:4px;background:var(--white);color:var(--stone);">
+      </div>
+      <div style="width:110px;">
+        <div style="font-size:.7rem;color:var(--stone-light);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;">Prix achat HT <span style="color:#c9a84c;">●</span></div>
+        <input id="cl-pa-${q.id}" type="number" step="0.01" min="0" placeholder="€" style="width:100%;box-sizing:border-box;padding:7px 10px;font-size:.82rem;border:1px solid var(--cream-dark);border-radius:4px;background:var(--white);color:var(--stone);">
+      </div>
+      <button onclick="addCustomLine('${q.id}')" class="btn btn-primary btn-sm" style="flex-shrink:0;">+ Ajouter</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--stone-light);margin-top:6px;">● Prix d'achat non visible sur le devis client — utilisé pour le calcul de marge.</div>
+  </div>`;
+}
+
+function addCustomLine(quoteId) {
+  const db = getDB();
+  const idx = db.quotes.findIndex(x => x.id === quoteId);
+  if (idx === -1) return;
+  const label = (document.getElementById('cl-label-'+quoteId)?.value||'').trim();
+  const pu = parseFloat(document.getElementById('cl-pu-'+quoteId)?.value);
+  const pa = parseFloat(document.getElementById('cl-pa-'+quoteId)?.value) || 0;
+  if (!label || isNaN(pu) || pu <= 0) { showToast('Renseignez une description et un prix de vente valide'); return; }
+  if (!db.quotes[idx].lignesCustom) db.quotes[idx].lignesCustom = [];
+  db.quotes[idx].lignesCustom.push({ label, pu, ...(pa > 0 ? { pa } : {}) });
+  saveDB(db);
+  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom }).catch(console.error);
+  renderDevisDirectTab();
+  setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
+}
+
+function removeCustomLine(quoteId, lineIdx) {
+  if (!confirm('Supprimer cette ligne ?')) return;
+  const db = getDB();
+  const idx = db.quotes.findIndex(x => x.id === quoteId);
+  if (idx === -1) return;
+  db.quotes[idx].lignesCustom = (db.quotes[idx].lignesCustom||[]).filter((_,i) => i !== lineIdx);
+  saveDB(db);
+  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom }).catch(console.error);
+  renderDevisDirectTab();
+  setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
 }
 
 function editDirectQuote(quoteId) {
@@ -3496,11 +3609,10 @@ function deleteQuote(quoteId, source) {
   saveDB(db);
   fbDb.collection('quotes').doc(quoteId).delete().catch(console.error);
   if (source === 'admin') {
-    document.getElementById('quote-detail').classList.remove('active');
+    closeDrawer();
     renderAdminDashboard();
   } else if (source === 'pro') {
-    const panel = document.getElementById('pro-quote-detail');
-    if (panel) { panel.classList.remove('active'); panel.dataset.openId = ''; }
+    closeDrawer();
     renderProQuotes();
   } else if (source === 'direct') {
     renderDevisDirectTab();
@@ -3515,6 +3627,7 @@ function updateDirectQuoteStatus(quoteId, newStatus) {
     saveDB(db);
     fbDb.collection('quotes').doc(quoteId).update({ status: newStatus }).catch(console.error);
     renderDevisDirectTab();
+    setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
   }
 }
 
@@ -3630,14 +3743,9 @@ function showProQuoteDetail(id) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
   if (!q) return;
-  const panel = document.getElementById('pro-quote-detail');
-  if (panel.dataset.openId === id && panel.classList.contains('active')) {
-    panel.classList.remove('active');
-    panel.dataset.openId = '';
-    return;
-  }
-  panel.dataset.openId = id;
-  panel.classList.add('active');
+  const drawer = document.getElementById('side-drawer');
+  if (drawer?.classList.contains('open') && drawer.dataset.openId === id) { closeDrawer(); delete drawer.dataset.openId; return; }
+  if (drawer) drawer.dataset.openId = id;
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
   const surfNum = (q.surfacePlans||0)+(q.surfaceCred||0);
   const surf = surfNum.toFixed(2);
@@ -3694,13 +3802,13 @@ function showProQuoteDetail(id) {
   const cmdAction = (q.status === 'devise')
     ? `<button class="btn btn-commande" onclick="openCommandeModal('${id}')">🛒 Passer en commande</button>`
     : '';
-  panel.innerHTML = `
+  openDrawer(`<div class="drawer-light" style="padding:28px 26px 40px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div>
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);margin-bottom:3px;">${q.client?.ref||('Réf. '+q.id.slice(-6))}</div>
         <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status)}
       </div>
-      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('pro-quote-detail').classList.remove('active')">✕</button>
+      <button class="btn btn-sm btn-secondary" onclick="closeDrawer()">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div>
@@ -3722,8 +3830,8 @@ function showProQuoteDetail(id) {
       ${cmdAction}
       ${currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportDevisCuisinistById('${id}')">📋 Devis</button><button class="btn btn-secondary btn-sm" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>` : `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>`}
       <button class="btn btn-danger btn-sm" onclick="deleteQuote('${id}','pro')" title="Supprimer ce devis">🗑 Supprimer</button>
-    </div>`;
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    </div>
+  </div>`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3859,8 +3967,7 @@ async function confirmCommande() {
       showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
     } else {
       renderProQuotes();
-      const panel = document.getElementById('pro-quote-detail');
-      if (panel) { panel.classList.remove('active'); panel.dataset.openId = ''; }
+      closeDrawer();
       setTimeout(() => showProQuoteDetail(quoteId), 150);
       showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
     }
@@ -3877,6 +3984,7 @@ async function confirmCommande() {
 //  FORMULAIRE MULTI-ÉTAPES
 // ═══════════════════════════════════════════════════════════════
 let quoteMode = 'pro'; // 'pro' | 'direct'
+let formCustomLines = []; // lignes complémentaires saisies dans le formulaire
 let currentStep = 1;
 let planCount = 3;
 let credCount = 2;
@@ -3898,6 +4006,43 @@ function getCredencesData() {
     creds.push({ larg: inputs[0]?.value||'', long: inputs[1]?.value||'' });
   });
   return creds;
+}
+
+function renderFormCustomLines() {
+  const sec = document.getElementById('lignes-custom-form-section');
+  if (!sec) return;
+  sec.style.display = quoteMode === 'direct' ? 'block' : 'none';
+  const list = document.getElementById('lignes-custom-form-list');
+  if (!list) return;
+  if (formCustomLines.length === 0) {
+    list.innerHTML = '<div style="font-size:.8rem;color:var(--stone-light);margin-bottom:4px;">Aucune ligne ajoutée</div>';
+    return;
+  }
+  list.innerHTML = formCustomLines.map((l, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:.83rem;">
+      <span style="color:var(--cream);">${l.label}</span>
+      <span style="display:flex;align-items:center;gap:12px;color:var(--cream);font-weight:500;">
+        <span>${fmtEUR(parseFloat(l.pu)||0)} HT${l.pa ? ` <span style="color:rgba(255,165,0,.6);font-size:.75rem;">(achat ${fmtEUR(l.pa)})</span>` : ''}</span>
+        <button type="button" onclick="removeFormCustomLine(${i})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:1rem;padding:0 2px;" title="Supprimer">×</button>
+      </span>
+    </div>`).join('');
+}
+
+function addFormCustomLine() {
+  const label = (document.getElementById('form-cl-label')?.value||'').trim();
+  const pu = parseFloat(document.getElementById('form-cl-pu')?.value);
+  const pa = parseFloat(document.getElementById('form-cl-pa')?.value) || 0;
+  if (!label || isNaN(pu) || pu <= 0) { showToast('Renseignez une description et un prix de vente valide'); return; }
+  formCustomLines.push({ label, pu, ...(pa > 0 ? { pa } : {}) });
+  document.getElementById('form-cl-label').value = '';
+  document.getElementById('form-cl-pu').value = '';
+  document.getElementById('form-cl-pa').value = '';
+  renderFormCustomLines();
+}
+
+function removeFormCustomLine(idx) {
+  formCustomLines.splice(idx, 1);
+  renderFormCustomLines();
 }
 
 function startNewQuote() {
@@ -4022,6 +4167,8 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   if (q.livraison === 'etage') document.getElementById('etage').checked = true;
   else document.getElementById('rdc').checked = true;
   setV('commentaire', q.commentaire);
+  // Lignes complémentaires
+  formCustomLines = (q.lignesCustom && !isDuplicate) ? [...q.lignesCustom] : [];
 
   // Ouvrir le formulaire
   currentStep = 1;
@@ -4048,6 +4195,7 @@ function backToPro() {
 }
 
 function resetFormFields() {
+  formCustomLines = [];
   planCount = 3; credCount = 2;
   ['civilite','nom-client','prenom-client','tel-client','email-client','adresse','cp','ville','date-pose','ref-chantier',
    'materiau','coloris','finition','chant','chant-longueur','commentaire'].forEach(id => {
@@ -4077,7 +4225,7 @@ function goToStep(n) { if (n > currentStep) return; currentStep = n; renderStep(
 function nextStep(from) {
   if (!validateFormStep(from)) return;
   currentStep = from + 1;
-  if (currentStep === 5) buildSummary();
+  if (currentStep === 5) { buildSummary(); renderFormCustomLines(); }
   renderStep();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -4554,7 +4702,8 @@ function submitQuote(action) {
       totalTTC: totalTTC !== null ? totalTTC : null,
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       status: newStatus,
-      type: isDirect ? 'direct' : 'pro'
+      type: isDirect ? 'direct' : 'pro',
+      lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined
     };
 
     let savedQuoteId;
@@ -4585,6 +4734,12 @@ function submitQuote(action) {
       renderAdminDashboard();
       switchTab('direct');
       showToast(isEdit ? '✓ Devis mis à jour' : '✓ Devis enregistré');
+      if (savedQuoteId) {
+        setTimeout(() => {
+          const card = document.getElementById('dqc-' + savedQuoteId);
+          if (card) toggleDirectQuoteDetail(savedQuoteId, card);
+        }, 150);
+      }
     } else if (currentUser.role === 'admin') {
       showView('view-admin');
       renderAdminDashboard();
@@ -4600,6 +4755,24 @@ function submitQuote(action) {
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// ─── SIDE DRAWER ──────────────────────────────────────────────
+function openDrawer(html) {
+  const body = document.getElementById('side-drawer-body');
+  if (body) body.innerHTML = html;
+  const drawer = document.getElementById('side-drawer');
+  if (drawer) drawer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  const drawer = document.getElementById('side-drawer');
+  if (drawer) drawer.classList.remove('open');
+  document.body.style.overflow = '';
+  // Déselectionner les cartes
+  document.querySelectorAll('.direct-quote-card').forEach(c => c.style.borderColor = '');
+  document.querySelectorAll('.pro-quote-row, .quote-row').forEach(r => r.classList.remove('selected'));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
 // Toast de confirmation temporaire
 function showToast(msg) {
@@ -5304,6 +5477,22 @@ async function exportDevisParticulier(quoteId) {
     </tr>`;
   }
 
+  // Lignes personnalisées (évier, prise, etc.)
+  if (q.lignesCustom?.length > 0) {
+    q.lignesCustom.forEach(l => {
+      const pu = parseFloat(l.pu) || 0;
+      if (!pu) return;
+      htBrutPdf += pu;
+      ligneNum++;
+      lignesRows += `<tr>
+        <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
+        <td class="li-right">1</td>
+        <td class="li-right">${fmtEUR(pu)}</td>
+        <td class="li-right">${fmtEUR(pu)}</td>
+      </tr>`;
+    });
+  }
+
   // Fallback si aucune ligne n'a pu être générée
   if (ligneNum === 0) {
     htBrutPdf = q.totalHT || 0;
@@ -6000,6 +6189,21 @@ async function genererFactureDirecte(quoteId) {
       <td class="li-right">${fmtEUR(pu)}</td>
       <td class="li-right">${fmtEUR(pu)}</td>
     </tr>`;
+  }
+
+  // 6. Lignes complémentaires
+  if (q.lignesCustom?.length > 0) {
+    q.lignesCustom.forEach(l => {
+      const pu = parseFloat(l.pu) || 0;
+      if (!pu) return;
+      ligneNum++;
+      lignesRows += `<tr>
+        <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
+        <td class="li-right">1</td>
+        <td class="li-right">${fmtEUR(pu)}</td>
+        <td class="li-right">${fmtEUR(pu)}</td>
+      </tr>`;
+    });
   }
 
   // Fallback
@@ -7790,5 +7994,14 @@ function showCatalogueToast(msg) {
     </div>
   </div>
 </div>
+
+<!-- SIDE DRAWER (detail panel global) -->
+<div id="side-drawer" role="dialog" aria-modal="true">
+  <div id="side-drawer-backdrop" onclick="closeDrawer()"></div>
+  <div id="side-drawer-panel">
+    <div id="side-drawer-body"></div>
+  </div>
+</div>
+
 </body>
 </html>
