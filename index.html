@@ -2519,11 +2519,11 @@ function computeRemiseAmount(totalHT, remise) {
 }
 function computeQuoteTotals(q) {
   const customTotal = (q.lignesCustom||[]).reduce((s,l) => s + (parseFloat(l.pu)||0), 0);
-  const htBrut = (q.totalHT || 0) + customTotal;
-  const remiseAmt = computeRemiseAmount(htBrut, q.remise);
-  const htNet = htBrut - remiseAmt;
+  const htBrut = Math.round(((q.totalHT || 0) + customTotal) * 100) / 100;
+  const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+  const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 20) / 100;
-  const tvaAmt = htNet * tvaRate;
+  const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = htNet + tvaAmt;
   return { htBrut, remiseAmt, htNet, tvaAmt, ttc, tvaRate };
 }
@@ -5508,9 +5508,9 @@ async function exportDevisParticulier(quoteId) {
   // Totaux calculés depuis les lignes affichées (pas depuis q.totalHT)
   const tvaLabel = q.tva || 20;
   const tvaRate = tvaLabel / 100;
-  const remiseAmt = computeRemiseAmount(htBrutPdf, q.remise);
-  const htNet = htBrutPdf - remiseAmt;
-  const tvaAmt = htNet * tvaRate;
+  const remiseAmt = Math.round(computeRemiseAmount(htBrutPdf, q.remise) * 100) / 100;
+  const htNet = Math.round((htBrutPdf - remiseAmt) * 100) / 100;
+  const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const totalTTC = htNet + tvaAmt;
   const htBrut = htBrutPdf;
   const totalHT = htBrutPdf > 0 ? htBrutPdf : null;
