@@ -946,8 +946,8 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="section-block">
         <h3>Prestation & livraison</h3>
         <div class="counter-grid">
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
-          <div class="counter-item"><div class="counter-info"><span class="counter-name">Pose & installation</span><span class="counter-price" data-key="pose-installation"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="prise-de-cote"><div class="counter-info"><span class="counter-name">Prise de côte (déplacement)</span><span class="counter-price" data-key="prise-de-cote"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
+          <div class="counter-item" data-fac-key="pose-installation"><div class="counter-info"><span class="counter-name">Pose & installation</span><span class="counter-price" data-key="pose-installation"></span></div><div class="counter-controls"><button class="counter-btn" onclick="changeCount(this,-1)">−</button><span class="counter-val">0</span><button class="counter-btn" onclick="changeCount(this,1)">+</button></div></div>
         </div>
       </div>
       <div class="section-block">
@@ -1421,7 +1421,6 @@ const PRIX = {
     'Droit 4 à 10 cm rapporté':          63,
     'Droit 2 + 2 cm chanfreiné':         50,
     "Aile d'avion":                      71,
-    'Rainurage encastré':               168,
   },
   pose: { rdc: 195, etage: 395 }
 };
@@ -2665,7 +2664,6 @@ function renderQuotesTable() {
             'Droit 4 à 10 cm rapporté': 'chant-droit-rapporte',
             'Droit 2 + 2 cm chanfreiné': 'chant-droit-2-2-chanfreine',
             "Aile d'avion": 'chant-aile-avion',
-            'Rainurage encastré': 'chant-rainurage',
           };
           const ck = chantKeyMap[q.chant.type];
           if (ck && fCache[ck]) cout += fCache[ck] * (q.chant.longueur / 1000);
@@ -2871,7 +2869,7 @@ function buildCoutsSection(q) {
       'chanfrei':'chant-droit-chanfreine','1/4 de rond':'chant-arrondi-quart',
       '1/2 rond':'chant-arrondi-demi','onglet':'chant-droit-onglet',
       'rapport':'chant-droit-rapporte','2 + 2':'chant-droit-2-2-chanfreine',
-      'avion':'chant-aile-avion','Rainurage':'chant-rainurage'
+      'avion':'chant-aile-avion'
     };
     const ck = Object.keys(CKM).find(k => q.chant.type.includes(k));
     const key = ck ? CKM[ck] : null;
@@ -4154,10 +4152,11 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   // Étape 4 — Chant & options
   setV('chant', q.chant?.type);
   setV('chant-longueur', q.chant?.longueur||'');
-  const counterKeys = ['plaque-cuisson','evier-encastre','evier-sous-plan','percage-mitigeur','percage-bar','prise-plan','prise-credence','poubelle','rainurage','decoupe-arrondi'];
-  document.querySelectorAll('#counters .counter-item').forEach((item, i) => {
+  // Restaurer tous les compteurs via data-fac-key (évidements + prestation)
+  document.querySelectorAll('#step-4 .counter-item[data-fac-key]').forEach(item => {
+    const key = item.dataset.facKey;
     const valEl = item.querySelector('.counter-val');
-    if (valEl && counterKeys[i]) valEl.textContent = q.options?.[counterKeys[i]] || 0;
+    if (valEl && key) valEl.textContent = q.options?.[key] || 0;
   });
   // Restaurer coupe d'onglet ml
   const ongletEl = document.getElementById('coupe-onglet-ml');
@@ -6370,7 +6369,6 @@ const CHANT_KEY_TO_LABEL = {
   'chant-droit-rapporte':         'Droit 4 à 10 cm rapporté',
   'chant-droit-2-2-chanfreine':   'Droit 2 + 2 cm chanfreiné',
   'chant-aile-avion':             "Aile d'avion",
-  'chant-rainurage':              'Rainurage encastré',
 };
 
 async function loadFaconnageOverrides() {
@@ -6592,7 +6590,6 @@ const FACONNAGE_ITEMS = [
   { key: 'chant-droit-rapporte',          label: 'Chant — Droit 4 à 10 cm rapporté',      unite: 'ml' },
   { key: 'chant-droit-2-2-chanfreine',    label: 'Chant — Droit 2+2 cm chanfreiné',       unite: 'ml' },
   { key: 'chant-aile-avion',              label: "Chant — Aile d'avion",                  unite: 'ml' },
-  { key: 'chant-rainurage',              label: 'Chant — Rainurage encastré',             unite: 'ml' },
 ];
 
 async function fLoad() {
