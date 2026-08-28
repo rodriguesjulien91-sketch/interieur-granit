@@ -6086,6 +6086,7 @@ async function genererFactureDirecte(quoteId) {
   // Construction des lignes détaillées
   let lignesRows = '';
   let ligneNum = 0;
+  let htBrutFact = 0; // accumulé depuis les montants arrondis affichés
   const mat = q.materiau;
   const ep = q.epaisseur;
   const coloris = q.coloris || '';
@@ -6098,7 +6099,8 @@ async function genererFactureDirecte(quoteId) {
 
   // 1. Plans de travail
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = q.surfacePlans * prixMat;
+    const htPlans = Math.round(q.surfacePlans * prixMat * 100) / 100;
+    htBrutFact += htPlans;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
@@ -6111,7 +6113,8 @@ async function genererFactureDirecte(quoteId) {
   // 2. Crédences
   if (q.surfaceCred > 0 && prixMat !== null) {
     const prixCred = prixMat * (PRIX.credences?.facteur || 1);
-    const htCred = q.surfaceCred * prixCred;
+    const htCred = Math.round(q.surfaceCred * prixCred * 100) / 100;
+    htBrutFact += htCred;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
@@ -6125,7 +6128,8 @@ async function genererFactureDirecte(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
     const ml = q.chant.longueur / 1000;
     const puChant = PRIX.chants[q.chant.type];
-    const htChant = ml * puChant;
+    const htChant = Math.round(ml * puChant * 100) / 100;
+    htBrutFact += htChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
@@ -6143,7 +6147,8 @@ async function genererFactureDirecte(quoteId) {
         if (opt) {
           const ml = (v / 1000).toFixed(2);
           const pu = opt.prix;
-          const ht = ml * pu;
+          const ht = Math.round(ml * pu * 100) / 100;
+          htBrutFact += ht;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
@@ -6157,7 +6162,8 @@ async function genererFactureDirecte(quoteId) {
       const opt = PRIX.options[k];
       if (opt) {
         const pu = opt.prix;
-        const ht = pu * v;
+        const ht = Math.round(pu * v * 100) / 100;
+        htBrutFact += ht;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
@@ -6172,6 +6178,7 @@ async function genererFactureDirecte(quoteId) {
   // 5. Livraison
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
     const pu = PRIX.pose.rdc;
+    htBrutFact += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
@@ -6181,6 +6188,7 @@ async function genererFactureDirecte(quoteId) {
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
     const pu = PRIX.pose.etage;
+    htBrutFact += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
@@ -6195,6 +6203,7 @@ async function genererFactureDirecte(quoteId) {
     q.lignesCustom.forEach(l => {
       const pu = parseFloat(l.pu) || 0;
       if (!pu) return;
+      htBrutFact += pu;
       ligneNum++;
       lignesRows += `<tr>
         <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
@@ -6207,6 +6216,7 @@ async function genererFactureDirecte(quoteId) {
 
   // Fallback
   if (ligneNum === 0) {
+    htBrutFact = q.totalHT || 0;
     const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
     lignesRows = `<tr>
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
@@ -6216,12 +6226,13 @@ async function genererFactureDirecte(quoteId) {
     </tr>`;
   }
 
-  const _tDir = computeQuoteTotals(q);
-  const htBrut = _tDir.htBrut;
-  const remiseAmt = _tDir.remiseAmt;
-  const totalHT = _tDir.htNet;
-  const tvaAmt = _tDir.tvaAmt;
-  const totalTTC = _tDir.ttc;
+  // Totaux depuis les lignes affichées (garantit cohérence sous-total = Σ lignes)
+  const htBrut = Math.round(htBrutFact * 100) / 100;
+  const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+  const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
+  const tvaRate = (q.tva || 10) / 100;
+  const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
+  const totalTTC = totalHT + tvaAmt;
 
   const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
