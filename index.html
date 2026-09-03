@@ -2794,23 +2794,19 @@ function buildCommissionSection(q) {
 
   const coeff = pro.coeffVente;
 
-  // Recalcul depuis les lignes réelles (cohérent avec le PDF)
-  const { htTotal } = buildLignesCuisiniste(q, pro);
-  const tvaRate = (q.tva || 10) / 100;
-  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
-  const htNet = htTotal - remiseAmt;
+  // Utilise la même source que le Total HT affiché en haut → les deux chiffres sont toujours identiques
+  const { htNet } = computeQuoteTotals(q);
   if (!htNet) return '';
 
-  // Décomposition : pose/prise-de-cote sans coeff, mat+façonnage avec coeff
+  // Services facturés sans coeff (livraison + prise de gabarit + pose)
   const livrHT = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
   const poseHT = livrHT
     + (q.options?.['prise-de-cote']  > 0 ? (PRIX.options['prise-de-cote']?.prix  || 0) : 0)
     + (q.options?.['pose-installation'] > 0 ? (PRIX.options['pose-installation']?.prix || 0) : 0);
-  const matFacHT_coeff = htNet - poseHT;       // mat+façonnage au prix client (avec coeff)
-  const matFacHT_ig    = matFacHT_coeff / coeff; // mat+façonnage au prix IG (sans coeff)
-  const commission     = Math.round((matFacHT_coeff - matFacHT_ig) * 100) / 100;
+  const baseCoeff      = Math.round((htNet - poseHT) * 100) / 100; // tout sauf services, au prix client
+  const baseIG         = Math.round(baseCoeff / coeff * 100) / 100; // même chose au prix IG
+  const commission     = Math.round((baseCoeff - baseIG) * 100) / 100;
 
-  const igHT = Math.round(matFacHT_ig * 100) / 100;
   const R = 'display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(200,185,160,.25);font-size:.82rem;';
   const ln = (l, v, col) => '<div style="'+R+'"><span style="color:#a89880;">'+l+'</span><span style="color:'+(col||'#fdfaf5')+';font-weight:500;">'+v+'</span></div>';
 
@@ -2818,7 +2814,7 @@ function buildCommissionSection(q) {
   h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">Rétrocommission cuisiniste — coeff ×'+coeff+'</div>';
   h += ln('Prix HT facturé au client final (par IG)', fmtEUR(htNet));
   h += ln('− Services (pose, livraison, prise de gabarit)', '− '+fmtEUR(poseHT));
-  h += ln('− Prix HT Intérieur Granit (sans coeff)', '− '+fmtEUR(igHT));
+  h += ln('− Prix HT Intérieur Granit (sans coeff)', '− '+fmtEUR(baseIG));
   h += '<div style="margin-top:10px;padding:10px 0 4px;border-top:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center;">';
   h += '<span style="color:#fdfaf5;font-weight:600;font-size:.88rem;">= Rétrocommission à verser au cuisiniste HT</span>';
   h += '<span style="color:#2d7a4f;font-weight:700;font-size:1.05rem;">'+fmtEUR(commission)+'</span>';
