@@ -4827,6 +4827,16 @@ function buildLignesCuisiniste(q, pro) {
     const px = PRIX.options['pose-installation']?.prix || 0;
     if (px) { htTotal += px * (q.options['pose-installation']||1); optLines += '<tr><td>Pose & installation</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>'; }
   }
+  // Lignes complémentaires avec coeff
+  if (q.lignesCustom?.length > 0) {
+    q.lignesCustom.forEach(l => {
+      const pu = parseFloat(l.pu) || 0;
+      if (!pu) return;
+      const puCoeff = Math.round(pu * coeff * 100) / 100;
+      htTotal += puCoeff;
+      optLines += '<tr><td>'+(l.label||'Prestation complémentaire')+'</td><td style="text-align:right;">'+fmtEUR(puCoeff)+' HT</td></tr>';
+    });
+  }
   return { prixMatCoeff, optLines, htTotal };
 }
 
