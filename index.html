@@ -2810,22 +2810,19 @@ function buildCommissionSection(q) {
   const matFacHT_ig    = matFacHT_coeff / coeff; // mat+façonnage au prix IG (sans coeff)
   const commission     = Math.round((matFacHT_coeff - matFacHT_ig) * 100) / 100;
 
-  const R = 'display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(200,185,160,.3);font-size:.82rem;';
-  const DK = 'color:#7a6f62;';
-  const ln = (l, v, style) => '<div style="'+R+'"><span style="'+DK+'">'+l+'</span><span style="'+(style||'color:#fdfaf5;font-weight:500;')+'">'+v+'</span></div>';
+  const igHT = Math.round(matFacHT_ig * 100) / 100;
+  const R = 'display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(200,185,160,.25);font-size:.82rem;';
+  const ln = (l, v, col) => '<div style="'+R+'"><span style="color:#a89880;">'+l+'</span><span style="color:'+(col||'#fdfaf5')+';font-weight:500;">'+v+'</span></div>';
 
   let h = '<div style="margin-top:12px;padding:14px 16px;background:#1a1814;border-radius:4px;border:1px solid var(--gold);">';
-  h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">Commission cuisiniste — coeff ×'+coeff+'</div>';
-  h += ln('Facturé au client final HT (par IG)', fmtEUR(htNet));
-  h += ln('dont pose / livraison / prise de cote HT', fmtEUR(poseHT), 'color:#a89880;');
-  h += ln('dont mat. + façonnage HT (prix client ×'+coeff+')', fmtEUR(matFacHT_coeff), 'color:#a89880;');
-  h += ln('mat. + façonnage HT (prix IG sans coeff)', fmtEUR(matFacHT_ig), 'color:#a89880;');
-  h += ln('Facturé au client final TTC (par IG)', fmtEUR(htNet * (1 + tvaRate)), 'color:#fdfaf5;font-weight:700;');
-  h += '<div style="margin-top:8px;padding:8px 0;border-top:1px solid var(--gold);display:flex;justify-content:space-between;font-size:.9rem;">';
-  h += '<span style="color:#fdfaf5;font-weight:600;">Commission à rétrocéder au cuisiniste HT</span>';
-  h += '<span style="color:#2d7a4f;font-weight:700;font-size:1rem;">'+fmtEUR(commission)+'</span>';
+  h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:12px;font-weight:600;">Rétrocommission cuisiniste — coeff ×'+coeff+'</div>';
+  h += ln('Prix HT facturé au client final (par IG)', fmtEUR(htNet));
+  h += ln('− Services (pose, livraison, prise de gabarit)', '− '+fmtEUR(poseHT));
+  h += ln('− Prix HT Intérieur Granit (sans coeff)', '− '+fmtEUR(igHT));
+  h += '<div style="margin-top:10px;padding:10px 0 4px;border-top:1px solid var(--gold);display:flex;justify-content:space-between;align-items:center;">';
+  h += '<span style="color:#fdfaf5;font-weight:600;font-size:.88rem;">= Rétrocommission à verser au cuisiniste HT</span>';
+  h += '<span style="color:#2d7a4f;font-weight:700;font-size:1.05rem;">'+fmtEUR(commission)+'</span>';
   h += '</div>';
-  h += '<div style="font-size:.73rem;color:#7a6f62;margin-top:5px;">= mat. client ('+fmtEUR(matFacHT_coeff)+') − mat. IG ('+fmtEUR(matFacHT_ig)+')</div>';
   h += '</div>';
   return h;
 }
@@ -3821,7 +3818,7 @@ function showProQuoteDetail(id) {
       <button class="btn btn-primary btn-sm" onclick="loadQuoteIntoForm('${id}', false)">✏️ Modifier</button>
       <button class="btn btn-secondary btn-sm" onclick="loadQuoteIntoForm('${id}', true)">⧉ Dupliquer</button>
       ${cmdAction}
-      ${currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportDevisCuisinistById('${id}')">📋 Devis</button><button class="btn btn-secondary btn-sm" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>` : `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>`}
+      ${currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportDevisCuisinistById('${id}')">📋 Devis</button>${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>` : ''}` : `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>`}
       <button class="btn btn-danger btn-sm" onclick="deleteQuote('${id}','pro')" title="Supprimer ce devis">🗑 Supprimer</button>
     </div>
   </div>`);
@@ -4790,7 +4787,7 @@ function buildLignesCuisiniste(q, pro) {
   const coeff = pro.coeffVente || 1;
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
   const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixMatCoeff = Math.round(prixEp * surf * 100) / 100;
+  const prixMatCoeff = Math.round(prixEp * surf * coeff * 100) / 100;
   let htTotal = prixMatCoeff;
   let optLines = '';
 
@@ -4833,10 +4830,11 @@ function buildLignesCuisiniste(q, pro) {
   return { prixMatCoeff, optLines, htTotal };
 }
 
-function exportBonDeCommandeDetaille(q, pro) {
+function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const ref = q.commande?.ref || ('BC-' + q.id.toUpperCase());
+  const docType = withSignature ? 'Bon de commande' : 'Devis';
+  const ref = (withSignature ? q.commande?.ref : null) || ((withSignature ? 'BC-' : 'DEV-') + q.id.slice(-6).toUpperCase());
   const logoHtml = pro.logo ? '<img src="'+pro.logo+'" style="max-height:60px;max-width:140px;object-fit:contain;">' : '';
   const imgColoris = vGetImage(q.materiau, q.coloris);
   const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
@@ -4850,7 +4848,7 @@ function exportBonDeCommandeDetaille(q, pro) {
   const ttc = htNet + tvaAmt;
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-<title>Bon de commande ${ref}</title>
+<title>${docType} ${ref}</title>
 <style>
 body { font-family:'Gill Sans',Arial,sans-serif; color:#1a1814; margin:0; padding:32px; font-size:13px; }
 .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; border-bottom:2px solid #1a1814; padding-bottom:18px; }
@@ -4882,7 +4880,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
     </div>
   </div>
   <div style="text-align:right;">
-    <div class="title">Bon de commande</div>
+    <div class="title">${docType}</div>
     <div class="ref">Réf. ${ref} · ${today}</div>
   </div>
 </div>
@@ -4920,16 +4918,16 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   </tfoot>
 </table>
 
-<div class="sign-grid">
+${withSignature ? `<div class="sign-grid">
   <div class="sign-box"><div class="sign-label">${pro.societe||'Cuisiniste'} — Bon pour accord</div><br><br>Date : _______________</div>
   <div class="sign-box"><div class="sign-label">Client — Lu et approuvé</div><br><br>Date : _______________</div>
-</div>
+</div>` : ''}
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
   <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
   Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire, le tribunal compétent étant celui du siège social d'Intérieur Granit.
 </div>
-<div class="footer">Intérieur Granit · Bon de commande · Réf. ${ref} · Émis le ${today}</div>
+<div class="footer">Intérieur Granit · ${docType} · Réf. ${ref} · Émis le ${today}</div>
 </body></html>`;
 
   const _blob = new Blob([html], { type: 'text/html; charset=utf-8' });
@@ -5057,7 +5055,11 @@ async function exportDevisCuisinistById(quoteId) {
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
   const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
-  exportDevisCuisiniste(q, pro);
+  if (pro.coeffVenteActif && pro.coeffVente > 1) {
+    exportBonDeCommandeDetaille(q, pro, false);
+  } else {
+    exportDevisCuisiniste(q, pro);
+  }
 }
 
 async function exportBonDeCommande(quoteId) {
