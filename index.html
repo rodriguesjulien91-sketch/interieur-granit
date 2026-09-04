@@ -4677,8 +4677,9 @@ function submitQuote(action) {
       surfacePlans, surfaceCred,
       plans: getPlansData(),
       credences: getCredencesData(),
-      chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0 },
+      chant: { type: document.getElementById('chant').value, longueur: parseFloat(document.getElementById('chant-longueur').value)||0, pu: PRIX.chants?.[document.getElementById('chant').value] || 0 },
       options: getCounters(),
+      optionsPrix: (() => { const s = {}; if (PRIX.options) { Object.entries(PRIX.options).forEach(([k,v]) => { if (v?.prix !== undefined) s[k] = v.prix; }); if (PRIX.options['coupe-onglet']?.prix !== undefined) s['coupe-onglet-ml'] = PRIX.options['coupe-onglet'].prix; } return s; })(),
       tva: Math.round(tva*100),
       remise: (currentUser && currentUser.role === 'admin' && (document.getElementById('remise-type')?.value || 'none') !== 'none')
         ? { type: document.getElementById('remise-type').value, valeur: parseFloat(document.getElementById('remise-valeur').value) || 0 }
@@ -5406,9 +5407,9 @@ async function exportDevisParticulier(quoteId) {
   }
 
   // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
-    const puChant = PRIX.chants[q.chant.type];
+    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
     const htChant = ml * puChant;
     htBrutPdf += htChant;
     ligneNum++;
@@ -5427,7 +5428,7 @@ async function exportDevisParticulier(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const pu = opt.prix;
+          const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
           const ht = ml * pu;
           htBrutPdf += ht;
           ligneNum++;
@@ -5442,7 +5443,7 @@ async function exportDevisParticulier(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const pu = opt.prix;
+        const pu = q.optionsPrix?.[k] ?? opt.prix;
         const ht = pu * v;
         htBrutPdf += ht;
         ligneNum++;
@@ -5810,9 +5811,9 @@ async function genererFacture(quoteId) {
   }
 
   // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
-    const puChant = PRIX.chants[q.chant.type];
+    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
     const htChant = ml * puChant;
     ligneNum++;
     lignesRows += `<tr>
@@ -5830,12 +5831,13 @@ async function genererFacture(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const ht = ml * opt.prix;
+          const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
+          const ht = ml * puCO;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
             <td class="li-qty">${ml} ml</td>
-            <td class="li-pu">${fmtEUR(opt.prix)}</td>
+            <td class="li-pu">${fmtEUR(puCO)}</td>
             <td class="li-total">${fmtEUR(ht)}</td>
           </tr>`;
         }
@@ -5843,7 +5845,7 @@ async function genererFacture(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const puOpt = opt.prix;
+        const puOpt = q.optionsPrix?.[k] ?? opt.prix;
         const htOpt = Math.round(puOpt * v);
         ligneNum++;
         lignesRows += `<tr>
@@ -6128,9 +6130,9 @@ async function genererFactureDirecte(quoteId) {
   }
 
   // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
-    const puChant = PRIX.chants[q.chant.type];
+    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
     const htChant = Math.round(ml * puChant * 100) / 100;
     htBrutFact += htChant;
     ligneNum++;
@@ -6149,7 +6151,7 @@ async function genererFactureDirecte(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const pu = opt.prix;
+          const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
           const ht = Math.round(ml * pu * 100) / 100;
           htBrutFact += ht;
           ligneNum++;
@@ -6164,7 +6166,7 @@ async function genererFactureDirecte(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const pu = opt.prix;
+        const pu = q.optionsPrix?.[k] ?? opt.prix;
         const ht = Math.round(pu * v * 100) / 100;
         htBrutFact += ht;
         ligneNum++;
