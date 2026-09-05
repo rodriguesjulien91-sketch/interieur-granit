@@ -1011,6 +1011,39 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <div class="summary-card" id="price-breakdown"></div>
 
+      <!-- Conditions de règlement (devis directs admin uniquement) -->
+      <div id="reglement-card-admin" class="summary-card" style="display:none;">
+        <h3>Conditions de règlement <span style="font-size:.72rem;color:var(--stone-light);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;">(admin uniquement)</span></h3>
+        <div style="display:flex;gap:10px;margin:12px 0 14px;">
+          <button type="button" id="reglement-btn-auto" onclick="setReglementMode('auto')"
+            style="flex:1;padding:9px 10px;border-radius:3px;border:1px solid var(--gold);background:var(--gold);color:#1a1814;font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;">
+            ⚙ Automatique (30/30/40)
+          </button>
+          <button type="button" id="reglement-btn-manuel" onclick="setReglementMode('manuel')"
+            style="flex:1;padding:9px 10px;border-radius:3px;border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--cream);font-size:.8rem;font-weight:400;cursor:pointer;transition:.2s;">
+            ✏ Manuel
+          </button>
+        </div>
+        <div id="reglement-preview-auto" style="font-size:.84rem;color:var(--stone-light);line-height:2;"></div>
+        <div id="reglement-inputs-manuel" style="display:none;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:170px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Acompte à la commande (€ TTC)</div>
+            <input type="number" id="reglement-a1" step="1" min="0" placeholder="ex: 1200" oninput="updateReglementSolde()"
+              style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.88rem;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:var(--cream);">
+          </div>
+          <div style="flex:1;min-width:170px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Acompte à la prise de côte (€ TTC)</div>
+            <input type="number" id="reglement-a2" step="1" min="0" placeholder="ex: 1200" oninput="updateReglementSolde()"
+              style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.88rem;border:1px solid rgba(255,255,255,.15);border-radius:4px;background:rgba(255,255,255,.08);color:var(--cream);">
+          </div>
+          <div style="flex:1;min-width:170px;">
+            <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;">Solde le jour de la pose (€ TTC)</div>
+            <input type="number" id="reglement-solde" step="1" min="0" readonly
+              style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:.88rem;border:1px solid rgba(255,255,255,.08);border-radius:4px;background:rgba(255,255,255,.04);color:var(--gold);font-weight:600;">
+          </div>
+        </div>
+      </div>
+
       <!-- Lignes complémentaires (devis particuliers admin uniquement) -->
       <div id="lignes-custom-form-section" class="summary-card" style="display:none;">
         <h3>Lignes complémentaires <span style="font-size:.72rem;color:rgba(255,255,255,.4);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;">évier, prise, dépose…</span></h3>
@@ -4643,6 +4676,47 @@ function updateRemisePreview() {
   }
 }
 
+function setReglementMode(mode) {
+  const btnAuto = document.getElementById('reglement-btn-auto');
+  const btnManuel = document.getElementById('reglement-btn-manuel');
+  const previewAuto = document.getElementById('reglement-preview-auto');
+  const inputsManuel = document.getElementById('reglement-inputs-manuel');
+  if (!btnAuto) return;
+  if (mode === 'auto') {
+    btnAuto.style.background = 'var(--gold)'; btnAuto.style.color = '#1a1814'; btnAuto.style.fontWeight = '600'; btnAuto.style.border = '1px solid var(--gold)';
+    btnManuel.style.background = 'transparent'; btnManuel.style.color = 'var(--cream)'; btnManuel.style.fontWeight = '400'; btnManuel.style.border = '1px solid rgba(255,255,255,.2)';
+    previewAuto.style.display = 'block'; inputsManuel.style.display = 'none';
+  } else {
+    btnManuel.style.background = 'var(--gold)'; btnManuel.style.color = '#1a1814'; btnManuel.style.fontWeight = '600'; btnManuel.style.border = '1px solid var(--gold)';
+    btnAuto.style.background = 'transparent'; btnAuto.style.color = 'var(--cream)'; btnAuto.style.fontWeight = '400'; btnAuto.style.border = '1px solid rgba(255,255,255,.2)';
+    previewAuto.style.display = 'none'; inputsManuel.style.display = 'flex';
+  }
+  btnAuto.dataset.mode = mode;
+}
+
+function getReglementMode() {
+  const btn = document.getElementById('reglement-btn-auto');
+  return btn?.dataset.mode || 'auto';
+}
+
+function updateReglementSolde() {
+  const { lines, totalHT, tva } = computePrice();
+  if (totalHT === null) return;
+  const htNet = totalHT - (() => {
+    const rType = document.getElementById('remise-type')?.value || 'none';
+    const rVal = parseFloat(document.getElementById('remise-valeur')?.value) || 0;
+    if (rType === 'pct' && rVal > 0) return totalHT * (rVal / 100);
+    if (rType === 'eur' && rVal > 0) return Math.min(rVal, totalHT);
+    return 0;
+  })();
+  const ttc = Math.round(htNet * (1 + tva) * 100) / 100;
+  const a1 = parseFloat(document.getElementById('reglement-a1')?.value) || 0;
+  const a2 = parseFloat(document.getElementById('reglement-a2')?.value) || 0;
+  const solde = Math.round((ttc - a1 - a2) * 100) / 100;
+  const soldeEl = document.getElementById('reglement-solde');
+  if (soldeEl) { soldeEl.value = solde >= 0 ? solde : ''; soldeEl.style.color = solde < 0 ? '#e07070' : 'var(--gold)'; }
+}
+
 function buildSummary() {
   const remiseCard = document.getElementById('remise-card-admin');
   if (remiseCard) {
@@ -4717,6 +4791,53 @@ function buildSummary() {
     <h3>Décomposition tarifaire</h3>
     <table class="price-table">${rows}</table>
     <p style="font-size:.76rem;color:var(--stone-light);font-style:italic;margin-top:12px;">Prix indicatifs HT — confirmés après étude du dossier.</p>`;
+
+  // Section règlement (admin + devis direct uniquement)
+  const reglCard = document.getElementById('reglement-card-admin');
+  if (reglCard) {
+    const showRegl = currentUser && currentUser.role === 'admin' && quoteMode === 'direct';
+    reglCard.style.display = showRegl ? 'block' : 'none';
+    if (showRegl && totalHT !== null) {
+      let remiseAmt2 = 0;
+      const rType2 = document.getElementById('remise-type')?.value || 'none';
+      const rVal2 = parseFloat(document.getElementById('remise-valeur')?.value) || 0;
+      if (rType2 === 'pct' && rVal2 > 0) remiseAmt2 = totalHT * (rVal2 / 100);
+      else if (rType2 === 'eur' && rVal2 > 0) remiseAmt2 = Math.min(rVal2, totalHT);
+      const htNet2 = totalHT - remiseAmt2;
+      const ttc2 = Math.round(htNet2 * (1 + tva) * 100) / 100;
+      const t1 = Math.round(ttc2 * 0.30);
+      const t2 = t1;
+      const t3 = Math.round((ttc2 - t1 - t2) * 100) / 100;
+      const previewEl = document.getElementById('reglement-preview-auto');
+      if (previewEl) previewEl.innerHTML =
+        `• 30 % à la commande : <strong style="color:var(--cream);">${fmtEUR(t1)}</strong><br>` +
+        `• 30 % à la prise de côte : <strong style="color:var(--cream);">${fmtEUR(t2)}</strong><br>` +
+        `• 40 % le jour de la pose : <strong style="color:var(--gold);">${fmtEUR(t3)}</strong>`;
+      // Pré-remplir les champs manuels si vides et mode auto
+      if (getReglementMode() === 'auto') {
+        const a1El = document.getElementById('reglement-a1');
+        const a2El = document.getElementById('reglement-a2');
+        if (a1El && !a1El.value) a1El.value = t1;
+        if (a2El && !a2El.value) a2El.value = t2;
+        updateReglementSolde();
+      }
+      // Restaurer valeurs si édition d'un devis existant
+      if (currentEditingQuoteId) {
+        const _dbR = getDB();
+        const _qR = _dbR.quotes.find(x => x.id === currentEditingQuoteId);
+        if (_qR?.reglementMode) {
+          setReglementMode(_qR.reglementMode);
+          if (_qR.reglementMode === 'manuel') {
+            const a1El = document.getElementById('reglement-a1');
+            const a2El = document.getElementById('reglement-a2');
+            if (a1El) a1El.value = _qR.acompte1 || '';
+            if (a2El) a2El.value = _qR.acompte2 || '';
+            updateReglementSolde();
+          }
+        } else { setReglementMode('auto'); }
+      } else { setReglementMode('auto'); }
+    }
+  }
 }
 
 function submitQuote(action) {
@@ -4777,7 +4898,10 @@ function submitQuote(action) {
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       status: newStatus,
       type: isDirect ? 'direct' : 'pro',
-      lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined
+      lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined,
+      reglementMode: (isDirect && currentUser?.role === 'admin') ? getReglementMode() : undefined,
+      acompte1: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a1')?.value) || null) : null,
+      acompte2: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a2')?.value) || null) : null
     };
 
     let savedQuoteId;
@@ -5788,7 +5912,20 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
 
 <div class="mention-box" style="margin-top:10px;">
   <strong>Conditions de règlement :</strong><br>
-  ${(()=>{ const t1=Math.round(totalTTC*0.30); const t2=t1; const t3=Math.round((totalTTC-t1-t2)*100)/100; return `• 30 % d'acompte à la commande : <strong>${t1} €</strong><br>  • 30 % à la prise de côte : <strong>${t2} €</strong><br>  • 40 % le jour de la pose : <strong>${fmtEUR(t3)}</strong>`; })()}
+  ${(()=>{
+    if (q.reglementMode === 'manuel' && (q.acompte1 !== null || q.acompte2 !== null)) {
+      const a1 = q.acompte1 || 0;
+      const a2 = q.acompte2 || 0;
+      const sol = Math.round((totalTTC - a1 - a2) * 100) / 100;
+      let lines = '';
+      if (a1) lines += `• Acompte à la commande : <strong>${fmtEUR(a1)}</strong><br>  `;
+      if (a2) lines += `• Acompte à la prise de côte : <strong>${fmtEUR(a2)}</strong><br>  `;
+      lines += `• Solde le jour de la pose : <strong>${fmtEUR(sol)}</strong>`;
+      return lines;
+    }
+    const t1=Math.round(totalTTC*0.30); const t2=t1; const t3=Math.round((totalTTC-t1-t2)*100)/100;
+    return `• 30 % d'acompte à la commande : <strong>${t1} €</strong><br>  • 30 % à la prise de côte : <strong>${t2} €</strong><br>  • 40 % le jour de la pose : <strong>${fmtEUR(t3)}</strong>`;
+  })()}
 </div>
 
 <div class="sigs">
