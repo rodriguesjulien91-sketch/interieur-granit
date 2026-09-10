@@ -828,7 +828,7 @@ textarea { resize: vertical; min-height: 80px; }
           </div>
           <div class="field">
             <label>Épaisseur</label>
-            <select id="epaisseur" onchange="syncEpaisseur(); updatePriceBadge();">
+            <select id="epaisseur" onchange="syncEpaisseur(); updatePriceBadge(); updateEpaisseurCredBlock();">
               <option value="">— Sélectionnez d'abord un matériau —</option>
             </select>
           </div>
@@ -894,6 +894,17 @@ textarea { resize: vertical; min-height: 80px; }
           </div>
         </div>
         <button class="btn-add-row" onclick="addCredence()">+ Ajouter une crédence</button>
+        <!-- Épaisseur crédence — visible gamme courte uniquement (gc-*) -->
+        <div id="epaisseur-cred-block" style="display:none;margin-top:14px;">
+          <div class="field" style="max-width:260px;">
+            <label>Épaisseur des crédences</label>
+            <select id="epaisseur-cred" onchange="updatePriceBadge(); buildSummary();">
+              <option value="12">12 mm — prix matière 12 mm</option>
+              <option value="20" selected>20 mm — même épaisseur que le plan</option>
+            </select>
+            <div class="field-hint" id="epaisseur-cred-hint"></div>
+          </div>
+        </div>
       </div>
       <div class="section-block">
         <h3>Type de chant</h3>
@@ -2980,14 +2991,18 @@ function buildPrixLignesAdmin(q) {
     } else if (q.surfacePlans > 0) {
       lines += row(`&nbsp;&nbsp;↳ Plans de travail`, `${q.surfacePlans.toFixed(2)} m²`);
     }
-    // Crédences : dimensions détaillées
+    // Crédences : dimensions détaillées + épaisseur si différente
+    const epCredSuffix = q.epaisseurCred === '12' ? ' — 12 mm' : '';
+    const prixCredAdmin = getPrixCredFromQuote(q, Math.round(prixEp * coeff * 100) / 100);
     if ((q.credences||[]).length > 0) {
       q.credences.forEach((p, i) => {
         const larg = parseFloat(p.larg)||0, long = parseFloat(p.long)||0;
-        if (larg && long) lines += row(`&nbsp;&nbsp;↳ Crédence ${i+1} : ${larg} × ${long} mm`, `${((larg/1000)*(long/1000)).toFixed(4)} m²`);
+        if (larg && long) lines += row(`&nbsp;&nbsp;↳ Crédence ${i+1}${epCredSuffix} : ${larg} × ${long} mm`, `${((larg/1000)*(long/1000)).toFixed(4)} m²`);
       });
+      if (epCredSuffix) lines += row(`&nbsp;&nbsp;&nbsp;&nbsp;Prix crédence (${q.epaisseurCred} mm)`, `${fmtEUR(prixCredAdmin)}/m²`);
     } else if (q.surfaceCred > 0) {
-      lines += row(`&nbsp;&nbsp;↳ Crédences`, `${q.surfaceCred.toFixed(2)} m²`);
+      lines += row(`&nbsp;&nbsp;↳ Crédences${epCredSuffix}`, `${q.surfaceCred.toFixed(2)} m²`);
+      if (epCredSuffix) lines += row(`&nbsp;&nbsp;&nbsp;&nbsp;Prix crédence (${q.epaisseurCred} mm)`, `${fmtEUR(prixCredAdmin)}/m²`);
     }
   }
 
@@ -4255,6 +4270,12 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
     credCount = q.credences.length;
   }
   updateLiveSurface();
+  // Restaurer épaisseur crédence
+  if (q.epaisseurCred) {
+    const epCredEl = document.getElementById('epaisseur-cred');
+    if (epCredEl) epCredEl.value = q.epaisseurCred;
+  }
+  updateEpaisseurCredBlock();
 
   // Étape 4 — Chant & options
   setV('chant', q.chant?.type);
@@ -4420,6 +4441,7 @@ function onColorisChange() {
 function onFinitionChange() {
   updateEpaisseurOptionsForColoris();
   updatePriceBadge();
+  updateEpaisseurCredBlock();
 }
 
 // buildEpSelect supprimé — l'épaisseur est uniquement choisie en section 2
@@ -4473,6 +4495,75 @@ function updatePriceBadge() {
 
 function syncEpaisseur() {
   // Plus nécessaire : l'épaisseur est uniquement gérée en section 2
+}
+
+// Affiche/masque le bloc épaisseur crédence + met à jour le hint de prix
+function updateEpaisseurCredBlock() {
+  const mat = document.getElementById('materiau').value;
+  const ep  = document.getElementById('epaisseur').value;
+  const coloris = document.getElementById('coloris').value;
+  const finition = document.getElementById('finition').value;
+  const isGC = mat && mat.startsWith('gc-');
+  const isDirect = quoteMode === 'direct';
+  const block = document.getElementById('epaisseur-cred-block');
+  if (!block) return;
+  const show = isGC && mat && ep;
+  block.style.display = show ? 'block' : 'none';
+  if (!show) return;
+  // Vérifier si le 12mm existe pour ce matériau/coloris
+  const prix12 = getColorisPrice(mat, coloris, '12', finition);
+  const select = document.getElementById('epaisseur-cred');
+  const hint = document.getElementById('epaisseur-cred-hint');
+  const opt12 = select.querySelector('option[value="12"]');
+  const opt20 = select.querySelector('option[value="20"]');
+  if (opt12) opt12.disabled = !prix12;
+  // Si 12mm pas dispo et option sélectionnée, repasser sur 20
+  if (!prix12 && select.value === '12') select.value = '20';
+  if (hint) {
+    const p12 = isDirect ? (prix12 ? Math.round(prix12 * getCoeffDirect()) : null) : prix12;
+    const prix20 = getColorisPrice(mat, coloris, ep, finition);
+    const p20 = isDirect ? (prix20 ? Math.round(prix20 * getCoeffDirect()) : null) : prix20;
+    const parts = [];
+    if (p12) parts.push(`12 mm : ${fmt2(p12)} €/m²`);
+    if (p20) parts.push(`${ep} mm : ${fmt2(p20)} €/m²`);
+    hint.textContent = parts.length ? parts.join(' · ') : '';
+  }
+}
+
+// Prix crédence/m² selon épaisseur choisie pour crédences
+function getPrixCred(mat, coloris, epPlan, finition) {
+  const epCredEl = document.getElementById('epaisseur-cred');
+  const isGC = mat && mat.startsWith('gc-');
+  const isDirect = quoteMode === 'direct';
+  const block = document.getElementById('epaisseur-cred-block');
+  const blockVisible = block && block.style.display !== 'none';
+  if (blockVisible && epCredEl && epCredEl.value === '12') {
+    const p = getColorisPrice(mat, coloris, '12', finition);
+    if (p !== null) return isDirect ? Math.round(p * getCoeffDirect()) : p;
+  }
+  // Fallback : prix à l'épaisseur du plan × facteur crédence
+  const P = getCurrentPrix();
+  const base = isDirect
+    ? getColorisPrixDirect(mat, coloris, epPlan, finition)
+    : getColorisPrice(mat, coloris, epPlan, finition);
+  return base !== null ? base * (P.credences?.facteur || 1) : null;
+}
+
+// Prix crédence/m² stocké (pour PDF) : utilise epaisseurCred sauvegardé dans q
+function getPrixCredFromQuote(q, prixPlanVente) {
+  if (q.epaisseurCred === '12') {
+    const p = getColorisPrice(q.materiau, q.coloris, '12', q.finition);
+    if (p !== null) {
+      if (q.type === 'direct') return Math.round(p * getCoeffDirect());
+      // cuisiniste : appliquer coeff s'il était actif
+      const db = getDB();
+      const pro = db.users[q.proEmail] || {};
+      const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
+      return Math.round(p * coeff * 100) / 100;
+    }
+  }
+  const P = getCurrentPrix ? getCurrentPrix() : PRIX;
+  return prixPlanVente !== null ? prixPlanVente * (P.credences?.facteur || 1) : null;
 }
 
 function addPlan() {
@@ -4582,8 +4673,11 @@ function computePrice() {
     lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m²`, ht: null });
 
   if (surfaceCred > 0 && prixMat !== null) {
-    const pc = prixMat * P.credences.facteur;
-    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m²`, ht: surfaceCred*pc });
+    const pc = getPrixCred(mat, coloris, ep, finition);
+    const epCred = document.getElementById('epaisseur-cred')?.value || ep;
+    const epCredBlock = document.getElementById('epaisseur-cred-block');
+    const credLabel = (epCredBlock?.style.display !== 'none' && epCred === '12') ? `12 mm` : `${ep} mm`;
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m² (${credLabel})`, ht: surfaceCred*(pc||0) });
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
@@ -4899,6 +4993,7 @@ function submitQuote(action) {
       status: newStatus,
       type: isDirect ? 'direct' : 'pro',
       lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined,
+      epaisseurCred: (() => { const b = document.getElementById('epaisseur-cred-block'); const s = document.getElementById('epaisseur-cred'); return (b && b.style.display !== 'none' && s) ? s.value : null; })(),
       reglementMode: (isDirect && currentUser?.role === 'admin') ? getReglementMode() : undefined,
       acompte1: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a1')?.value) || null) : null,
       acompte2: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a2')?.value) || null) : null
@@ -5587,7 +5682,9 @@ async function exportDevisParticulier(quoteId) {
 
   // 2. Crédences — une ligne PAR crédence
   if (q.credences && prixMatVente !== null) {
-    const prixCred = prixMatVente * (PRIX.credences?.facteur || 1);
+    const prixCred = getPrixCredFromQuote(q, prixMatVente);
+    const epCred = q.epaisseurCred === '12' ? '12' : ep;
+    const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
     const credValid = q.credences.filter(c => c.larg && c.long);
     credValid.forEach((c, i) => {
       const surf = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
@@ -5596,7 +5693,7 @@ async function exportDevisParticulier(quoteId) {
         htBrutPdf += htCred;
         ligneNum++;
         lignesRows += `<tr>
-          <td class="li-desc">Crédence C${i+1} — ${matDesc}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
+          <td class="li-desc">Crédence C${i+1} — ${matDescCred}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
           <td class="li-right">${surf.toFixed(2)} m²</td>
           <td class="li-right">${fmt2(prixCred)} €</td>
           <td class="li-right">${fmtEUR(htCred)}</td>
@@ -5604,12 +5701,14 @@ async function exportDevisParticulier(quoteId) {
       }
     });
   } else if (q.surfaceCred > 0 && prixMatVente !== null) {
-    const prixCred = prixMatVente * (PRIX.credences?.facteur || 1);
+    const prixCred = getPrixCredFromQuote(q, prixMatVente);
+    const epCred = q.epaisseurCred === '12' ? '12' : ep;
+    const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
     const ht = q.surfaceCred * prixCred;
     htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Crédences — ${matDesc}</td>
+      <td class="li-desc">Crédences — ${matDescCred}</td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${fmtEUR(ht)}</td>
@@ -6022,11 +6121,13 @@ async function genererFacture(quoteId) {
 
   // 2. Crédences
   if (q.surfaceCred > 0 && prixMat !== null) {
-    const prixCred = prixMat * (PRIX.credences?.facteur || 1);
+    const prixCred = getPrixCredFromQuote(q, prixMat);
+    const epCred2 = q.epaisseurCred === '12' ? '12' : ep;
+    const matDescCred2 = `${matLabel} ${coloris} ${finition} ${epCred2 ? epCred2 + ' mm' : ''}`.trim();
     const htCred = q.surfaceCred * prixCred;
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
+      <td class="li-desc">Crédence — ${matDescCred2}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-qty">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-pu">${fmt2(prixCred)} €</td>
       <td class="li-total">${fmtEUR(htCred)}</td>
@@ -6340,12 +6441,14 @@ async function genererFactureDirecte(quoteId) {
 
   // 2. Crédences
   if (q.surfaceCred > 0 && prixMat !== null) {
-    const prixCred = prixMat * (PRIX.credences?.facteur || 1);
+    const prixCred = getPrixCredFromQuote(q, prixMat);
+    const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
+    const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3 + ' mm' : ''}`.trim();
     const htCred = Math.round(q.surfaceCred * prixCred * 100) / 100;
     htBrutFact += htCred;
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Crédence — ${matDesc}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
+      <td class="li-desc">Crédence — ${matDescCred3}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
       <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${fmtEUR(htCred)}</td>
