@@ -2940,13 +2940,17 @@ function buildCoutsSection(q) {
   h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#c9a84c;margin-bottom:12px;font-weight:600;">Analyse des couts fournisseurs</div>';
   h += '<div style="font-size:.72rem;color:#7a6f62;margin-bottom:4px;font-weight:600;">Materiau</div>';
   if (isGC) {
-    if (paCred12 && surfCred > 0) {
-      // Affichage détaillé si crédences en 12mm
-      if (surfPlans > 0) h += ln('Plans - '+surfPlans.toFixed(2)+' m² × '+pa.toFixed(2)+' €/m² ('+q.epaisseur+' mm)', fmtEUR(calcCoutAchat(q.materiau, surfPlans, pa)));
-      h += ln('Crédences - '+surfCred.toFixed(2)+' m² × '+paCred12.toFixed(2)+' €/m² (12 mm)', fmtEUR(calcCoutAchat(q.materiau, surfCred, paCred12)));
+    if (surfCred > 0 && surfPlans > 0) {
+      // Toujours afficher plans et crédences séparément quand les deux existent
+      const paCredDisplay = paCred12 || pa;
+      const epCredLabel = paCred12 ? '12 mm' : (q.epaisseur + ' mm');
+      const coutPlansDisp = calcCoutAchat(q.materiau, surfPlans, pa);
+      const coutCredDisp  = calcCoutAchat(q.materiau, surfCred, paCredDisplay);
+      h += ln('Plans - '+surfPlans.toFixed(2)+' m² × '+pa.toFixed(2)+' €/m² ('+q.epaisseur+' mm)', fmtEUR(coutPlansDisp));
+      h += ln('Crédences - '+surfCred.toFixed(2)+' m² × '+paCredDisplay.toFixed(2)+' €/m² ('+epCredLabel+')', fmtEUR(coutCredDisp));
       h += ln('Coût matériau total', fmtEUR(coutMat));
     } else {
-      h += ln(surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(coutMat));
+      h += ln(surf.toFixed(2)+' m² × '+pa.toFixed(2)+' €/m²', fmtEUR(coutMat));
     }
   } else {
     h += ln('Matiere utile - '+surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(surf*pa));
