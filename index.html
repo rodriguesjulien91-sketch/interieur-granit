@@ -2878,9 +2878,22 @@ function buildCoutsSection(q) {
   if (!(currentUser && currentUser.role === 'admin')) return '';
   const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
   if (!pa) return '';
-  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+  const surfPlans = q.surfacePlans || 0;
+  const surfCred  = q.surfaceCred  || 0;
+  const surf = surfPlans + surfCred;
   const isGC = (q.materiau||'').startsWith('gc-');
-  const coutMat = calcCoutAchat(q.materiau, surf, pa);
+
+  // Coût matériau : crédences en 12mm ont un PA différent
+  const paCred12 = (isGC && q.epaisseurCred === '12') ? aGetPrix(q.materiau, q.coloris, q.finition, '12') : null;
+  let coutMat;
+  if (paCred12 && surfCred > 0) {
+    // Calculer séparément plans (pa) et crédences (paCred12)
+    const coutPlans = calcCoutAchat(q.materiau, surfPlans, pa);
+    const coutCred  = calcCoutAchat(q.materiau, surfCred,  paCred12);
+    coutMat = (coutPlans || 0) + (coutCred || 0);
+  } else {
+    coutMat = calcCoutAchat(q.materiau, surf, pa);
+  }
   const nbTranches = isGC ? null : Math.ceil(surf / 5);
   const chute = isGC ? 0 : (nbTranches * 5) - surf;
 
@@ -2927,7 +2940,14 @@ function buildCoutsSection(q) {
   h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#c9a84c;margin-bottom:12px;font-weight:600;">Analyse des couts fournisseurs</div>';
   h += '<div style="font-size:.72rem;color:#7a6f62;margin-bottom:4px;font-weight:600;">Materiau</div>';
   if (isGC) {
-    h += ln(surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(coutMat));
+    if (paCred12 && surfCred > 0) {
+      // Affichage détaillé si crédences en 12mm
+      if (surfPlans > 0) h += ln('Plans - '+surfPlans.toFixed(2)+' m² × '+pa.toFixed(2)+' €/m² ('+q.epaisseur+' mm)', fmtEUR(calcCoutAchat(q.materiau, surfPlans, pa)));
+      h += ln('Crédences - '+surfCred.toFixed(2)+' m² × '+paCred12.toFixed(2)+' €/m² (12 mm)', fmtEUR(calcCoutAchat(q.materiau, surfCred, paCred12)));
+      h += ln('Coût matériau total', fmtEUR(coutMat));
+    } else {
+      h += ln(surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(coutMat));
+    }
   } else {
     h += ln('Matiere utile - '+surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(surf*pa));
     if (chute > 0) {
