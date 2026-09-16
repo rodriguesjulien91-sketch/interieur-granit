@@ -5681,7 +5681,7 @@ async function exportDevisParticulier(quoteId) {
     plansValid.forEach((p, i) => {
       const surf = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
       if (surf > 0) {
-        const htPlan = surf * prixMatVente;
+        const htPlan = parseFloat(surf.toFixed(2)) * prixMatVente;
         htBrutPdf += htPlan;
         ligneNum++;
         lignesRows += `<tr>
@@ -5693,7 +5693,7 @@ async function exportDevisParticulier(quoteId) {
       }
     });
   } else if (q.surfacePlans > 0 && prixMatVente !== null) {
-    const ht = q.surfacePlans * prixMatVente;
+    const ht = parseFloat(q.surfacePlans.toFixed(2)) * prixMatVente;
     htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
@@ -5713,7 +5713,7 @@ async function exportDevisParticulier(quoteId) {
     credValid.forEach((c, i) => {
       const surf = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
       if (surf > 0) {
-        const htCred = surf * prixCred;
+        const htCred = parseFloat(surf.toFixed(2)) * prixCred;
         htBrutPdf += htCred;
         ligneNum++;
         lignesRows += `<tr>
@@ -5728,7 +5728,7 @@ async function exportDevisParticulier(quoteId) {
     const prixCred = getPrixCredFromQuote(q, prixMatVente);
     const epCred = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
-    const ht = q.surfaceCred * prixCred;
+    const ht = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
     htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
@@ -5743,7 +5743,7 @@ async function exportDevisParticulier(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
     const puChant = q.chant.pu || PRIX.chants[q.chant.type];
-    const htChant = ml * puChant;
+    const htChant = Math.round(ml * puChant * 100) / 100;
     htBrutPdf += htChant;
     ligneNum++;
     lignesRows += `<tr>
@@ -6122,6 +6122,7 @@ async function genererFacture(quoteId) {
   // Lignes de facturation détaillées
   let lignesRows = '';
   let ligneNum = 0;
+  let htBrutFact = 0;
 
   // 1. Plans de travail (surface × prix/m²)
   const mat = q.materiau;
@@ -6133,7 +6134,8 @@ async function genererFacture(quoteId) {
 
   let prixMat = getColorisPrice(mat, coloris, ep, finition);
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = q.surfacePlans * prixMat;
+    const htPlans = parseFloat(q.surfacePlans.toFixed(2)) * prixMat;
+    htBrutFact += htPlans;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
@@ -6148,7 +6150,8 @@ async function genererFacture(quoteId) {
     const prixCred = getPrixCredFromQuote(q, prixMat);
     const epCred2 = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred2 = `${matLabel} ${coloris} ${finition} ${epCred2 ? epCred2 + ' mm' : ''}`.trim();
-    const htCred = q.surfaceCred * prixCred;
+    const htCred = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
+    htBrutFact += htCred;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Crédence — ${matDescCred2}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
@@ -6162,7 +6165,8 @@ async function genererFacture(quoteId) {
   if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
     const puChant = q.chant.pu || PRIX.chants[q.chant.type];
-    const htChant = ml * puChant;
+    const htChant = Math.round(ml * puChant * 100) / 100;
+    htBrutFact += htChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
@@ -6180,7 +6184,8 @@ async function genererFacture(quoteId) {
         if (opt) {
           const ml = (v / 1000).toFixed(2);
           const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
-          const ht = ml * puCO;
+          const ht = Math.round(ml * puCO * 100) / 100;
+          htBrutFact += ht;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
@@ -6194,7 +6199,8 @@ async function genererFacture(quoteId) {
       const opt = PRIX.options[k];
       if (opt) {
         const puOpt = q.optionsPrix?.[k] ?? opt.prix;
-        const htOpt = Math.round(puOpt * v);
+        const htOpt = Math.round(puOpt * v * 100) / 100;
+        htBrutFact += htOpt;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
@@ -6208,6 +6214,7 @@ async function genererFacture(quoteId) {
 
   // 5. Livraison
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
+    htBrutFact += PRIX.pose.rdc;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
@@ -6216,6 +6223,7 @@ async function genererFacture(quoteId) {
       <td class="li-total">${fmtEUR(PRIX.pose.rdc)}</td>
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
+    htBrutFact += PRIX.pose.etage;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
@@ -6227,17 +6235,17 @@ async function genererFacture(quoteId) {
 
   // Fallback : si aucune ligne détaillée n'a pu être générée, afficher une ligne globale
   if (ligneNum === 0) {
+    htBrutFact = q.totalHT || 0;
     const surf = ((q.surfacePlans||0) + (q.surfaceCred||0)).toFixed(2);
     lignesRows = `<tr><td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td><td class="li-qty">1</td><td class="li-pu">—</td><td class="li-total">${q.totalHT ? fmtEUR(q.totalHT) : '—'}</td></tr>`;
   }
 
-  // Totaux (avec remise éventuelle)
-  const _tCuis = computeQuoteTotals(q);
-  const htBrut = _tCuis.htBrut;
-  const remiseAmt = _tCuis.remiseAmt;
-  const totalHT = _tCuis.htNet;
-  const tvaAmt = _tCuis.tvaAmt;
-  const totalTTC = _tCuis.ttc;
+  // Totaux calculés depuis les lignes affichées (garantit cohérence sous-total = Σ lignes)
+  const htBrut = Math.round(htBrutFact * 100) / 100;
+  const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+  const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
+  const tvaAmt = Math.round(totalHT * (q.tva || 20) / 100 * 100) / 100;
+  const totalTTC = totalHT + tvaAmt;
 
   // Adresse société
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -6452,7 +6460,7 @@ async function genererFactureDirecte(quoteId) {
 
   // 1. Plans de travail
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = Math.round(q.surfacePlans * prixMat * 100) / 100;
+    const htPlans = parseFloat(q.surfacePlans.toFixed(2)) * prixMat;
     htBrutFact += htPlans;
     ligneNum++;
     lignesRows += `<tr>
@@ -6468,7 +6476,7 @@ async function genererFactureDirecte(quoteId) {
     const prixCred = getPrixCredFromQuote(q, prixMat);
     const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3 + ' mm' : ''}`.trim();
-    const htCred = Math.round(q.surfaceCred * prixCred * 100) / 100;
+    const htCred = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
     htBrutFact += htCred;
     ligneNum++;
     lignesRows += `<tr>
