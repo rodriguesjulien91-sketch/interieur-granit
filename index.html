@@ -2704,7 +2704,11 @@ function renderQuotesTable() {
             'Droit 2 + 2 cm chanfreiné': 'chant-droit-2-2-chanfreine',
             "Aile d'avion": 'chant-aile-avion',
           };
-          const ck = chantKeyMap[q.chant.type];
+          let ck = chantKeyMap[q.chant.type];
+          if (!ck) {
+            const customChant = (faconnageOverrides.custom || []).find(item => item.category === 'chant' && item.label === q.chant.type);
+            if (customChant) ck = customChant.key;
+          }
           if (ck && fCache[ck]) cout += fCache[ck] * (q.chant.longueur / 1000);
         }
         cout += (q.lignesCustom||[]).reduce((s,l) => s + (parseFloat(l.pa)||0), 0);
@@ -2916,8 +2920,12 @@ function buildCoutsSection(q) {
       'rapport':'chant-droit-rapporte','2 + 2':'chant-droit-2-2-chanfreine',
       'avion':'chant-aile-avion'
     };
-    const ck = Object.keys(CKM).find(k => q.chant.type.includes(k));
-    const key = ck ? CKM[ck] : null;
+    const ckStd = Object.keys(CKM).find(k => q.chant.type.includes(k));
+    let key = ckStd ? CKM[ckStd] : null;
+    if (!key) {
+      const customChant = (faconnageOverrides.custom || []).find(item => item.category === 'chant' && item.label === q.chant.type);
+      if (customChant) key = customChant.key;
+    }
     const ml = (q.chant.longueur/1000).toFixed(2);
     lignes.push({ lbl: q.chant.type + ' ' + ml + ' ml', cout: key && fCache[key] ? fCache[key]*(q.chant.longueur/1000) : null, pfa: key ? fCache[key] : null });
   }
