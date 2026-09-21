@@ -2140,6 +2140,7 @@ function saveProProfilModal() {
   u.prenom   = getV('pp-prenom');
   u.nom      = getV('pp-nom');
   u.tel      = getV('pp-tel');
+  u.email    = getV('pp-email') || u.email;
   u.adresse  = getV('pp-adresse');
   u.cp       = getV('pp-cp');
   u.ville    = getV('pp-ville');
@@ -2371,7 +2372,7 @@ async function loadAppData() {
   ]);
 
   const users = {};
-  usersSnap.forEach(doc => { users[doc.id] = { ...doc.data(), email: doc.id }; });
+  usersSnap.forEach(doc => { const key = doc.id.toLowerCase(); users[key] = { ...doc.data(), email: key }; });
 
   const quotes = [];
   quotesSnap.forEach(doc => { quotes.push({ id: doc.id, ...doc.data() }); });
