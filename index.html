@@ -32,7 +32,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(
 /* ═══ SHARED ═══════════════════════════════════════════════════════ */
 .view { display: none; }
 .view.active { display: block; }
-.logo { font-family: 'Cormorant Garamond', serif; color: var(--cream); font-size: 1.6rem; font-weight: 300; letter-spacing: 0.08em; }
+.logo { font-family: 'Cormorant Garamond', serif; color: var(--cream); font-size: 1.6rem; font-weight: 300; letter-spacing: 0.08em; cursor: pointer; }
+.logo a { color: inherit; text-decoration: none; }
 .logo span { color: var(--gold); }
 label { font-size: 0.71rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--stone-light); font-weight: 500; }
 input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], input[type="date"], select, textarea {
@@ -400,7 +401,7 @@ textarea { resize: vertical; min-height: 80px; }
 ═══════════════════════════════════════════════════════════════ -->
 <div id="view-admin" class="view">
   <header class="app-header">
-    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="logo"><a href="https://interieurgranit.fr/" target="_blank" rel="noopener" title="Visiter interieurgranit.fr">Intérieur <span>Granit</span></a></div>
     <div class="header-right">
       <span class="admin-badge">Admin</span>
       <button class="btn btn-sm btn-secondary" onclick="openSocieteModal()" style="font-size:.75rem;padding:6px 14px;">⚙ Ma société</button>
@@ -419,6 +420,7 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="stat-card"><div class="stat-label">Clients pro</div><div class="stat-val" id="stat-clients">0</div><div class="stat-sub">Comptes actifs</div></div>
       <div class="stat-card"><div class="stat-label">Chiffrages cuisinistes</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">Total reçus</div></div>
       <div class="stat-card"><div class="stat-label">CA cuisinistes HT</div><div class="stat-val" id="stat-ca">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
+      <div class="stat-card"><div class="stat-label">CA cuisinistes HT <span style="background:var(--stone-light);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:2px;vertical-align:middle;">CLÔTURÉ</span></div><div class="stat-val" id="stat-ca-cuis-cloture">—</div><div class="stat-sub">Factures émises cuisinistes</div></div>
       <div class="stat-card"><div class="stat-label">CA particuliers HT</div><div class="stat-val" id="stat-ca-direct">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
       <div class="stat-card"><div class="stat-label">CA particuliers HT <span style="background:var(--stone-light);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:2px;vertical-align:middle;">CLÔTURÉ</span></div><div class="stat-val" id="stat-ca-direct-cloture">—</div><div class="stat-sub">Factures émises</div></div>
     </div>
@@ -647,7 +649,7 @@ textarea { resize: vertical; min-height: 80px; }
 ═══════════════════════════════════════════════════════════════ -->
 <div id="view-pro" class="view">
   <header class="app-header">
-    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="logo"><a href="https://interieurgranit.fr/" target="_blank" rel="noopener" title="Visiter interieurgranit.fr">Intérieur <span>Granit</span></a></div>
     <div class="header-right">
       <button class="btn btn-sm btn-secondary" onclick="openProProfilModal()" style="font-size:.75rem;padding:6px 14px;">✏️ Mon profil</button>
       <div class="user-chip">
@@ -681,7 +683,7 @@ textarea { resize: vertical; min-height: 80px; }
 ═══════════════════════════════════════════════════════════════ -->
 <div id="view-form" class="view">
   <header class="app-header">
-    <div class="logo">Intérieur <span>Granit</span></div>
+    <div class="logo"><a href="https://interieurgranit.fr/" target="_blank" rel="noopener" title="Visiter interieurgranit.fr">Intérieur <span>Granit</span></a></div>
     <div class="header-right">
       <button class="btn btn-secondary btn-sm" id="form-back-btn" onclick="backFromForm()" style="border-color:rgba(255,255,255,.15);color:var(--stone-light);">← Mes chiffrages</button>
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -2608,15 +2610,18 @@ function renderAdminDashboard() {
   const cuisinisteQuotes = quotes.filter(q => q.proSociete && q.type !== 'direct');
   const directQuotes = quotes.filter(q => q.type === 'direct' || !q.proSociete);
   const commandesCuisiniste = cuisinisteQuotes.filter(q => q.status === 'commande');
+  const clotureCuisiniste   = cuisinisteQuotes.filter(q => q.status === 'cloture');
   const commandesDirect = directQuotes.filter(q => q.status === 'commande');
   const clotureDirect   = directQuotes.filter(q => q.status === 'cloture');
   const caCuisiniste    = commandesCuisiniste.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
+  const caCuisinisteCloture = clotureCuisiniste.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
   const caDirect        = commandesDirect.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
   const caDirectCloture  = clotureDirect.reduce((s,q)  => s + (q.totalHTNet || computeQuoteTotals(q).htNet || 0), 0);
 
   document.getElementById('stat-clients').textContent = proUsers.length;
   document.getElementById('stat-total').textContent = cuisinisteQuotes.length;
   document.getElementById('stat-ca').textContent = caCuisiniste > 0 ? fmtEUR(caCuisiniste) : '—';
+  document.getElementById('stat-ca-cuis-cloture').textContent = caCuisinisteCloture > 0 ? fmtEUR(caCuisinisteCloture) : '—';
   document.getElementById('stat-ca-direct').textContent = caDirect > 0 ? fmtEUR(caDirect) : '—';
   document.getElementById('stat-ca-direct-cloture').textContent  = caDirectCloture  > 0 ? fmtEUR(caDirectCloture)  : '—';
 
