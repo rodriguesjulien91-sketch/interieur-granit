@@ -3343,6 +3343,7 @@ function renderDevisDirectTab() {
           <button class="btn btn-secondary btn-sm" onclick="duplicateDirectQuote('${q.id}')">Dupliquer</button>
           <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
           ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
+          ${q.status === 'cloture' && q.numFac ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')" title="${q.numFac}">🧾 ${q.numFac}</button>` : ''}
           <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis ?')) { deleteQuote('${q.id}','direct'); }" title="Supprimer">🗑</button>
         </div>
       </div>
@@ -3442,6 +3443,7 @@ function buildDirectQuoteDetail(quoteId) {
         <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
         ${q.status !== 'commande' && q.status !== 'facture' ? `<button class="btn btn-commande btn-sm" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>` : ''}
         ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
+        ${q.status === 'cloture' && q.numFac ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')" title="Régénérer ${q.numFac}">🧾 ${q.numFac}</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis définitivement ?')) deleteQuote('${q.id}','direct')">🗑</button>
         <button class="btn btn-secondary btn-sm" onclick="closeDrawer()">× Fermer</button>
       </div>
@@ -5957,6 +5959,13 @@ async function exportDevisParticulier(quoteId) {
   const htBrut = htBrutPdf;
   const totalHT = htBrutPdf > 0 ? htBrutPdf : null;
 
+  // Sauvegarde du TTC exact pour que la facture puisse l'utiliser directement
+  if (quoteId && totalTTC) {
+    fbDb.collection('quotes').doc(quoteId).update({ totalTTC, totalHTNet: htNet }).catch(() => {});
+    const _qi = appCache.quotes?.findIndex(x => x.id === quoteId);
+    if (_qi >= 0) { appCache.quotes[_qi].totalTTC = totalTTC; appCache.quotes[_qi].totalHTNet = htNet; }
+  }
+
   const installDate = q.client?.datePose ? new Date(q.client.datePose).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : null;
 
   // Adresses & footer société (depuis "Ma société")
@@ -6543,11 +6552,26 @@ function genererFactureDirecte(quoteId) {
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
   _factureDirecteQuoteId = quoteId;
-  // Pré-remplir les acomptes depuis le devis
-  document.getElementById('facture-acompte1').value = q.acompte1 > 0 ? q.acompte1 : '';
-  document.getElementById('facture-acompte2').value = q.acompte2 > 0 ? q.acompte2 : '';
-  document.getElementById('facture-acompte3').value = '';
-  document.getElementById('modal-acomptes').classList.add('active');
+
+  // Pré-remplir depuis les acomptes déjà sauvegardés (refacturation) ou depuis le devis
+  const saved = q.factureAcomptes || [];
+  document.getElementById('facture-acompte1').value = saved[0] ?? (q.acompte1 > 0 ? q.acompte1 : '');
+  document.getElementById('facture-acompte2').value = saved[1] ?? (q.acompte2 > 0 ? q.acompte2 : '');
+  document.getElementById('facture-acompte3').value = saved[2] ?? '';
+
+  // Afficher le numéro de facture existant si déjà facturé
+  const modal = document.getElementById('modal-acomptes');
+  const existingBadge = modal.querySelector('.existing-fac-badge');
+  if (existingBadge) existingBadge.remove();
+  if (q.numFac) {
+    const badge = document.createElement('div');
+    badge.className = 'existing-fac-badge';
+    badge.style.cssText = 'background:#f5efe6;border-radius:4px;padding:8px 12px;font-size:.8rem;color:#7a6f62;margin-bottom:16px;';
+    badge.innerHTML = `📄 Facture existante : <strong style="color:#1a1814;">${q.numFac}</strong> — Régénérer conservera le même numéro`;
+    modal.querySelector('.modal').insertBefore(badge, modal.querySelector('.field').parentElement);
+  }
+
+  modal.classList.add('active');
 }
 
 async function confirmerFactureDirecte() {
@@ -6566,7 +6590,8 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   const s = getSociete();
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const numFac = await getNextFactureNum();
+  // Réutiliser le numéro de facture existant si déjà facturé, sinon en créer un nouveau
+  const numFac = q.numFac || await getNextFactureNum();
 
   const coeff = getCoeffDirect();
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -6733,13 +6758,13 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     </tr>`;
   }
 
-  // Totaux : on prend le montant exact du devis validé, pas de recalcul
+  // Totaux : on prend les montants exacts du devis validé, sans recalcul
   const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
-  const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
+  const totalHT = q.totalHTNet ? Math.round(q.totalHTNet * 100) / 100 : Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
-  const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
+  const totalTTC = q.totalTTC ? Math.round(q.totalTTC * 100) / 100 : Math.round((totalHT + tvaAmt) * 100) / 100;
 
   const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
@@ -6859,6 +6884,15 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   const win = window.open(_blobUrl, '_blank', 'width=960,height=720');
   if (!win) { alert('Veuillez autoriser les pop-ups pour générer la facture.'); URL.revokeObjectURL(_blobUrl); return; }
   setTimeout(() => URL.revokeObjectURL(_blobUrl), 60000);
+
+  // Sauvegarder le numéro de facture et les acomptes pour pouvoir régénérer
+  const factureData = { numFac, factureDateISO: new Date().toISOString(), factureAcomptes: acomptes, status: 'cloture' };
+  fbDb.collection('quotes').doc(quoteId).update(factureData).catch(console.error);
+  const _db = getDB();
+  const _qi = _db.quotes.findIndex(x => x.id === quoteId);
+  if (_qi >= 0) { Object.assign(_db.quotes[_qi], factureData); saveDB(_db); }
+  if (typeof renderDevisDirectTab === 'function') renderDevisDirectTab();
+  if (typeof renderParticulierView === 'function') renderParticulierView();
 }
 
 
