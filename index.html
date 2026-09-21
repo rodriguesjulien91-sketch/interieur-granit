@@ -2486,14 +2486,20 @@ function sendPasswordReset(e) {
   if (!email) { alert('Entrez votre adresse email dans le champ ci-dessus, puis cliquez sur ce lien.'); return; }
   fbAuth.sendPasswordResetEmail(email)
     .then(() => alert('Un email de réinitialisation a été envoyé à ' + email))
-    .catch(() => alert('Impossible d\'envoyer l\'email. Vérifiez que l\'adresse est correcte.'));
+    .catch(err => {
+      const codes = { 'auth/user-not-found': 'Aucun compte ne correspond à cette adresse email.', 'auth/invalid-email': 'Adresse email invalide.', 'auth/too-many-requests': 'Trop de tentatives. Réessayez dans quelques minutes.' };
+      alert(codes[err.code] || ('Impossible d\'envoyer l\'email (' + (err.code || err.message) + ')'));
+    });
 }
 
 function sendResetForClient(email) {
   if (!email) { alert('Sauvegardez d\'abord l\'email du cuisiniste.'); return; }
   fbAuth.sendPasswordResetEmail(email.trim().toLowerCase())
     .then(() => alert('Email de réinitialisation envoyé à ' + email))
-    .catch(() => alert('Impossible d\'envoyer l\'email. Vérifiez que l\'adresse est enregistrée dans Firebase Auth.'));
+    .catch(err => {
+      const codes = { 'auth/user-not-found': 'Aucun compte Firebase Auth ne correspond à cet email. Le cuisiniste doit d\'abord être créé via "Nouveau cuisiniste".', 'auth/invalid-email': 'Adresse email invalide.', 'auth/too-many-requests': 'Trop de tentatives. Réessayez dans quelques minutes.' };
+      alert(codes[err.code] || ('Impossible d\'envoyer l\'email (' + (err.code || err.message) + ')'));
+    });
 }
 
 function doLogout() {
