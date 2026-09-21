@@ -1089,6 +1089,32 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- ═══════════════════════════════════════════════════════════════
      MODAL : NOUVEAU CLIENT (ADMIN)
 ═══════════════════════════════════════════════════════════════ -->
+<!-- Modal acomptes facture particulier -->
+<div id="modal-acomptes" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:460px;">
+    <h2>🧾 Générer la facture finale</h2>
+    <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:20px;">Renseignez les acomptes déjà perçus. Le solde restant à payer apparaîtra sur la facture.</p>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Acompte 1 (€ TTC)</label>
+        <input type="number" id="facture-acompte1" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label>Acompte 2 (€ TTC) <span style="font-size:.75rem;color:var(--stone-light);">optionnel</span></label>
+        <input type="number" id="facture-acompte2" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label>Acompte 3 (€ TTC) <span style="font-size:.75rem;color:var(--stone-light);">optionnel</span></label>
+        <input type="number" id="facture-acompte3" step="0.01" min="0" placeholder="0,00">
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:24px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-acomptes').classList.remove('active')">Annuler</button>
+      <button class="btn btn-gold" onclick="confirmerFactureDirecte()">Générer la facture</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-new-client" class="modal-backdrop">
   <div class="modal fade-in">
     <h2>Nouveau client professionnel</h2>
@@ -4822,9 +4848,9 @@ function updateRemisePreview() {
     let remiseAmt = 0;
     if (rType === 'pct' && rVal > 0) remiseAmt = totalHT * (rVal / 100);
     else if (rType === 'eur' && rVal > 0) remiseAmt = Math.min(rVal, totalHT);
-    const htNet = totalHT - remiseAmt;
-    const tvaAmt = htNet * tva;
-    const ttc = htNet + tvaAmt;
+    const htNet = Math.round((totalHT - remiseAmt) * 100) / 100;
+    const tvaAmt = Math.round(htNet * tva * 100) / 100;
+    const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
     if (remiseAmt > 0) {
       rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Sous-total HT</td><td>${fmtEUR(totalHT)}</td></tr>
                <tr style="color:#c9a84c;"><td>Remise commerciale</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
@@ -4939,9 +4965,9 @@ function buildSummary() {
       if (rType === 'pct' && rVal > 0) remiseAmt = totalHT * (rVal / 100);
       else if (rType === 'eur' && rVal > 0) remiseAmt = Math.min(rVal, totalHT);
     }
-    const htNet = totalHT - remiseAmt;
-    const tvaAmt = htNet * tva;
-    const ttc = htNet + tvaAmt;
+    const htNet = Math.round((totalHT - remiseAmt) * 100) / 100;
+    const tvaAmt = Math.round(htNet * tva * 100) / 100;
+    const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
     if (remiseAmt > 0) {
       rows += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Sous-total HT</td><td>${fmtEUR(totalHT)}</td></tr>
                <tr style="color:#c9a84c;"><td>Remise commerciale</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
@@ -5231,11 +5257,11 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
 
   const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
-  const tvaRate = (q.tva || 10) / 100;
-  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
-  const htNet = htTotal - remiseAmt;
-  const tvaAmt = htNet * tvaRate;
-  const ttc = htNet + tvaAmt;
+  const tvaRate = (q.tva || 20) / 100;
+  const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
+  const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
+  const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
+  const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
 
   // Lignes détail dimensions plans + crédences
   let dimDetailRows = '';
@@ -5358,11 +5384,11 @@ function exportDevisCuisiniste(q, pro) {
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
 
   const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
-  const tvaRate = (q.tva || 10) / 100;
-  const remiseAmt = computeRemiseAmount(htTotal, q.remise);
-  const htNet = htTotal - remiseAmt;
-  const tvaAmt = htNet * tvaRate;
-  const ttc = htNet + tvaAmt;
+  const tvaRate = (q.tva || 20) / 100;
+  const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
+  const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
+  const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
+  const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Devis ${ref}</title>
@@ -5927,7 +5953,7 @@ async function exportDevisParticulier(quoteId) {
   const remiseAmt = Math.round(computeRemiseAmount(htBrutPdf, q.remise) * 100) / 100;
   const htNet = Math.round((htBrutPdf - remiseAmt) * 100) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
-  const totalTTC = htNet + tvaAmt;
+  const totalTTC = Math.round((htNet + tvaAmt) * 100) / 100;
   const htBrut = htBrutPdf;
   const totalHT = htBrutPdf > 0 ? htBrutPdf : null;
 
@@ -6324,8 +6350,8 @@ async function genererFacture(quoteId) {
   const htBrut = Math.round(htBrutFact * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaAmt = Math.round(totalHT * (q.tva || 20) / 100 * 100) / 100;
-  const totalTTC = totalHT + tvaAmt;
+  const tvaAmt = Math.round(totalHT * 20 / 100 * 100) / 100; // B2B → TVA 20% fixe
+  const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   // Adresse société
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -6466,7 +6492,7 @@ async function genererFacture(quoteId) {
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
     ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
-    <tr class="row-tva"><td>TVA ${q.tva || 20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-tva"><td>TVA 20%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
@@ -6510,7 +6536,30 @@ async function genererFacture(quoteId) {
 // ═══════════════════════════════════════════════════════════════
 //  FACTURE DEVIS PARTICULIER
 // ═══════════════════════════════════════════════════════════════
-async function genererFactureDirecte(quoteId) {
+let _factureDirecteQuoteId = null;
+
+function genererFactureDirecte(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  _factureDirecteQuoteId = quoteId;
+  // Pré-remplir les acomptes depuis le devis
+  document.getElementById('facture-acompte1').value = q.acompte1 > 0 ? q.acompte1 : '';
+  document.getElementById('facture-acompte2').value = q.acompte2 > 0 ? q.acompte2 : '';
+  document.getElementById('facture-acompte3').value = '';
+  document.getElementById('modal-acomptes').classList.add('active');
+}
+
+async function confirmerFactureDirecte() {
+  document.getElementById('modal-acomptes').classList.remove('active');
+  const a1 = parseFloat(document.getElementById('facture-acompte1').value) || 0;
+  const a2 = parseFloat(document.getElementById('facture-acompte2').value) || 0;
+  const a3 = parseFloat(document.getElementById('facture-acompte3').value) || 0;
+  const acomptes = [a1, a2, a3].filter(x => x > 0);
+  await _genererFactureDirecte(_factureDirecteQuoteId, acomptes);
+}
+
+async function _genererFactureDirecte(quoteId, acomptes) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -6675,7 +6724,7 @@ async function genererFactureDirecte(quoteId) {
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
-  const totalTTC = totalHT + tvaAmt;
+  const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
@@ -6773,6 +6822,8 @@ async function genererFactureDirecte(quoteId) {
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
     <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
+    ${acomptes.length > 0 ? acomptes.map((a,i) => `<tr style="color:#7a6f62;"><td>Acompte ${acomptes.length>1?i+1+' ':''}versé</td><td>− ${fmtEUR(a)}</td></tr>`).join('') : ''}
+    ${acomptes.length > 0 ? `<tr style="background:#f5efe6;font-weight:700;font-size:1.05em;"><td>Solde à régler</td><td>${fmtEUR(Math.max(0, Math.round((totalTTC - acomptes.reduce((s,a)=>s+a,0))*100)/100))}</td></tr>` : ''}
   </table>
 </div>
 ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
