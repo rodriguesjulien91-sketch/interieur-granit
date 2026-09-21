@@ -6576,41 +6576,63 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   // Construction des lignes détaillées
   let lignesRows = '';
   let ligneNum = 0;
-  let htBrutFact = 0; // accumulé depuis les montants arrondis affichés
   const mat = q.materiau;
   const ep = q.epaisseur;
   const coloris = q.coloris || '';
   const finition = q.finition || '';
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
+  const surfPlans = q.surfacePlans || 0;
+  const surfCred  = q.surfaceCred  || 0;
 
-  // Prix de vente particulier (via coefficient)
-  let prixMat = getColorisPrixDirect(mat, coloris, ep, finition);
+  // 1. Plans de travail — prix/m² dérivé du totalHT validé au devis
+  // On calcule d'abord les lignes "autres" pour en déduire le HT matériaux exact
+  let htAutres = 0;
+  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type]))
+    htAutres += Math.round((q.chant.longueur / 1000) * (q.chant.pu || PRIX.chants[q.chant.type]) * 100) / 100;
+  if (q.options) Object.entries(q.options).filter(([,v])=>v>0).forEach(([k,v])=>{
+    if (k==='coupe-onglet-ml') { const opt=PRIX.options['coupe-onglet']; if(opt) htAutres+=Math.round((v/1000)*(q.optionsPrix?.['coupe-onglet-ml']??opt.prix)*100)/100; }
+    else { const opt=PRIX.options[k]; if(opt) htAutres+=Math.round((q.optionsPrix?.[k]??opt.prix)*v*100)/100; }
+  });
+  if (q.livraison==='rdc'&&PRIX.pose?.rdc) htAutres+=PRIX.pose.rdc;
+  else if (q.livraison==='etage'&&PRIX.pose?.etage) htAutres+=PRIX.pose.etage;
+  if (q.lignesCustom?.length>0) q.lignesCustom.forEach(l=>{const pu=parseFloat(l.pu)||0;if(pu)htAutres+=pu;});
 
-  // 1. Plans de travail
-  if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = parseFloat(q.surfacePlans.toFixed(2)) * prixMat;
-    htBrutFact += htPlans;
+  const htMatTotal = q.totalHT ? Math.round((q.totalHT - htAutres) * 100) / 100 : null;
+
+  // Répartition plans / crédences via le ratio des surfaces (prix courant sert uniquement au ratio)
+  const _pCourant = getColorisPrixDirect(mat,coloris,ep,finition) || getColorisPrice(mat,coloris,ep,finition) || 1;
+  const _cCourant = getPrixCredFromQuote(q, _pCourant) || _pCourant;
+  const _wP = surfPlans * _pCourant, _wC = surfCred * _cCourant;
+  const ratioPlans = (_wP+_wC) > 0 ? _wP/(_wP+_wC) : 1;
+
+  if (surfPlans > 0 && htMatTotal !== null) {
+    const htPlans = surfCred > 0 ? Math.round(htMatTotal * ratioPlans * 100) / 100 : htMatTotal;
+    const prixPlan = Math.round(htPlans / parseFloat(surfPlans.toFixed(2)) * 100) / 100;
+    let dimDetail = '';
+    q.plans?.filter(p=>p.larg&&p.long).forEach((p,i)=>{
+      const s=((parseFloat(p.larg)/1000)*(parseFloat(p.long)/1000)).toFixed(2);
+      dimDetail+=`<br><span class="li-detail" style="padding-left:10px;">↳ P${i+1} : ${p.larg} × ${p.long} mm · ${s} m²</span>`;
+    });
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${q.surfacePlans.toFixed(2)} m²</span></td>
-      <td class="li-right">${q.surfacePlans.toFixed(2)} m²</td>
-      <td class="li-right">${fmt2(prixMat)} €</td>
+      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${parseFloat(surfPlans.toFixed(2))} m²</span>${dimDetail}</td>
+      <td class="li-right">${parseFloat(surfPlans.toFixed(2))} m²</td>
+      <td class="li-right">${fmt2(prixPlan)} €</td>
       <td class="li-right">${fmtEUR(htPlans)}</td>
     </tr>`;
   }
 
   // 2. Crédences
-  if (q.surfaceCred > 0 && prixMat !== null) {
-    const prixCred = getPrixCredFromQuote(q, prixMat);
+  if (surfCred > 0 && htMatTotal !== null) {
+    const htCred = surfPlans > 0 ? Math.round(htMatTotal * (1-ratioPlans) * 100) / 100 : htMatTotal;
+    const prixCred = Math.round(htCred / parseFloat(surfCred.toFixed(2)) * 100) / 100;
     const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
-    const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3 + ' mm' : ''}`.trim();
-    const htCred = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
-    htBrutFact += htCred;
+    const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3+' mm' : ''}`.trim();
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Crédence — ${matDescCred3}<br><span class="li-detail">Surface : ${q.surfaceCred.toFixed(2)} m²</span></td>
-      <td class="li-right">${q.surfaceCred.toFixed(2)} m²</td>
+      <td class="li-desc">Crédence — ${matDescCred3}<br><span class="li-detail">Surface : ${parseFloat(surfCred.toFixed(2))} m²</span></td>
+      <td class="li-right">${parseFloat(surfCred.toFixed(2))} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${fmtEUR(htCred)}</td>
     </tr>`;
@@ -6621,7 +6643,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     const ml = q.chant.longueur / 1000;
     const puChant = q.chant.pu || PRIX.chants[q.chant.type];
     const htChant = Math.round(ml * puChant * 100) / 100;
-    htBrutFact += htChant;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Chant — ${q.chant.type}</td>
@@ -6640,7 +6661,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
           const ml = (v / 1000).toFixed(2);
           const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
           const ht = Math.round(ml * pu * 100) / 100;
-          htBrutFact += ht;
           ligneNum++;
           lignesRows += `<tr>
             <td class="li-desc">Coupe d'onglet</td>
@@ -6655,7 +6675,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
       if (opt) {
         const pu = q.optionsPrix?.[k] ?? opt.prix;
         const ht = Math.round(pu * v * 100) / 100;
-        htBrutFact += ht;
         ligneNum++;
         lignesRows += `<tr>
           <td class="li-desc">${opt.label}</td>
@@ -6670,7 +6689,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   // 5. Livraison
   if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
     const pu = PRIX.pose.rdc;
-    htBrutFact += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Rez-de-chaussée</td>
@@ -6680,7 +6698,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     </tr>`;
   } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
     const pu = PRIX.pose.etage;
-    htBrutFact += pu;
     ligneNum++;
     lignesRows += `<tr>
       <td class="li-desc">Livraison — Étage / Paris</td>
@@ -6695,7 +6712,6 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     q.lignesCustom.forEach(l => {
       const pu = parseFloat(l.pu) || 0;
       if (!pu) return;
-      htBrutFact += pu;
       ligneNum++;
       lignesRows += `<tr>
         <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
@@ -6706,10 +6722,9 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     });
   }
 
-  // Fallback
+  // Fallback si aucune ligne construite
   if (ligneNum === 0) {
-    htBrutFact = q.totalHT || 0;
-    const surf = ((q.surfacePlans||0)+(q.surfaceCred||0)).toFixed(2);
+    const surf = (surfPlans + surfCred).toFixed(2);
     lignesRows = `<tr>
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
       <td class="li-right">1</td>
@@ -6718,8 +6733,8 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     </tr>`;
   }
 
-  // Totaux depuis les lignes affichées (garantit cohérence sous-total = Σ lignes)
-  const htBrut = Math.round(htBrutFact * 100) / 100;
+  // Totaux : on prend le montant exact du devis validé, pas de recalcul
+  const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
