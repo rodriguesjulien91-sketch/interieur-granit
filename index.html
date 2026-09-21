@@ -420,6 +420,8 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="stat-card"><div class="stat-label">Chiffrages cuisinistes</div><div class="stat-val" id="stat-total">0</div><div class="stat-sub">Total reçus</div></div>
       <div class="stat-card"><div class="stat-label">CA cuisinistes HT</div><div class="stat-val" id="stat-ca">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
       <div class="stat-card"><div class="stat-label">CA particuliers HT</div><div class="stat-val" id="stat-ca-direct">—</div><div class="stat-sub">Commandés, remises déduites</div></div>
+      <div class="stat-card"><div class="stat-label">CA particuliers HT <span style="background:var(--gold);color:#1a1814;font-size:.6rem;padding:1px 6px;border-radius:2px;vertical-align:middle;">COMMANDE</span></div><div class="stat-val" id="stat-ca-direct-commande">—</div><div class="stat-sub">Devis en cours de commande</div></div>
+      <div class="stat-card"><div class="stat-label">CA particuliers HT <span style="background:var(--stone-light);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:2px;vertical-align:middle;">CLÔTURÉ</span></div><div class="stat-val" id="stat-ca-direct-cloture">—</div><div class="stat-sub">Factures émises</div></div>
     </div>
 
     <!-- Tabs -->
@@ -2608,13 +2610,18 @@ function renderAdminDashboard() {
   const directQuotes = quotes.filter(q => q.type === 'direct' || !q.proSociete);
   const commandesCuisiniste = cuisinisteQuotes.filter(q => q.status === 'commande');
   const commandesDirect = directQuotes.filter(q => q.status === 'commande');
-  const caCuisiniste = commandesCuisiniste.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
-  const caDirect = commandesDirect.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
+  const clotureDirect   = directQuotes.filter(q => q.status === 'cloture');
+  const caCuisiniste    = commandesCuisiniste.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
+  const caDirect        = commandesDirect.reduce((s,q) => s + (computeQuoteTotals(q).htNet||0), 0);
+  const caDirectCommande = commandesDirect.reduce((s,q) => s + (q.totalHTNet || computeQuoteTotals(q).htNet || 0), 0);
+  const caDirectCloture  = clotureDirect.reduce((s,q)  => s + (q.totalHTNet || computeQuoteTotals(q).htNet || 0), 0);
 
   document.getElementById('stat-clients').textContent = proUsers.length;
   document.getElementById('stat-total').textContent = cuisinisteQuotes.length;
   document.getElementById('stat-ca').textContent = caCuisiniste > 0 ? fmtEUR(caCuisiniste) : '—';
   document.getElementById('stat-ca-direct').textContent = caDirect > 0 ? fmtEUR(caDirect) : '—';
+  document.getElementById('stat-ca-direct-commande').textContent = caDirectCommande > 0 ? fmtEUR(caDirectCommande) : '—';
+  document.getElementById('stat-ca-direct-cloture').textContent  = caDirectCloture  > 0 ? fmtEUR(caDirectCloture)  : '—';
 
   // Clients table
   const tbody = document.getElementById('clients-tbody');
