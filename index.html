@@ -3920,10 +3920,34 @@ function showProQuoteDetail(id) {
   const surf = surfNum.toFixed(2);
   const coeff = (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1;
   const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixMat = Math.round(prixEp * surfNum * 100) / 100;
+  const prixPlanCoeff = Math.round(prixEp * coeff * 100) / 100;
+  const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
 
   const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
-  let previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
+  let previewLines = '';
+  if ((q.surfacePlans||0) > 0) {
+    const htPlans = Math.round(parseFloat((q.surfacePlans||0).toFixed(2)) * prixPlanCoeff * 100) / 100;
+    previewLines += `<div class="summary-row"><span class="key">Plans — ${(q.surfacePlans||0).toFixed(2)} m² × ${fmt2(prixPlanCoeff)} €/m²</span><span class="val">${fmtEUR(htPlans)} HT</span></div>`;
+    if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
+      q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
+        previewLines += `<div class="summary-row" style="padding-left:12px;opacity:.75;"><span class="key">↳ P${i+1} : ${p.larg} × ${p.long} mm</span><span class="val">${((parseFloat(p.larg)/1000)*(parseFloat(p.long)/1000)).toFixed(2)} m²</span></div>`;
+      });
+    }
+  }
+  if ((q.surfaceCred||0) > 0) {
+    const htCred = Math.round(parseFloat((q.surfaceCred||0).toFixed(2)) * prixCredCoeff * 100) / 100;
+    const epCredLabel = q.epaisseurCred === '12' ? ' (12 mm)' : '';
+    previewLines += `<div class="summary-row"><span class="key">Crédences${epCredLabel} — ${(q.surfaceCred||0).toFixed(2)} m² × ${fmt2(prixCredCoeff)} €/m²</span><span class="val">${fmtEUR(htCred)} HT</span></div>`;
+    if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
+      q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
+        previewLines += `<div class="summary-row" style="padding-left:12px;opacity:.75;"><span class="key">↳ C${i+1} : ${c.larg} × ${c.long} mm</span><span class="val">${((parseFloat(c.larg)/1000)*(parseFloat(c.long)/1000)).toFixed(2)} m²</span></div>`;
+      });
+    }
+  }
+  if (!previewLines) {
+    const prixMat = Math.round(prixEp * coeff * surfNum * 100) / 100;
+    previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
+  }
   if (q.options) {
     Object.entries(q.options).forEach(([key, qty]) => {
       if (!qty || exclCoeff.includes(key)) return;
@@ -5135,10 +5159,15 @@ function showToast(msg) {
 // ═══════════════════════════════════════════════════════════════
 // BC détaillé pour cuisinistes avec coefficient de vente
 function buildLignesCuisiniste(q, pro) {
-  const coeff = pro.coeffVente || 1;
-  const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
+  const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
+  const surfPlans = q.surfacePlans || 0;
+  const surfCred  = q.surfaceCred  || 0;
   const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixMatCoeff = Math.round(prixEp * surf * coeff * 100) / 100;
+  const prixPlanCoeff = Math.round(prixEp * coeff * 100) / 100;
+  const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
+  const htPlans = Math.round(parseFloat(surfPlans.toFixed(2)) * prixPlanCoeff * 100) / 100;
+  const htCred  = Math.round(parseFloat(surfCred.toFixed(2))  * prixCredCoeff  * 100) / 100;
+  const prixMatCoeff = htPlans + htCred;
   let htTotal = prixMatCoeff;
   let optLines = '';
 
