@@ -2461,7 +2461,7 @@ function doLogin() {
       await fLoad(); // Charger les prix d'achat façonnage
       await loadCatalogueOverrides();  // Charger les overrides catalogue (coloris/matériaux personnalisés)
       await loadFaconnageOverrides();  // Charger les overrides façonnage/options
-      const user = appCache.users[email];
+      const user = appCache.users[email] || appCache.users[Object.keys(appCache.users).find(k => k.toLowerCase() === email)];
       if (!user) {
         errEl.textContent = 'Profil introuvable. Contactez l\'administrateur.';
         errEl.style.display = 'block';
@@ -3621,9 +3621,19 @@ async function createClient() {
       societe, nom, prenom, tel, email,
       createdAt: new Date().toISOString()
     };
+    try {
+      await fbDb.collection('users').doc(email).set(userData);
+    } catch(firestoreErr) {
+      // Rollback : supprimer le compte Auth pour éviter un compte orphelin
+      const apiKey = FIREBASE_CONFIG.apiKey;
+      await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      }).catch(() => {});
+      throw new Error('Erreur lors de la sauvegarde du profil. Le compte n\'a pas été créé. Réessayez.');
+    }
     db.users[email] = userData;
     saveDB(db);
-    await fbDb.collection('users').doc(email).set(userData);
     closeModal();
     renderAdminDashboard();
   } catch(err) {
