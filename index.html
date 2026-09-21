@@ -5237,6 +5237,20 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const tvaAmt = htNet * tvaRate;
   const ttc = htNet + tvaAmt;
 
+  // Lignes détail dimensions plans + crédences
+  let dimDetailRows = '';
+  if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
+    q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
+      dimDetailRows += `<tr><td style="padding-left:28px;color:#7a6f62;font-size:11px;">↳ Plan P${i+1} : ${p.larg} × ${p.long} mm</td><td style="text-align:right;color:#7a6f62;font-size:11px;">${((parseFloat(p.larg)/1000)*(parseFloat(p.long)/1000)).toFixed(2)} m²</td></tr>`;
+    });
+  }
+  if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
+    const epCredLabel = q.epaisseurCred === '12' ? ' (12 mm)' : '';
+    q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
+      dimDetailRows += `<tr><td style="padding-left:28px;color:#7a6f62;font-size:11px;">↳ Crédence C${i+1}${epCredLabel} : ${c.larg} × ${c.long} mm</td><td style="text-align:right;color:#7a6f62;font-size:11px;">${((parseFloat(c.larg)/1000)*(parseFloat(c.long)/1000)).toFixed(2)} m²</td></tr>`;
+    });
+  }
+
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>${docType} ${ref}</title>
 <style>
@@ -5299,6 +5313,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
       </td>
       <td style="text-align:right;">${fmtEUR(prixMatCoeff)} HT</td>
     </tr>
+    ${dimDetailRows}
     ${optLines}
   </tbody>
   <tfoot>
@@ -5308,9 +5323,14 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   </tfoot>
 </table>
 
-${withSignature ? `<div class="sign-grid">
-  <div class="sign-box"><div class="sign-label">${pro.societe||'Cuisiniste'} — Bon pour accord</div><br><br>Date : _______________</div>
-  <div class="sign-box"><div class="sign-label">Client — Lu et approuvé</div><br><br>Date : _______________</div>
+${withSignature ? `<div style="margin-top:24px;max-width:360px;">
+  <div class="sign-box">
+    <div class="sign-label">${clientName} — Lu et approuvé, bon pour accord</div>
+    <br><br>
+    <div style="font-size:10px;color:#7a6f62;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
+    <br>
+    <div style="font-size:10px;color:#7a6f62;">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
+  </div>
 </div>` : ''}
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
@@ -5407,6 +5427,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
       </td>
       <td style="text-align:right;">${fmtEUR(prixMatCoeff)} HT</td>
     </tr>
+    ${dimDetailRows}
     ${optLines}
   </tbody>
   <tfoot>
@@ -5420,9 +5441,14 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
 </div>
 
-<div class="sign-grid">
-  <div class="sign-box"><div class="sign-label">${pro.societe||'Cuisiniste'} — Bon pour accord</div><br><br>Date : _______________</div>
-  <div class="sign-box"><div class="sign-label">Client — Lu et approuvé</div><br><br>Date : _______________</div>
+<div style="margin-top:24px;max-width:360px;">
+  <div class="sign-box">
+    <div class="sign-label">${clientName} — Lu et approuvé, bon pour accord</div>
+    <br><br>
+    <div style="font-size:10px;color:#7a6f62;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
+    <br>
+    <div style="font-size:10px;color:#7a6f62;">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
+  </div>
 </div>
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
