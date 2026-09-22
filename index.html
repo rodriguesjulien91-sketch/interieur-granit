@@ -2095,9 +2095,17 @@ function getColorisPrice(mat, coloris, ep, finition) {
 function getAvailableEpaisseurs(mat, coloris, finition) {
   const fins = getColorisFinitions(mat, coloris);
   if (fins.length > 0) {
-    // Agréger les épaisseurs de TOUTES les finitions (union dédoublonnée)
-    // Cela garantit que même si les épaisseurs sont réparties sur plusieurs entrées de finition,
-    // elles sont toutes proposées au cuisiniste
+    // Si une finition est sélectionnée, n'afficher que ses épaisseurs
+    if (finition) {
+      const fin = fins.find(f => f.f === finition) || fins.find(f => {
+        const parts = f.f.split(/\s*[-\/]\s*/).map(s => s.trim());
+        return parts.includes(finition);
+      });
+      if (fin && Object.keys(fin.e || {}).length > 0) {
+        return Object.keys(fin.e).sort((a,b) => parseFloat(a) - parseFloat(b));
+      }
+    }
+    // Pas de finition sélectionnée : union de toutes (pour le sélecteur initial)
     const epSet = new Set();
     fins.forEach(f => Object.keys(f.e || {}).forEach(ep => epSet.add(ep)));
     if (epSet.size > 0) return [...epSet].sort((a,b) => parseFloat(a) - parseFloat(b));
