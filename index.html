@@ -4413,7 +4413,7 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   else document.getElementById('rdc').checked = true;
   setV('commentaire', q.commentaire);
   // Lignes complémentaires
-  formCustomLines = (q.lignesCustom && !isDuplicate) ? [...q.lignesCustom] : [];
+  formCustomLines = q.lignesCustom ? [...q.lignesCustom] : [];
 
   // Ouvrir le formulaire
   currentStep = 1;
@@ -8041,21 +8041,23 @@ document.getElementById('modal-edit-client').addEventListener('click', function(
 document.getElementById('modal-commande').addEventListener('click', function(e) {
   if (e.target === this) closeCommandeModal();
 });
-document.getElementById('modal-societe').addEventListener('click', function(e) {
-  if (e.target === this) closeSocieteModal();
-});
-document.getElementById('modal-pro-profil').addEventListener('click', function(e) {
-  if (e.target === this) closeProProfilModal();
-});
-document.getElementById('modal-catalogue-coloris').addEventListener('click', function(e) {
-  if (e.target === this) closeAddColorisModal();
-});
-document.getElementById('modal-catalogue-mat').addEventListener('click', function(e) {
-  if (e.target === this) closeAddMaterialModal();
-});
-document.getElementById('modal-faconnage-add').addEventListener('click', function(e) {
-  if (e.target === this) closeFaconnageAddModal();
-});
+// Fermeture sur clic backdrop — protégé contre la sélection de texte
+(function() {
+  const backdrops = [
+    { id: 'modal-societe',           fn: () => closeSocieteModal() },
+    { id: 'modal-pro-profil',        fn: () => closeProProfilModal() },
+    { id: 'modal-catalogue-coloris', fn: () => closeAddColorisModal() },
+    { id: 'modal-catalogue-mat',     fn: () => closeAddMaterialModal() },
+    { id: 'modal-faconnage-add',     fn: () => closeFaconnageAddModal() },
+  ];
+  backdrops.forEach(({ id, fn }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let downOnBackdrop = false;
+    el.addEventListener('mousedown', e => { downOnBackdrop = e.target === el; });
+    el.addEventListener('click',     e => { if (downOnBackdrop && e.target === el) fn(); });
+  });
+})();
 
 // ═══════════════════════════════════════════════════════════════
 //  CATALOGUE — Gestion dynamique des coloris (admin)
