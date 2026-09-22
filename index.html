@@ -8383,15 +8383,26 @@ async function saveColoris() {
   COLORIS_DATA[mat][colorisKey] = entries;
 
   try {
-    await fbDb.collection('catalogue').doc('overrides').set(
-      cleanForFirestore(catalogueOverrides), { merge: true }
-    );
+    // Mise à jour ciblée sur ce coloris uniquement (évite les conflits de merge)
+    await fbDb.collection('catalogue').doc('overrides').update({
+      [`${mat}.${colorisKey}`]: cleanForFirestore(entries)
+    });
     closeAddColorisModal();
     renderCatalogueTab();
     showCatalogueToast('✓ Coloris enregistré');
   } catch(e) {
-    errEl.textContent = 'Erreur de sauvegarde : ' + e.message;
-    errEl.style.display = 'block';
+    // Fallback si le document n'existe pas encore
+    if (e.code === 'not-found') {
+      await fbDb.collection('catalogue').doc('overrides').set(
+        cleanForFirestore(catalogueOverrides), { merge: true }
+      );
+      closeAddColorisModal();
+      renderCatalogueTab();
+      showCatalogueToast('✓ Coloris enregistré');
+    } else {
+      errEl.textContent = 'Erreur de sauvegarde : ' + e.message;
+      errEl.style.display = 'block';
+    }
   }
 }
 
