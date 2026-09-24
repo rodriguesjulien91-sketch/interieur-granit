@@ -1118,6 +1118,28 @@ textarea { resize: vertical; min-height: 80px; }
   </div>
 </div>
 
+<!-- Modal facture d'acompte standalone (en cours de chantier) -->
+<div id="modal-acompte-standalone" class="modal-backdrop">
+  <div class="modal fade-in" style="max-width:420px;">
+    <h2>💶 Facture d'acompte</h2>
+    <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:20px;">Générez une facture d'acompte pour un versement reçu en cours de chantier.</p>
+    <div id="modal-acompte-sa-recap" style="background:#f5efe6;border-radius:4px;padding:8px 12px;font-size:.82rem;color:#7a6f62;margin-bottom:16px;"></div>
+    <div id="modal-acompte-sa-existants" style="margin-bottom:16px;display:none;">
+      <div style="font-size:.78rem;color:var(--stone-light);font-weight:600;margin-bottom:6px;">Acomptes déjà facturés :</div>
+      <div id="modal-acompte-sa-liste" style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;"></div>
+    </div>
+    <div class="field">
+      <label>Montant de l'acompte (€ TTC)</label>
+      <input type="number" id="acompte-sa-montant" step="0.01" min="0.01" placeholder="0,00">
+    </div>
+    <div id="modal-acompte-sa-error" style="color:#c0392b;font-size:.82rem;margin-top:8px;display:none;"></div>
+    <div class="modal-footer" style="margin-top:24px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-acompte-standalone').classList.remove('active')">Annuler</button>
+      <button class="btn btn-gold" onclick="confirmerAcompteStandalone()">💶 Générer la facture d'acompte</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-new-client" class="modal-backdrop">
   <div class="modal fade-in">
     <h2>Nouveau client professionnel</h2>
@@ -2277,6 +2299,17 @@ async function getNextFactureNum() {
   return `FAC-${year}-${String(counter).padStart(4,'0')}`;
 }
 
+async function getNextAcompteNum() {
+  const year = new Date().getFullYear();
+  const fa   = appCache._acomptes || { counter: 0, year: 0 };
+  const counter = (fa.year === year) ? fa.counter + 1 : 1;
+  appCache._acomptes = { counter, year };
+  await fbDb.collection('settings').doc('app').set(
+    { acompteCounter: counter, acompteYear: year }, { merge: true }
+  );
+  return `FA-${year}-${String(counter).padStart(4,'0')}`;
+}
+
 function getColorisPrixDirect(mat, coloris, ep, finition) {
   const base = getColorisPrice(mat, coloris, ep, finition);
   if (base === null) return null;
@@ -2422,10 +2455,12 @@ async function loadAppData() {
     appCache._coeff    = (typeof s.coeff === 'number' && s.coeff >= 1) ? s.coeff : 1.00;
     appCache._societe  = s.societe  ?? { raisonSociale: 'Intérieur Granit' };
     appCache._factures = { counter: s.factureCounter ?? 0, year: s.factureYear ?? 0 };
+    appCache._acomptes = { counter: s.acompteCounter ?? 0, year: s.acompteYear ?? 0 };
   } else {
     appCache._coeff    = 1.00;
     appCache._societe  = { raisonSociale: 'Intérieur Granit' };
     appCache._factures = { counter: 0, year: 0 };
+    appCache._acomptes = { counter: 0, year: 0 };
   }
 }
 
@@ -3359,6 +3394,7 @@ function renderDevisDirectTab() {
           <button class="btn btn-secondary btn-sm" onclick="editDirectQuote('${q.id}')">Modifier</button>
           <button class="btn btn-secondary btn-sm" onclick="duplicateDirectQuote('${q.id}')">Dupliquer</button>
           <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+          ${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalAcompte('${q.id}')">💶 Acompte</button>` : ''}
           ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
           ${q.status === 'cloture' && q.numFac ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')" title="${q.numFac}">🧾 ${q.numFac}</button>` : ''}
           <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis ?')) { deleteQuote('${q.id}','direct'); }" title="Supprimer">🗑</button>
@@ -3459,6 +3495,7 @@ function buildDirectQuoteDetail(quoteId) {
         </select>
         <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
         ${q.status !== 'commande' && q.status !== 'facture' ? `<button class="btn btn-commande btn-sm" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>` : ''}
+        ${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalAcompte('${q.id}')">💶 Acompte</button>` : ''}
         ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
         ${q.status === 'cloture' && q.numFac ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')" title="Régénérer ${q.numFac}">🧾 ${q.numFac}</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="if(confirm('Supprimer ce devis définitivement ?')) deleteQuote('${q.id}','direct')">🗑</button>
@@ -6560,6 +6597,144 @@ async function genererFacture(quoteId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  FACTURES D'ACOMPTE — PARTICULIERS
+// ═══════════════════════════════════════════════════════════════
+let _acompteStandaloneQuoteId = null;
+
+function ouvrirModalAcompte(quoteId) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  _acompteStandaloneQuoteId = quoteId;
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const matDesc = `${q.materiauLabel || q.materiau || ''} ${q.coloris || ''} ${q.finition || ''}`.trim();
+  document.getElementById('modal-acompte-sa-recap').innerHTML =
+    `<strong>${clientName}</strong> &nbsp;·&nbsp; ${matDesc} &nbsp;·&nbsp; ${q.totalTTC ? fmtEUR(q.totalTTC) + ' TTC' : ''}`;
+  document.getElementById('acompte-sa-montant').value = '';
+  document.getElementById('modal-acompte-sa-error').style.display = 'none';
+  // Afficher les acomptes déjà facturés
+  const existants = q.facturesAcompte || [];
+  const existDiv = document.getElementById('modal-acompte-sa-existants');
+  const listeDiv = document.getElementById('modal-acompte-sa-liste');
+  if (existants.length > 0) {
+    listeDiv.innerHTML = existants.map(fa =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cream);border-radius:3px;">
+        <span style="color:var(--stone);font-weight:600;">${fa.num}</span>
+        <span>${fmtEUR(fa.montant)}</span>
+        <span style="color:var(--stone-light);">${fa.date}</span>
+      </div>`
+    ).join('');
+    existDiv.style.display = 'block';
+  } else {
+    existDiv.style.display = 'none';
+  }
+  document.getElementById('modal-acompte-standalone').classList.add('active');
+}
+
+async function confirmerAcompteStandalone() {
+  const errEl = document.getElementById('modal-acompte-sa-error');
+  const montant = parseFloat(document.getElementById('acompte-sa-montant').value);
+  if (!montant || montant <= 0) {
+    errEl.textContent = 'Veuillez saisir un montant valide.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('modal-acompte-standalone').classList.remove('active');
+  const numFA = await getNextAcompteNum();
+  await genererFactureAcompte(_acompteStandaloneQuoteId, montant, numFA);
+}
+
+async function genererFactureAcompte(quoteId, montantTTC, numFA) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const s = getSociete();
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const tvaRate = (q.tva || 20) / 100;
+  const montantHT = Math.round((montantTTC / (1 + tvaRate)) * 100) / 100;
+  const montantTVA = Math.round((montantTTC - montantHT) * 100) / 100;
+  const addrClient = [q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const socFooter = [s.raisonSociale, s.formeJuridique, s.siret?'SIRET : '+s.siret:'', s.naf?'NAF : '+s.naf:'', s.tvaIntra?'TVA : '+s.tvaIntra:''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const matDesc = `${q.materiauLabel || q.materiau || ''} ${q.coloris || ''} ${q.finition || ''} ${q.epaisseur ? q.epaisseur + ' mm' : ''}`.trim();
+  const refDevis = q.numDevis || (q.createdAt ? new Date(q.createdAt).toLocaleDateString('fr-FR') : '');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Facture acompte ${numFA}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Helvetica Neue',Arial,sans-serif; font-size:10pt; color:#1a1814; background:#fff; padding:20mm 18mm; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; }
+  .logo { font-size:18pt; font-weight:300; letter-spacing:.08em; color:#1a1814; }
+  .logo span { color:#b8a06e; }
+  .soc-info { font-size:8pt; color:#7a6f62; text-align:right; line-height:1.6; }
+  .doc-type { background:#1a1814; color:#fff; display:inline-block; padding:6px 18px; font-size:9pt; letter-spacing:.12em; text-transform:uppercase; font-weight:600; margin-bottom:24px; }
+  .doc-meta { display:flex; justify-content:space-between; margin-bottom:32px; }
+  .doc-num { font-size:14pt; font-weight:700; color:#b8a06e; }
+  .doc-date { font-size:9pt; color:#7a6f62; margin-top:4px; }
+  .address-block { font-size:9pt; line-height:1.7; }
+  .address-block strong { font-size:10pt; font-weight:600; }
+  table { width:100%; border-collapse:collapse; margin:28px 0; }
+  th { background:#1a1814; color:#fff; padding:8px 12px; text-align:left; font-size:8.5pt; font-weight:500; letter-spacing:.04em; }
+  td { padding:10px 12px; border-bottom:1px solid #ede8e0; font-size:9pt; }
+  .totals { width:260px; margin-left:auto; }
+  .totals td { padding:6px 12px; font-size:9pt; }
+  .totals tr:last-child td { background:#1a1814; color:#fff; font-weight:700; font-size:10pt; padding:10px 12px; }
+  .footer { margin-top:40px; padding-top:12px; border-top:1px solid #ede8e0; font-size:7.5pt; color:#9a8f80; text-align:center; line-height:1.8; }
+  .badge-acompte { background:#f5efe6; border-left:3px solid #b8a06e; padding:8px 14px; font-size:8.5pt; color:#7a6f62; margin-bottom:20px; }
+  @media print { body { padding:15mm; } }
+</style></head><body>
+<div class="header">
+  <div class="logo">Intérieur <span>Granit</span></div>
+  <div class="soc-info">${s.raisonSociale || 'Intérieur Granit'}<br>${socAddr}<br>${s.tel ? s.tel + '<br>' : ''}${s.email || ''}</div>
+</div>
+<div class="doc-type">Facture d'acompte</div>
+<div class="doc-meta">
+  <div>
+    <div class="doc-num">${numFA}</div>
+    <div class="doc-date">Date : ${today}</div>
+    ${refDevis ? `<div class="doc-date" style="margin-top:4px;">Réf. devis : ${refDevis}</div>` : ''}
+  </div>
+  <div class="address-block">
+    <strong>${clientName}</strong><br>
+    ${addrClient ? addrClient + '<br>' : ''}
+    ${q.client?.tel ? 'Tél. : ' + q.client.tel + '<br>' : ''}
+    ${q.client?.email ? q.client.email : ''}
+  </div>
+</div>
+<div class="badge-acompte">Acompte sur commande — ${matDesc}</div>
+<table>
+  <thead><tr><th>Désignation</th><th style="text-align:right;width:140px;">Montant HT</th></tr></thead>
+  <tbody>
+    <tr><td>Acompte sur travaux de taillage de pierre<br><span style="font-size:8pt;color:#7a6f62;">${matDesc}</span></td>
+    <td style="text-align:right;">${fmtEUR(montantHT)}</td></tr>
+  </tbody>
+</table>
+<table class="totals">
+  <tr><td>Sous-total HT</td><td style="text-align:right;">${fmtEUR(montantHT)}</td></tr>
+  <tr><td>TVA ${q.tva || 20}%</td><td style="text-align:right;">${fmtEUR(montantTVA)}</td></tr>
+  <tr><td>Total TTC</td><td style="text-align:right;">${fmtEUR(montantTTC)}</td></tr>
+</table>
+${s.iban ? `<div style="margin-top:16px;font-size:8.5pt;color:#7a6f62;padding:10px 14px;background:#f5efe6;border-radius:3px;">Virement : IBAN ${s.iban}${s.bic ? ' &nbsp;·&nbsp; BIC : ' + s.bic : ''}</div>` : ''}
+<div class="footer">${socFooter}</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+
+  // Sauvegarder dans Firebase
+  const faEntry = { num: numFA, montant: montantTTC, date: today, dateISO: new Date().toISOString() };
+  const updatedFA = [...(q.facturesAcompte || []), faEntry];
+  fbDb.collection('quotes').doc(quoteId).update({ facturesAcompte: updatedFA }).catch(console.error);
+  const _db = getDB();
+  const _qi = _db.quotes.findIndex(x => x.id === quoteId);
+  if (_qi >= 0) { _db.quotes[_qi].facturesAcompte = updatedFA; saveDB(_db); }
+  if (typeof renderDevisDirectTab === 'function') renderDevisDirectTab();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  FACTURE DEVIS PARTICULIER
 // ═══════════════════════════════════════════════════════════════
 let _factureDirecteQuoteId = null;
@@ -6597,6 +6772,20 @@ async function confirmerFactureDirecte() {
   const a2 = parseFloat(document.getElementById('facture-acompte2').value) || 0;
   const a3 = parseFloat(document.getElementById('facture-acompte3').value) || 0;
   const acomptes = [a1, a2, a3].filter(x => x > 0);
+
+  // Générer les factures d'acompte pour ceux qui n'en ont pas encore (par position)
+  if (acomptes.length > 0) {
+    const db = getDB();
+    const q = db.quotes.find(x => x.id === _factureDirecteQuoteId);
+    const dejaFA = q?.facturesAcompte || [];
+    for (let i = 0; i < acomptes.length; i++) {
+      if (!dejaFA[i]) {
+        const numFA = await getNextAcompteNum();
+        await genererFactureAcompte(_factureDirecteQuoteId, acomptes[i], numFA);
+      }
+    }
+  }
+
   await _genererFactureDirecte(_factureDirecteQuoteId, acomptes);
 }
 
@@ -8044,11 +8233,12 @@ document.getElementById('modal-commande').addEventListener('click', function(e) 
 // Fermeture sur clic backdrop — protégé contre la sélection de texte
 (function() {
   const backdrops = [
-    { id: 'modal-societe',           fn: () => closeSocieteModal() },
-    { id: 'modal-pro-profil',        fn: () => closeProProfilModal() },
-    { id: 'modal-catalogue-coloris', fn: () => closeAddColorisModal() },
-    { id: 'modal-catalogue-mat',     fn: () => closeAddMaterialModal() },
-    { id: 'modal-faconnage-add',     fn: () => closeFaconnageAddModal() },
+    { id: 'modal-societe',              fn: () => closeSocieteModal() },
+    { id: 'modal-pro-profil',           fn: () => closeProProfilModal() },
+    { id: 'modal-catalogue-coloris',    fn: () => closeAddColorisModal() },
+    { id: 'modal-catalogue-mat',        fn: () => closeAddMaterialModal() },
+    { id: 'modal-faconnage-add',        fn: () => closeFaconnageAddModal() },
+    { id: 'modal-acompte-standalone',   fn: () => document.getElementById('modal-acompte-standalone').classList.remove('active') },
   ];
   backdrops.forEach(({ id, fn }) => {
     const el = document.getElementById(id);
