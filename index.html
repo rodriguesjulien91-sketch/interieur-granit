@@ -2113,6 +2113,17 @@ function getColorisPrice(mat, coloris, ep, finition) {
   return null;
 }
 
+// Prix de base d'un coloris SANS coefficient (indépendant de currentUser)
+function getColorisPriceBase(mat, coloris, ep, finition) {
+  const fd = getColorisFinitionData(mat, coloris, finition);
+  if (fd && fd.e && fd.e[ep] !== undefined) return fd.e[ep];
+  const fins = getColorisFinitions(mat, coloris);
+  for (const f of fins) {
+    if (f.e && f.e[ep] !== undefined) return f.e[ep];
+  }
+  return PRIX.materiaux[mat]?.epaisseurs?.[ep] ?? null;
+}
+
 // Helper: épaisseurs disponibles pour un coloris (union de toutes les finitions + fallback matériau)
 function getAvailableEpaisseurs(mat, coloris, finition) {
   const fins = getColorisFinitions(mat, coloris);
@@ -4001,8 +4012,8 @@ function showProQuoteDetail(id) {
   const surfNum = (q.surfacePlans||0)+(q.surfaceCred||0);
   const surf = surfNum.toFixed(2);
   const coeff = (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1;
-  const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = prixEp; // getColorisPrice a déjà appliqué coeffVente pour les pros
+  const prixEpBase = getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
+  const prixPlanCoeff = Math.round(prixEpBase * coeff * 100) / 100;
   const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
 
   const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
@@ -4027,7 +4038,7 @@ function showProQuoteDetail(id) {
     }
   }
   if (!previewLines) {
-    const prixMat = Math.round(prixEp * surfNum * 100) / 100; // getColorisPrice a déjà appliqué coeffVente
+    const prixMat = Math.round(prixEpBase * coeff * surfNum * 100) / 100;
     previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
   }
   if (q.options) {
@@ -4709,14 +4720,14 @@ function getPrixCred(mat, coloris, epPlan, finition) {
 // Prix crédence/m² stocké (pour PDF) : utilise epaisseurCred sauvegardé dans q
 function getPrixCredFromQuote(q, prixPlanVente) {
   if (q.epaisseurCred === '12') {
-    const p = getColorisPrice(q.materiau, q.coloris, '12', q.finition);
-    if (p !== null) {
-      if (q.type === 'direct') return Math.round(p * getCoeffDirect());
-      // cuisiniste : appliquer coeff s'il était actif
+    const pBase = getColorisPriceBase(q.materiau, q.coloris, '12', q.finition);
+    if (pBase !== null) {
+      if (q.type === 'direct') return Math.round(pBase * getCoeffDirect());
+      // cuisiniste : appliquer coeff via le pro du devis (pas currentUser)
       const db = getDB();
       const pro = db.users[q.proEmail] || {};
       const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
-      return Math.round(p * coeff * 100) / 100;
+      return Math.round(pBase * coeff * 100) / 100;
     }
   }
   const P = getCurrentPrix ? getCurrentPrix() : PRIX;
@@ -5243,8 +5254,9 @@ function buildLignesCuisiniste(q, pro) {
   const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
   const surfPlans = q.surfacePlans || 0;
   const surfCred  = q.surfaceCred  || 0;
-  const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = prixEp; // getColorisPrice a déjà appliqué coeffVente pour les pros
+  // Prix de BASE (sans currentUser) × coeff du pro : robust quel que soit l'utilisateur connecté
+  const prixEpBase = getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
+  const prixPlanCoeff = Math.round(prixEpBase * coeff * 100) / 100;
   const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
   const htPlans = Math.round(parseFloat(surfPlans.toFixed(2)) * prixPlanCoeff * 100) / 100;
   const htCred  = Math.round(parseFloat(surfCred.toFixed(2))  * prixCredCoeff  * 100) / 100;
@@ -5312,13 +5324,14 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
   const s = getSociete();
 
-  const { prixMatCoeff, optLines, htTotal: htTotalCalc } = buildLignesCuisiniste(q, pro);
-  const htTotal = q.totalHT != null ? q.totalHT : htTotalCalc;
+  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
   const tvaRate = (q.tva || 20) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
+  const remiseLigne = remiseAmt > 0
+    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">Remise ${q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale'}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
 
   // Lignes détail dimensions plans + crédences
   let dimDetailRows = '';
@@ -5411,21 +5424,12 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
     ${optLines}
   </tbody>
   <tfoot>
+    ${remiseLigne}
     <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
-    <tr class="total-row"><td>TVA ${q.tva||10}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row"><td>TVA ${q.tva||20}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
     <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
   </tfoot>
 </table>
-
-${withSignature ? `<div style="margin-top:24px;max-width:360px;">
-  <div class="sign-box">
-    <div class="sign-label">${clientName} — Lu et approuvé, bon pour accord</div>
-    <br><br>
-    <div style="font-size:10px;color:#7a6f62;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
-    <br>
-    <div style="font-size:10px;color:#7a6f62;">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
-  </div>
-</div>` : ''}
 
 ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   <div class="rib-title">Règlement — Virement bancaire</div>
@@ -5452,6 +5456,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   </div>
 </div>
 
+
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
   <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
   Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire, le tribunal compétent étant celui du siège social d'Intérieur Granit.
@@ -5477,13 +5482,14 @@ function exportDevisCuisiniste(q, pro) {
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
   const s = getSociete();
 
-  const { prixMatCoeff, optLines, htTotal: htTotalCalc } = buildLignesCuisiniste(q, pro);
-  const htTotal = q.totalHT != null ? q.totalHT : htTotalCalc;
+  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
   const tvaRate = (q.tva || 20) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
+  const remiseLigne = remiseAmt > 0
+    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">Remise ${q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale'}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Devis ${ref}</title>
@@ -5562,24 +5568,15 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
     ${optLines}
   </tbody>
   <tfoot>
+    ${remiseLigne}
     <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
-    <tr class="total-row"><td>TVA ${q.tva||10}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row"><td>TVA ${q.tva||20}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
     <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
   </tfoot>
 </table>
 
 <div class="mention-box">
   <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
-</div>
-
-<div style="margin-top:24px;max-width:360px;">
-  <div class="sign-box">
-    <div class="sign-label">${clientName} — Lu et approuvé, bon pour accord</div>
-    <br><br>
-    <div style="font-size:10px;color:#7a6f62;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
-    <br>
-    <div style="font-size:10px;color:#7a6f62;">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
-  </div>
 </div>
 
 ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
