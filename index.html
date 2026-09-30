@@ -7050,7 +7050,7 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = q.totalHTNet ? Math.round(q.totalHTNet * 100) / 100 : Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaRate = (q.tva || 20) / 100;
+  const tvaRate = (q.tva || 10) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
   const totalTTC = q.totalTTC ? Math.round(q.totalTTC * 100) / 100 : Math.round((totalHT + tvaAmt) * 100) / 100;
 
