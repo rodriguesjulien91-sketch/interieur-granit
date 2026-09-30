@@ -5360,6 +5360,12 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
 .rib-item{font-size:11px;color:#3d3830;}
 .rib-item .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;display:block;}
 .rib-val{font-family:monospace;font-size:10px;}
+.sigs{display:grid;grid-template-columns:1fr;gap:18px;margin-top:14px;}
+.sig-box{border:1px solid #1a1814;border-top:2px solid #c9a84c;border-radius:3px;padding:11px 14px;}
+.sig-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;margin-bottom:5px;}
+.sig-mention{font-size:11.5px;font-style:italic;color:#3d3830;margin-bottom:11px;}
+.sig-zone{height:52px;border-bottom:1px solid #1a1814;}
+.sig-date{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;}
 </style>
 <script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
 </head><body>
@@ -5428,8 +5434,22 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   ${s.banque?`<div class="rib-item"><span class="lbl">Banque</span>${s.banque}</div>`:''}
 </div>`:''}
 
-<div style="margin-top:10px;font-size:10px;color:#3d3830;border-left:3px solid #c9a84c;padding:6px 12px;background:#fdfaf5;line-height:1.6;">
-  <strong>Conditions de règlement :</strong> 30% à la commande · Solde à la livraison ou avant pose.
+<div style="margin-top:10px;font-size:10px;color:#3d3830;border-left:3px solid #c9a84c;padding:6px 12px;background:#fdfaf5;line-height:1.8;">
+  <strong>Conditions de règlement :</strong><br>
+  ${(()=>{
+    const t1=Math.round(ttc*0.30); const t2=t1; const t3=Math.round((ttc-t1-t2)*100)/100;
+    return '• 30 % d\'acompte à la commande : <strong>'+t1+' €</strong><br>  • 30 % à la prise de côte : <strong>'+t2+' €</strong><br>  • 40 % le jour de la pose : <strong>'+fmtEUR(t3)+'</strong>';
+  })()}
+</div>
+
+<div class="sigs" style="grid-template-columns:1fr;max-width:360px;">
+  <div class="sig-box">
+    <div class="sig-lbl">Client — Lu et approuvé</div>
+    <div class="sig-mention">Bon pour accord</div>
+    <div style="font-size:11px;color:#7a6f62;margin-bottom:8px;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
+    <div class="sig-zone"></div>
+    <div class="sig-date">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
+  </div>
 </div>
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
@@ -5492,6 +5512,11 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
 .rib-item{font-size:11px;color:#3d3830;}
 .rib-item .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#7a6f62;display:block;}
 .rib-val{font-family:monospace;font-size:10px;}
+.sig-box{border:1px solid #1a1814;border-top:2px solid #c9a84c;border-radius:3px;padding:11px 14px;margin-top:14px;max-width:360px;}
+.sig-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;margin-bottom:5px;}
+.sig-mention{font-size:11.5px;font-style:italic;color:#3d3830;margin-bottom:11px;}
+.sig-zone{height:52px;border-bottom:1px solid #1a1814;}
+.sig-date{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;}
 </style>
 <script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
 </head><body>
@@ -5564,8 +5589,20 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   ${s.banque?`<div class="rib-item"><span class="lbl">Banque</span>${s.banque}</div>`:''}
 </div>`:''}
 
-<div style="margin-top:10px;font-size:10px;color:#3d3830;border-left:3px solid #c9a84c;padding:6px 12px;background:#fdfaf5;line-height:1.6;">
-  <strong>Conditions de règlement :</strong> 30% à la commande · Solde à la livraison ou avant pose.
+<div style="margin-top:10px;font-size:10px;color:#3d3830;border-left:3px solid #c9a84c;padding:6px 12px;background:#fdfaf5;line-height:1.8;">
+  <strong>Conditions de règlement :</strong><br>
+  ${(()=>{
+    const t1=Math.round(ttc*0.30); const t2=t1; const t3=Math.round((ttc-t1-t2)*100)/100;
+    return '• 30 % d\'acompte à la commande : <strong>'+t1+' €</strong><br>  • 30 % à la prise de côte : <strong>'+t2+' €</strong><br>  • 40 % le jour de la pose : <strong>'+fmtEUR(t3)+'</strong>';
+  })()}
+</div>
+
+<div class="sig-box">
+  <div class="sig-lbl">Client — Lu et approuvé</div>
+  <div class="sig-mention">Bon pour accord</div>
+  <div style="font-size:11px;color:#7a6f62;margin-bottom:8px;">Nom / Prénom : <strong style="color:#1a1814;">${clientName}</strong></div>
+  <div class="sig-zone"></div>
+  <div class="sig-date">Date : _______________&nbsp;&nbsp;&nbsp; Signature :</div>
 </div>
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
