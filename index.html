@@ -4070,8 +4070,9 @@ function showProQuoteDetail(id) {
     if (px) previewLines += `<div class="summary-row"><span class="key">Pose & installation</span><span class="val">${fmtEUR(px)} HT</span></div>`;
   }
   const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
-  // Utilise la valeur sauvegardée (computePrice) si disponible pour cohérence avec la carte
-  const totalHTDisplay = q.totalHT != null ? q.totalHT : htTotalPreview;
+  // Pour les cuisinistes avec coeff, recalculer depuis les lignes (cohérence avec PDF)
+  const hasCoeff = currentUser?.coeffVenteActif && currentUser?.coeffVente > 1;
+  const totalHTDisplay = (hasCoeff && htTotalPreview != null) ? htTotalPreview : (q.totalHT != null ? q.totalHT : htTotalPreview);
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
