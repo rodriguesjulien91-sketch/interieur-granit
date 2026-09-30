@@ -4002,7 +4002,7 @@ function showProQuoteDetail(id) {
   const surf = surfNum.toFixed(2);
   const coeff = (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1;
   const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = Math.round(prixEp * coeff * 100) / 100;
+  const prixPlanCoeff = prixEp; // getColorisPrice a déjà appliqué coeffVente pour les pros
   const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
 
   const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
@@ -4027,7 +4027,7 @@ function showProQuoteDetail(id) {
     }
   }
   if (!previewLines) {
-    const prixMat = Math.round(prixEp * coeff * surfNum * 100) / 100;
+    const prixMat = Math.round(prixEp * surfNum * 100) / 100; // getColorisPrice a déjà appliqué coeffVente
     previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
   }
   if (q.options) {
@@ -5242,7 +5242,7 @@ function buildLignesCuisiniste(q, pro) {
   const surfPlans = q.surfacePlans || 0;
   const surfCred  = q.surfaceCred  || 0;
   const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = Math.round(prixEp * coeff * 100) / 100;
+  const prixPlanCoeff = prixEp; // getColorisPrice a déjà appliqué coeffVente pour les pros
   const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
   const htPlans = Math.round(parseFloat(surfPlans.toFixed(2)) * prixPlanCoeff * 100) / 100;
   const htCred  = Math.round(parseFloat(surfCred.toFixed(2))  * prixCredCoeff  * 100) / 100;
