@@ -3994,8 +3994,14 @@ function displayFilteredQuotes(quotes) {
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
-        <div class="qc-price">${q.totalHT ? fmtEUR(computeQuoteTotals(q).htNet) : 'Sur devis'}</div>
-        <div class="qc-date">${q.totalHT ? (computeQuoteTotals(q).remiseAmt > 0 ? 'Prix HT remisé' : 'Prix HT') : ''}</div>
+        ${(() => {
+          const hasCoeff = currentUser?.coeffVenteActif && currentUser?.coeffVente > 1;
+          const htBrut = hasCoeff ? buildLignesCuisiniste(q, currentUser||{}).htTotal : (q.totalHT || null);
+          const totaux = htBrut != null ? computeQuoteTotals({...q, totalHT: htBrut}) : null;
+          return htBrut != null
+            ? `<div class="qc-price">${fmtEUR(totaux.htNet)}</div><div class="qc-date">${totaux.remiseAmt > 0 ? 'Prix HT remisé' : 'Prix HT'}</div>`
+            : `<div class="qc-price">Sur devis</div><div class="qc-date"></div>`;
+        })()}
       </div>
     </div>`;
   }).join('');
