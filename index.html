@@ -2411,12 +2411,12 @@ function getCurrentPrix() {
     const exclure = ['prise-de-cote', 'pose-installation'];
     for (const [key, opt] of Object.entries(P.options)) {
       if (!exclure.includes(key)) {
-        opt.prix = Math.round(opt.prix * c);
+        opt.prix = Math.round(opt.prix * c * 100) / 100;
       }
     }
     // Coeff sur chants
     for (const key of Object.keys(P.chants)) {
-      P.chants[key] = Math.round(P.chants[key] * c);
+      P.chants[key] = Math.round(P.chants[key] * c * 100) / 100;
     }
     return P;
   }
@@ -4853,13 +4853,13 @@ function computePrice() {
   // coeff = 1 dans tous les cas pour éviter la double application.
   const coeff = 1;
   if (chantType && chantLongueur > 0 && P.chants[chantType]) {
-    const prixChant = Math.round(P.chants[chantType] * coeff);
+    const prixChant = Math.round(P.chants[chantType] * coeff * 100) / 100;
     lines.push({ cat:'Chant', label:`${chantType} — ${chantLongueur.toFixed(2)} ml × ${prixChant} €/ml`, ht: chantLongueur*prixChant });
   }
 
   Object.entries(counters).forEach(([key, qty]) => {
     if (qty > 0 && P.options[key]) {
-      const prixOpt = Math.round(P.options[key].prix * coeff);
+      const prixOpt = Math.round(P.options[key].prix * coeff * 100) / 100;
       lines.push({ cat:'Options', label:`${P.options[key].label} × ${qty}`, ht: prixOpt*qty });
     }
   });
@@ -4868,7 +4868,7 @@ function computePrice() {
   const coupeOngletMm = parseFloat(document.getElementById('coupe-onglet-ml')?.value || 0);
   if (coupeOngletMm > 0 && P.options['coupe-onglet']) {
     const coupeOngletMl = coupeOngletMm / 1000;
-    const prixOnglet = Math.round(P.options['coupe-onglet'].prix * coeff);
+    const prixOnglet = Math.round(P.options['coupe-onglet'].prix * coeff * 100) / 100;
     lines.push({ cat:'Options', label:`Coupe d'onglet — ${coupeOngletMl.toFixed(2)} ml × ${prixOnglet} €/ml`, ht: coupeOngletMl * prixOnglet });
   }
 
@@ -7050,7 +7050,7 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = q.totalHTNet ? Math.round(q.totalHTNet * 100) / 100 : Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaRate = (q.tva || 10) / 100;
+  const tvaRate = (q.tva || 20) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
   const totalTTC = q.totalTTC ? Math.round(q.totalTTC * 100) / 100 : Math.round((totalHT + tvaAmt) * 100) / 100;
 
