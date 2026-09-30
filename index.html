@@ -4836,12 +4836,9 @@ function computePrice() {
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
-  // Coeff matière : pour devis direct (particulier) ET pour cuisiniste avec coeff actif
-  // En mode direct, le coeff s'applique uniquement sur la matière (déjà appliqué via getColorisPrixDirect)
-  // Pour le reste (chants/options/livraison) : pas de coeff en mode direct, coeff cuisiniste si actif
-  const coeff = quoteMode === 'direct'
-    ? 1
-    : (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? currentUser.coeffVente : 1);
+  // getCurrentPrix() a déjà appliqué le coeffVente sur chants/options pour les comptes cuisinistes.
+  // coeff = 1 dans tous les cas pour éviter la double application.
+  const coeff = 1;
   if (chantType && chantLongueur > 0 && P.chants[chantType]) {
     const prixChant = Math.round(P.chants[chantType] * coeff);
     lines.push({ cat:'Chant', label:`${chantType} — ${chantLongueur.toFixed(2)} ml × ${prixChant} €/ml`, ht: chantLongueur*prixChant });
