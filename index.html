@@ -5311,7 +5311,8 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
 
-  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
+  const { prixMatCoeff, optLines, htTotal: htTotalCalc } = buildLignesCuisiniste(q, pro);
+  const htTotal = q.totalHT != null ? q.totalHT : htTotalCalc;
   const tvaRate = (q.tva || 20) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
@@ -5438,7 +5439,8 @@ function exportDevisCuisiniste(q, pro) {
   const matLabel = PRIX.materiaux[q.materiau]?.label || q.materiau;
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
 
-  const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
+  const { prixMatCoeff, optLines, htTotal: htTotalCalc } = buildLignesCuisiniste(q, pro);
+  const htTotal = q.totalHT != null ? q.totalHT : htTotalCalc;
   const tvaRate = (q.tva || 20) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
