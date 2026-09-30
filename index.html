@@ -4019,7 +4019,7 @@ function showProQuoteDetail(id) {
   const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
   let previewLines = '';
   if ((q.surfacePlans||0) > 0) {
-    const htPlans = Math.round(parseFloat((q.surfacePlans||0).toFixed(2)) * prixPlanCoeff * 100) / 100;
+    const htPlans = Math.round((q.surfacePlans||0) * prixPlanCoeff * 100) / 100;
     previewLines += `<div class="summary-row"><span class="key">Plans — ${(q.surfacePlans||0).toFixed(2)} m² × ${fmt2(prixPlanCoeff)} €/m²</span><span class="val">${fmtEUR(htPlans)} HT</span></div>`;
     if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
       q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
@@ -4028,7 +4028,7 @@ function showProQuoteDetail(id) {
     }
   }
   if ((q.surfaceCred||0) > 0) {
-    const htCred = Math.round(parseFloat((q.surfaceCred||0).toFixed(2)) * prixCredCoeff * 100) / 100;
+    const htCred = Math.round((q.surfaceCred||0) * prixCredCoeff * 100) / 100;
     const epCredLabel = q.epaisseurCred === '12' ? ' (12 mm)' : '';
     previewLines += `<div class="summary-row"><span class="key">Crédences${epCredLabel} — ${(q.surfaceCred||0).toFixed(2)} m² × ${fmt2(prixCredCoeff)} €/m²</span><span class="val">${fmtEUR(htCred)} HT</span></div>`;
     if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
@@ -4836,7 +4836,7 @@ function computePrice() {
   const lines = [];
 
   if (surfacePlans > 0 && prixMat !== null)
-    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m² × ${prixMat} €/m²`, ht: parseFloat(surfacePlans.toFixed(2))*prixMat });
+    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m² × ${prixMat} €/m²`, ht: surfacePlans*prixMat });
   else if (surfacePlans > 0)
     lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m²`, ht: null });
 
@@ -4845,7 +4845,7 @@ function computePrice() {
     const epCred = document.getElementById('epaisseur-cred')?.value || ep;
     const epCredBlock = document.getElementById('epaisseur-cred-block');
     const credLabel = (epCredBlock?.style.display !== 'none' && epCred === '12') ? `12 mm` : `${ep} mm`;
-    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m² (${credLabel})`, ht: parseFloat(surfaceCred.toFixed(2))*(pc||0) });
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m² (${credLabel})`, ht: surfaceCred*(pc||0) });
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
@@ -5258,8 +5258,8 @@ function buildLignesCuisiniste(q, pro) {
   const prixEpBase = getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
   const prixPlanCoeff = Math.round(prixEpBase * coeff * 100) / 100;
   const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
-  const htPlans = Math.round(parseFloat(surfPlans.toFixed(2)) * prixPlanCoeff * 100) / 100;
-  const htCred  = Math.round(parseFloat(surfCred.toFixed(2))  * prixCredCoeff  * 100) / 100;
+  const htPlans = Math.round(surfPlans * prixPlanCoeff * 100) / 100;
+  const htCred  = Math.round(surfCred  * prixCredCoeff  * 100) / 100;
   const prixMatCoeff = htPlans + htCred;
   let htTotal = prixMatCoeff;
   let optLines = '';
@@ -5490,6 +5490,19 @@ function exportDevisCuisiniste(q, pro) {
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
   const remiseLigne = remiseAmt > 0
     ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">Remise ${q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale'}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
+
+  let dimDetailRows = '';
+  if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
+    q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
+      dimDetailRows += `<tr><td style="padding-left:28px;color:#7a6f62;font-size:11px;">↳ Plan P${i+1} : ${p.larg} × ${p.long} mm</td><td style="text-align:right;color:#7a6f62;font-size:11px;">${((parseFloat(p.larg)/1000)*(parseFloat(p.long)/1000)).toFixed(2)} m²</td></tr>`;
+    });
+  }
+  if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
+    const epCredLabel = q.epaisseurCred === '12' ? ' (12 mm)' : '';
+    q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
+      dimDetailRows += `<tr><td style="padding-left:28px;color:#7a6f62;font-size:11px;">↳ Crédence C${i+1}${epCredLabel} : ${c.larg} × ${c.long} mm</td><td style="text-align:right;color:#7a6f62;font-size:11px;">${((parseFloat(c.larg)/1000)*(parseFloat(c.long)/1000)).toFixed(2)} m²</td></tr>`;
+    });
+  }
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Devis ${ref}</title>
@@ -5912,7 +5925,7 @@ async function exportDevisParticulier(quoteId) {
     plansValid.forEach((p, i) => {
       const surf = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
       if (surf > 0) {
-        const htPlan = parseFloat(surf.toFixed(2)) * prixMatVente;
+        const htPlan = Math.round(surf * prixMatVente * 100) / 100;
         htBrutPdf += htPlan;
         ligneNum++;
         lignesRows += `<tr>
@@ -5924,7 +5937,7 @@ async function exportDevisParticulier(quoteId) {
       }
     });
   } else if (q.surfacePlans > 0 && prixMatVente !== null) {
-    const ht = parseFloat(q.surfacePlans.toFixed(2)) * prixMatVente;
+    const ht = Math.round(q.surfacePlans * prixMatVente * 100) / 100;
     htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
@@ -5944,7 +5957,7 @@ async function exportDevisParticulier(quoteId) {
     credValid.forEach((c, i) => {
       const surf = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
       if (surf > 0) {
-        const htCred = parseFloat(surf.toFixed(2)) * prixCred;
+        const htCred = Math.round(surf * prixCred * 100) / 100;
         htBrutPdf += htCred;
         ligneNum++;
         lignesRows += `<tr>
@@ -5959,7 +5972,7 @@ async function exportDevisParticulier(quoteId) {
     const prixCred = getPrixCredFromQuote(q, prixMatVente);
     const epCred = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
-    const ht = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
+    const ht = Math.round(q.surfaceCred * prixCred * 100) / 100;
     htBrutPdf += ht;
     ligneNum++;
     lignesRows += `<tr>
@@ -6372,7 +6385,7 @@ async function genererFacture(quoteId) {
 
   let prixMat = getColorisPrice(mat, coloris, ep, finition);
   if (q.surfacePlans > 0 && prixMat !== null) {
-    const htPlans = parseFloat(q.surfacePlans.toFixed(2)) * prixMat;
+    const htPlans = Math.round(q.surfacePlans * prixMat * 100) / 100;
     htBrutFact += htPlans;
     ligneNum++;
     lignesRows += `<tr>
@@ -6388,7 +6401,7 @@ async function genererFacture(quoteId) {
     const prixCred = getPrixCredFromQuote(q, prixMat);
     const epCred2 = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred2 = `${matLabel} ${coloris} ${finition} ${epCred2 ? epCred2 + ' mm' : ''}`.trim();
-    const htCred = parseFloat(q.surfaceCred.toFixed(2)) * prixCred;
+    const htCred = Math.round(q.surfaceCred * prixCred * 100) / 100;
     htBrutFact += htCred;
     ligneNum++;
     lignesRows += `<tr>
@@ -6908,7 +6921,7 @@ async function _genererFactureDirecte(quoteId, acomptes) {
 
   if (surfPlans > 0 && htMatTotal !== null) {
     const htPlans = surfCred > 0 ? Math.round(htMatTotal * ratioPlans * 100) / 100 : htMatTotal;
-    const prixPlan = Math.round(htPlans / parseFloat(surfPlans.toFixed(2)) * 100) / 100;
+    const prixPlan = Math.round(htPlans / surfPlans * 100) / 100;
     let dimDetail = '';
     q.plans?.filter(p=>p.larg&&p.long).forEach((p,i)=>{
       const s=((parseFloat(p.larg)/1000)*(parseFloat(p.long)/1000)).toFixed(2);
@@ -6916,8 +6929,8 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     });
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${parseFloat(surfPlans.toFixed(2))} m²</span>${dimDetail}</td>
-      <td class="li-right">${parseFloat(surfPlans.toFixed(2))} m²</td>
+      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${surfPlans.toFixed(2)} m²</span>${dimDetail}</td>
+      <td class="li-right">${surfPlans.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixPlan)} €</td>
       <td class="li-right">${fmtEUR(htPlans)}</td>
     </tr>`;
@@ -6926,13 +6939,13 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   // 2. Crédences
   if (surfCred > 0 && htMatTotal !== null) {
     const htCred = surfPlans > 0 ? Math.round(htMatTotal * (1-ratioPlans) * 100) / 100 : htMatTotal;
-    const prixCred = Math.round(htCred / parseFloat(surfCred.toFixed(2)) * 100) / 100;
+    const prixCred = Math.round(htCred / surfCred * 100) / 100;
     const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3+' mm' : ''}`.trim();
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Crédence — ${matDescCred3}<br><span class="li-detail">Surface : ${parseFloat(surfCred.toFixed(2))} m²</span></td>
-      <td class="li-right">${parseFloat(surfCred.toFixed(2))} m²</td>
+      <td class="li-desc">Crédence — ${matDescCred3}<br><span class="li-detail">Surface : ${surfCred.toFixed(2)} m²</span></td>
+      <td class="li-right">${surfCred.toFixed(2)} m²</td>
       <td class="li-right">${fmt2(prixCred)} €</td>
       <td class="li-right">${fmtEUR(htCred)}</td>
     </tr>`;
