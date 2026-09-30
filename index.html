@@ -4059,6 +4059,8 @@ function showProQuoteDetail(id) {
     if (px) previewLines += `<div class="summary-row"><span class="key">Pose & installation</span><span class="val">${fmtEUR(px)} HT</span></div>`;
   }
   const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
+  // Utilise la valeur sauvegardée (computePrice) si disponible pour cohérence avec la carte
+  const totalHTDisplay = q.totalHT != null ? q.totalHT : htTotalPreview;
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
@@ -4095,7 +4097,7 @@ function showProQuoteDetail(id) {
       <div>
         <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">${q.materiauLabel} — ${q.coloris||'—'}</div>
         ${previewLines}
-        <div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(htTotalPreview)}</span></div>
+        <div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(totalHTDisplay)}</span></div>
       </div>
     </div>
     ${commandeInfo}
