@@ -213,7 +213,33 @@ textarea { resize: vertical; min-height: 80px; }
 
 /* ═══ PRO VIEW ═══════════════════════════════════════════════════ */
 #view-pro { min-height: 100vh; }
-.pro-body { max-width: 900px; margin: 0 auto; padding: 36px 24px 80px; }
+.pro-body { max-width: 1100px; margin: 0 auto; padding: 36px 24px 80px; }
+/* Onglets pro */
+.pro-tabs { display:flex; gap:4px; margin-bottom:28px; border-bottom:2px solid var(--cream-dark); }
+.pro-tab-btn { background:none; border:none; padding:10px 22px; font-size:.82rem; letter-spacing:.06em; text-transform:uppercase; color:var(--stone-light); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .2s,border-color .2s; }
+.pro-tab-btn:hover { color:var(--stone); }
+.pro-tab-btn.active { color:var(--gold); border-bottom-color:var(--gold); font-weight:600; }
+/* Bibliothèque catalogue */
+.biblio-filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+.biblio-filters select { padding:7px 12px; border:1px solid var(--cream-dark); border-radius:3px; font-size:.8rem; background:var(--white); color:var(--stone); cursor:pointer; }
+.biblio-search { padding:7px 12px; border:1px solid var(--cream-dark); border-radius:3px; font-size:.8rem; background:var(--white); color:var(--stone); width:180px; outline:none; }
+.biblio-search::placeholder { color:var(--stone-light); }
+.biblio-filters label { font-size:.78rem; color:var(--stone-light); margin-right:2px; }
+.biblio-count { font-size:.78rem; color:var(--stone-light); margin-left:auto; }
+.biblio-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.biblio-card { background:var(--white); border:1px solid var(--cream-dark); border-radius:5px; overflow:hidden; transition:border-color .2s,box-shadow .2s; }
+.biblio-card:hover { border-color:var(--gold); box-shadow:0 2px 12px rgba(0,0,0,.07); }
+.biblio-img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:var(--cream); }
+.biblio-img-placeholder { width:100%; aspect-ratio:4/3; background:var(--cream); display:flex; align-items:center; justify-content:center; font-size:.7rem; color:var(--stone-light); letter-spacing:.05em; }
+.biblio-body { padding:12px 14px; }
+.biblio-mat { font-size:.64rem; text-transform:uppercase; letter-spacing:.1em; color:var(--gold); margin-bottom:3px; }
+.biblio-name { font-weight:600; font-size:.85rem; color:var(--stone); margin-bottom:2px; }
+.biblio-finition { font-size:.72rem; color:var(--stone-light); margin-bottom:8px; }
+.biblio-prix { display:flex; flex-direction:column; gap:3px; }
+.biblio-prix-row { display:flex; justify-content:space-between; align-items:baseline; font-size:.78rem; }
+.biblio-prix-ep { color:var(--stone-light); }
+.biblio-prix-val { font-family:'Cormorant Garamond',serif; font-size:.95rem; color:var(--stone); font-weight:600; }
+@media(max-width:600px){ .biblio-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));} }
 .pro-welcome { margin-bottom: 32px; }
 .pro-welcome h1 { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; }
 .pro-welcome p { color: var(--stone-light); font-size: .85rem; margin-top: 4px; }
@@ -667,15 +693,67 @@ textarea { resize: vertical; min-height: 80px; }
       <h1 id="pro-welcome-title">Bonjour, Marc</h1>
       <p id="pro-welcome-sub">Cuisines Espace — Retrouvez vos demandes de chiffrage ou créez-en une nouvelle.</p>
     </div>
-    <div class="pro-actions">
-      <button class="btn btn-gold" onclick="startNewQuote()">+ Nouveau chiffrage</button>
-      <div class="search-bar-wrapper">
-        <input type="text" id="pro-search" placeholder="Rechercher un devis (client, ville, matière, réf…)" oninput="filterProQuotes()">
-      </div>
+    <div class="pro-tabs">
+      <button class="pro-tab-btn active" id="pro-tab-chiffrages" onclick="switchProTab('chiffrages')">📋 Mes chiffrages</button>
+      <button class="pro-tab-btn" id="pro-tab-catalogue" onclick="switchProTab('catalogue')">📦 Catalogue & Tarifs</button>
     </div>
-    <div style="font-size:.8rem;color:var(--stone-light);margin-bottom:14px;" id="pro-count-label"></div>
-    <div id="pro-quotes-list"></div>
-    <div id="pro-quote-detail" class="pro-quote-detail"></div>
+    <!-- Panel chiffrages -->
+    <div id="pro-panel-chiffrages">
+      <div class="pro-actions">
+        <button class="btn btn-gold" onclick="startNewQuote()">+ Nouveau chiffrage</button>
+        <div class="search-bar-wrapper">
+          <input type="text" id="pro-search" placeholder="Rechercher un devis (client, ville, matière, réf…)" oninput="filterProQuotes()">
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:var(--stone-light);margin-bottom:14px;" id="pro-count-label"></div>
+      <div id="pro-quotes-list"></div>
+      <div id="pro-quote-detail" class="pro-quote-detail"></div>
+    </div>
+    <!-- Panel catalogue -->
+    <div id="pro-panel-catalogue" style="display:none;">
+      <div class="biblio-filters">
+        <div>
+          <label>Recherche</label>
+          <input type="text" id="biblio-search" class="biblio-search" placeholder="Nom du coloris..." oninput="renderProCatalogue()">
+        </div>
+        <div>
+          <label>Matériau</label>
+          <select id="biblio-cat-filter" onchange="renderProCatalogue()">
+            <option value="all">Tous</option>
+          </select>
+        </div>
+        <div>
+          <label>Catalogue</label>
+          <select id="biblio-mat-filter" onchange="renderProCatalogue()">
+            <option value="all">Tous</option>
+          </select>
+        </div>
+        <div>
+          <label>Épaisseur</label>
+          <select id="biblio-ep-filter" onchange="renderProCatalogue()">
+            <option value="all">Toutes</option>
+          </select>
+        </div>
+        <div>
+          <label>Aspect</label>
+          <select id="biblio-aspect-filter" onchange="renderProCatalogue()">
+            <option value="all">Tous</option>
+            <option value="poli">Poli</option>
+            <option value="mat">Mat</option>
+          </select>
+        </div>
+        <div>
+          <label>Tri</label>
+          <select id="biblio-sort" onchange="renderProCatalogue()">
+            <option value="name">Nom A→Z</option>
+            <option value="price_asc">Prix croissant</option>
+            <option value="price_desc">Prix décroissant</option>
+          </select>
+        </div>
+        <span class="biblio-count" id="biblio-count"></span>
+      </div>
+      <div class="biblio-grid" id="biblio-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -8845,6 +8923,217 @@ function showCatalogueToast(msg) {
   el.textContent = msg;
   el.style.opacity = '1';
   setTimeout(() => { el.style.opacity = '0'; }, 2800);
+}
+
+// ─── BIBLIOTHÈQUE CATALOGUE PRO ──────────────────────────────────────────────
+
+const BIBLIO_FAMILLES = {
+  'granit':'Granit','marbre':'Marbre','pierre':'Pierre calcaire',
+  'quartz-silestone':'Quartz Silestone','quartz-unistone':'Quartz Unistone','dekton':'Dekton',
+  'ceramique-neolith':'Neolith','ceramique-laminam':'Laminam',
+  'ceramique-uniceramica':'Uniceramica','ceramique-xstone':'Xtone Porcelanosa',
+  'ceramique-abkstone':'ABK-Materia',
+  'gc-granit':'Granit GC','gc-quartz':'Quartz GC',
+  'gc-neolith':'Neolith GC','gc-uniceramica':'Uniceramica GC',
+};
+
+// Déduit la famille (matériau) d'une clé, même pour les custom
+function biblio_famille(mat) {
+  if (['granit','marbre','pierre'].includes(mat)) return 'naturel';
+  if (mat === 'dekton') return 'dekton';
+  if (mat.startsWith('gc')) return 'gc';
+  if (mat.startsWith('quartz')) return 'quartz';
+  // céramiques standard
+  if (mat.startsWith('ceramique') || mat.startsWith('neolith') || mat.startsWith('laminam') ||
+      mat.startsWith('uniceramica') || mat.startsWith('xtone') || mat.startsWith('abk')) return 'ceramique';
+  // custom : inférer depuis label ou group Firestore
+  const cm = customMaterials[mat];
+  if (cm) {
+    const grp = (cm.group || '').toLowerCase();
+    const lbl = (cm.label || mat).toLowerCase();
+    if (grp.includes('gamme courte')) return 'gc';
+    if (lbl.includes('quartz')) return 'quartz';
+    if (lbl.includes('granit')) return 'naturel';
+    if (lbl.includes('marbre') || lbl.includes('pierre') || lbl.includes('calcaire')) return 'naturel';
+    if (lbl.includes('dekton')) return 'dekton';
+    if (lbl.includes('neolith') || lbl.includes('laminam') || lbl.includes('uniceramica') ||
+        lbl.includes('xtone') || lbl.includes('ceramique') || lbl.includes('abk')) return 'ceramique';
+  }
+  return 'autre';
+}
+
+// Label commercial d'un mat (sans mention "custom")
+function biblio_label(mat) {
+  return PRIX.materiaux[mat]?.label || customMaterials[mat]?.label || BIBLIO_FAMILLES[mat] || mat;
+}
+
+// Détecte si une finition est poli, mat, ou les deux
+function biblio_aspect(finition) {
+  const f = (finition || '').toUpperCase();
+  const isPoli = /LUCID|POLI|LUCE|LUX|GLOSS|BRILLANT|MIRROR|SHINY/.test(f);
+  const isMat  = /\bNAT\b|NATURE|VELLU|VELVET|\bMAT\b|MATE\b|MATTE|SOFT|TEXTU|SABL|BROSS|HONED|GRIP|BUSH|SILK|SATIN/.test(f);
+  if (isPoli && isMat) return 'both';
+  if (isPoli) return 'poli';
+  if (isMat)  return 'mat';
+  return 'unknown';
+}
+
+function switchProTab(tab) {
+  document.getElementById('pro-panel-chiffrages').style.display = tab === 'chiffrages' ? '' : 'none';
+  document.getElementById('pro-panel-catalogue').style.display  = tab === 'catalogue'  ? '' : 'none';
+  document.getElementById('pro-tab-chiffrages').classList.toggle('active', tab === 'chiffrages');
+  document.getElementById('pro-tab-catalogue').classList.toggle('active', tab === 'catalogue');
+  if (tab === 'catalogue') renderProCatalogue();
+}
+
+let _bibliloInited = false;
+
+async function renderProCatalogue() {
+  await vLoad();
+  const grid = document.getElementById('biblio-grid');
+  if (!grid) return;
+
+  const searchQuery  = (document.getElementById('biblio-search')?.value || '').trim().toUpperCase();
+  const matFilter    = document.getElementById('biblio-mat-filter')?.value    || 'all';
+  const catFilter    = document.getElementById('biblio-cat-filter')?.value    || 'all';
+  const epFilter     = document.getElementById('biblio-ep-filter')?.value     || 'all';
+  const aspectFilter = document.getElementById('biblio-aspect-filter')?.value || 'all';
+  const sort         = document.getElementById('biblio-sort')?.value || 'name';
+
+  // Construire la liste complète de tous les coloris
+  const allItems = [];
+  for (const mat of Object.keys(COLORIS_DATA)) {
+    const matLabel = biblio_label(mat);
+    const famille  = biblio_famille(mat);
+    for (const coloris of Object.keys(COLORIS_DATA[mat])) {
+      const finitions = COLORIS_DATA[mat][coloris];
+      if (!finitions?.length) continue;
+      // Agréger toutes les finitions : épaisseurs + aspect, avec prix séparés par aspect
+      const epMapAll  = {}; // ep → prix min toutes finitions
+      const epMapPoli = {}; // ep → prix min finitions poli uniquement
+      const epMapMat  = {}; // ep → prix min finitions mat uniquement
+      let isPoli = false, isMat = false;
+      const finLabels = [];
+      for (const fin of finitions) {
+        const a = biblio_aspect(fin.f);
+        if (a === 'poli' || a === 'both') isPoli = true;
+        if (a === 'mat'  || a === 'both') isMat  = true;
+        finLabels.push(fin.f);
+        for (const [ep, basePrice] of Object.entries(fin.e || {})) {
+          const prix = getColorisPrice(mat, coloris, ep, fin.f) ?? basePrice;
+          if (prix !== null) {
+            if (epMapAll[ep] === undefined || prix < epMapAll[ep]) epMapAll[ep] = prix;
+            if (a === 'poli' || a === 'both') {
+              if (epMapPoli[ep] === undefined || prix < epMapPoli[ep]) epMapPoli[ep] = prix;
+            }
+            if (a === 'mat' || a === 'both') {
+              if (epMapMat[ep] === undefined || prix < epMapMat[ep]) epMapMat[ep] = prix;
+            }
+          }
+        }
+      }
+      const toEpList = m => Object.entries(m).map(([ep,prix])=>({ep,prix})).filter(x=>x.prix!==null).sort((a,b)=>parseInt(a.ep)-parseInt(b.ep));
+      const epList = toEpList(epMapAll);
+      if (!epList.length) continue;
+      const aspect = isPoli && isMat ? 'both' : isPoli ? 'poli' : isMat ? 'mat' : 'unknown';
+      const finition = finLabels.join(' / ');
+      const minPrix = Math.min(...epList.map(x => x.prix));
+      allItems.push({ mat, matLabel, famille, coloris, finition, aspect, epList, epMapPoli: toEpList(epMapPoli), epMapMat: toEpList(epMapMat), minPrix, img: vGetImage(mat, coloris) });
+    }
+  }
+
+  // Peupler les filtres une seule fois
+  if (!_bibliloInited) {
+    _bibliloInited = true;
+
+    // Filtre "Matériau" = familles
+    const catSel = document.getElementById('biblio-cat-filter');
+    if (catSel) {
+      const famPresentes = new Set(allItems.map(i => i.famille));
+      const famDefs = [
+        { v:'naturel',  l:'Pierres naturelles' },
+        { v:'quartz',   l:'Quartz' },
+        { v:'ceramique',l:'Céramique' },
+        { v:'dekton',   l:'Dekton' },
+        { v:'gc',       l:'Gamme Courte' },
+        { v:'autre',    l:'Autre' },
+      ].filter(f => famPresentes.has(f.v));
+      famDefs.forEach(f => { const o=document.createElement('option'); o.value=f.v; o.textContent=f.l; catSel.appendChild(o); });
+    }
+
+    // Filtre "Catalogue" = mat spécifiques
+    const matSel = document.getElementById('biblio-mat-filter');
+    if (matSel) {
+      const mats = [...new Set(allItems.map(i=>i.mat))].sort((a,b)=>biblio_label(a).localeCompare(biblio_label(b),'fr'));
+      mats.forEach(m => { const o=document.createElement('option'); o.value=m; o.textContent=biblio_label(m); matSel.appendChild(o); });
+    }
+
+    // Filtre "Épaisseur"
+    const epSel = document.getElementById('biblio-ep-filter');
+    if (epSel) {
+      const eps = [...new Set(allItems.flatMap(i=>i.epList.map(e=>e.ep)))].sort((a,b)=>parseInt(a)-parseInt(b));
+      eps.forEach(ep => { const o=document.createElement('option'); o.value=ep; o.textContent=ep+' mm'; epSel.appendChild(o); });
+    }
+  }
+
+  // Filtrer
+  let filtered = allItems.filter(i => {
+    if (searchQuery && !i.coloris.toUpperCase().includes(searchQuery) && !i.matLabel.toUpperCase().includes(searchQuery)) return false;
+    if (matFilter    !== 'all' && i.mat !== matFilter) return false;
+    if (catFilter    !== 'all' && i.famille !== catFilter) return false;
+    if (epFilter     !== 'all' && !i.epList.some(e => e.ep === epFilter)) return false;
+    if (aspectFilter !== 'all') {
+      // 'both' correspond aux deux, 'unknown' passe toujours (finition non classifiée)
+      if (i.aspect === 'unknown') { /* laisser passer */ }
+      else if (aspectFilter === 'poli' && i.aspect !== 'poli' && i.aspect !== 'both') return false;
+      else if (aspectFilter === 'mat'  && i.aspect !== 'mat'  && i.aspect !== 'both') return false;
+    }
+    return true;
+  });
+
+  // Trier (par épaisseur sélectionnée si filtre actif, sinon prix min)
+  // Utilise les prix de l'aspect filtré si pertinent
+  const getAspectEpList = (item) => {
+    if (aspectFilter === 'poli') return item.epMapPoli.length ? item.epMapPoli : item.epList;
+    if (aspectFilter === 'mat')  return item.epMapMat.length  ? item.epMapMat  : item.epList;
+    return item.epList;
+  };
+  const getPrixForSort = (item) => {
+    const list = getAspectEpList(item);
+    if (epFilter !== 'all') {
+      const ep = list.find(e => e.ep === epFilter);
+      return ep ? ep.prix : Infinity;
+    }
+    return Math.min(...list.map(x => x.prix));
+  };
+  if (sort === 'price_asc')  filtered.sort((a,b) => getPrixForSort(a) - getPrixForSort(b));
+  else if (sort === 'price_desc') filtered.sort((a,b) => getPrixForSort(b) - getPrixForSort(a));
+  else filtered.sort((a,b) => a.coloris.localeCompare(b.coloris,'fr'));
+
+  document.getElementById('biblio-count').textContent = `${filtered.length} coloris`;
+
+  grid.innerHTML = filtered.map(item => {
+    const imgTag = item.img
+      ? `<img class="biblio-img" src="${item.img}" alt="${item.coloris}" loading="lazy" onclick="openLightbox('${item.img.replace(/'/g,"\\'")}','${item.coloris.replace(/'/g,"\\'")} — ${item.matLabel.replace(/'/g,"\\'")}')">`
+      : `<div class="biblio-img-placeholder">Pas de visuel</div>`;
+    // Utiliser les prix de l'aspect filtré
+    const displayEpList = getAspectEpList(item);
+    const prixRows = displayEpList
+      .filter(e => epFilter === 'all' || e.ep === epFilter)
+      .map(({ ep, prix }) => {
+        const hl = epFilter !== 'all' ? 'font-weight:700;color:var(--gold);' : '';
+        return `<div class="biblio-prix-row"><span class="biblio-prix-ep" style="${hl}">${ep} mm</span><span class="biblio-prix-val" style="${hl}">${fmtEUR(prix)}/m²</span></div>`;
+      }).join('');
+    return `<div class="biblio-card">
+      ${imgTag}
+      <div class="biblio-body">
+        <div class="biblio-mat">${item.matLabel}</div>
+        <div class="biblio-name">${item.coloris}</div>
+        <div class="biblio-finition">${item.finition}</div>
+        <div class="biblio-prix">${prixRows}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── MIGRATION : Recalcul totalHT/TTC pour tous les devis pro ────────────────
