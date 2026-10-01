@@ -6367,6 +6367,7 @@ async function genererFacture(quoteId) {
   if (!q) return;
   const s = getSociete();
   const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
+  const factCoeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
   const numFac = await getNextFactureNum();
@@ -6400,7 +6401,8 @@ async function genererFacture(quoteId) {
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
 
-  let prixMat = getColorisPrice(mat, coloris, ep, finition);
+  let prixMat = getColorisPriceBase(mat, coloris, ep, finition);
+  if (prixMat !== null) prixMat = Math.round(prixMat * factCoeff * 100) / 100;
   if (q.surfacePlans > 0 && prixMat !== null) {
     const htPlans = Math.round(q.surfacePlans * prixMat * 100) / 100;
     htBrutFact += htPlans;
@@ -6432,7 +6434,7 @@ async function genererFacture(quoteId) {
   // 3. Chant
   if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
-    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
+    const puChant = Math.round((q.chant.pu || PRIX.chants[q.chant.type]) * factCoeff * 100) / 100;
     const htChant = Math.round(ml * puChant * 100) / 100;
     htBrutFact += htChant;
     ligneNum++;
@@ -6451,7 +6453,7 @@ async function genererFacture(quoteId) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = (v / 1000).toFixed(2);
-          const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
+          const puCO = Math.round((q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix) * factCoeff * 100) / 100;
           const ht = Math.round(ml * puCO * 100) / 100;
           htBrutFact += ht;
           ligneNum++;
@@ -6466,7 +6468,7 @@ async function genererFacture(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const puOpt = q.optionsPrix?.[k] ?? opt.prix;
+        const puOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * factCoeff * 100) / 100;
         const htOpt = Math.round(puOpt * v * 100) / 100;
         htBrutFact += htOpt;
         ligneNum++;
@@ -6512,7 +6514,7 @@ async function genererFacture(quoteId) {
   const htBrut = Math.round(htBrutFact * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaAmt = Math.round(totalHT * 20 / 100 * 100) / 100; // B2B → TVA 20% fixe
+  const tvaAmt = Math.round(totalHT * (q.tva || 20) / 100 * 100) / 100;
   const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   // Adresse société
@@ -6654,7 +6656,7 @@ async function genererFacture(quoteId) {
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
     ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
-    <tr class="row-tva"><td>TVA 20%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
@@ -6751,7 +6753,7 @@ async function genererFactureAcompte(quoteId, montantTTC, numFA) {
   const s = getSociete();
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const tvaRate = (q.tva || 20) / 100;
+  const tvaRate = (q.tva || 10) / 100;
   const montantHT = Math.round((montantTTC / (1 + tvaRate)) * 100) / 100;
   const montantTVA = Math.round((montantTTC - montantHT) * 100) / 100;
   const addrClient = [q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -6813,7 +6815,7 @@ async function genererFactureAcompte(quoteId, montantTTC, numFA) {
 </table>
 <table class="totals">
   <tr><td>Sous-total HT</td><td style="text-align:right;">${fmtEUR(montantHT)}</td></tr>
-  <tr><td>TVA ${q.tva || 20}%</td><td style="text-align:right;">${fmtEUR(montantTVA)}</td></tr>
+  <tr><td>TVA ${q.tva || 10}%</td><td style="text-align:right;">${fmtEUR(montantTVA)}</td></tr>
   <tr><td>Total TTC</td><td style="text-align:right;">${fmtEUR(montantTTC)}</td></tr>
 </table>
 ${s.iban ? `<div style="margin-top:16px;font-size:8.5pt;color:#7a6f62;padding:10px 14px;background:#f5efe6;border-radius:3px;">Virement : IBAN ${s.iban}${s.bic ? ' &nbsp;·&nbsp; BIC : ' + s.bic : ''}</div>` : ''}
@@ -7066,10 +7068,10 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   // Totaux : on prend les montants exacts du devis validé, sans recalcul
   const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
-  const totalHT = q.totalHTNet ? Math.round(q.totalHTNet * 100) / 100 : Math.round((htBrut - remiseAmt) * 100) / 100;
+  const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
   const tvaAmt = Math.round(totalHT * tvaRate * 100) / 100;
-  const totalTTC = q.totalTTC ? Math.round(q.totalTTC * 100) / 100 : Math.round((totalHT + tvaAmt) * 100) / 100;
+  const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   const imgColoris = vGetImage(q.materiau, q.coloris);
   const html = `<!DOCTYPE html>
