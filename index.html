@@ -2652,7 +2652,7 @@ function computeQuoteTotals(q) {
   const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 20) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
-  const ttc = htNet + tvaAmt;
+  const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
   return { htBrut, remiseAmt, htNet, tvaAmt, ttc, tvaRate };
 }
 
@@ -3143,22 +3143,25 @@ function buildPrixLignesAdmin(q) {
         const opt = PRIX.options['coupe-onglet'];
         if (opt) {
           const ml = qty / 1000;
-          const ht = Math.round(opt.prix * ml * coeff * 100) / 100;
+          const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
+          const ht = Math.round(puCO * ml * coeff * 100) / 100;
           lines += row(`Coupe d'onglet — ${ml.toFixed(2)} ml`, `${fmtEUR(ht)} HT`);
         }
         return;
       }
       const opt = PRIX.options[key];
       if (!opt) return;
-      const pu = noCoeff.includes(key) ? opt.prix : Math.round(opt.prix * coeff * 100) / 100;
+      const basePrix = q.optionsPrix?.[key] ?? opt.prix;
+      const pu = noCoeff.includes(key) ? basePrix : Math.round(basePrix * coeff * 100) / 100;
       lines += row(`${opt.label} × ${qty}`, `${fmtEUR(Math.round(pu * qty * 100) / 100)} HT`);
     });
   }
 
   // Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && PRIX.chants?.[q.chant.type]) {
+  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
     const ml = q.chant.longueur / 1000;
-    const ht = Math.round(PRIX.chants[q.chant.type] * ml * coeff * 100) / 100;
+    const puChant = q.chant.pu ?? PRIX.chants[q.chant.type] ?? 0;
+    const ht = Math.round(puChant * ml * coeff * 100) / 100;
     lines += row(`Chant ${q.chant.type} — ${ml.toFixed(2)} ml`, `${fmtEUR(ht)} HT`);
   }
 
@@ -3175,16 +3178,21 @@ function buildPrixLignesAdmin(q) {
 
   if (!lines) return '';
 
-  // Totaux
-  const t = computeQuoteTotals(q);
+  // Totaux — source de vérité = buildLignesCuisiniste (cohérent avec genererFacture)
+  const htBrutBuild = buildLignesCuisiniste(q, pro).htTotal ?? (q.totalHT || 0);
+  const remiseAmt = Math.round(computeRemiseAmount(htBrutBuild, q.remise) * 100) / 100;
+  const htNetBuild = Math.round((htBrutBuild - remiseAmt) * 100) / 100;
+  const tvaPct = 20; // B2B : toujours 20%
+  const tvaAmt = Math.round(htNetBuild * tvaPct / 100 * 100) / 100;
+  const ttcBuild = Math.round((htNetBuild + tvaAmt) * 100) / 100;
   let totaux = '';
-  if (t.remiseAmt > 0) {
+  if (remiseAmt > 0) {
     const rLabel = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)}%)` : 'Remise commerciale';
-    totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:#a89880;">Sous-total HT</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(t.htBrut)}</span></div>`;
-    totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:var(--gold);">${rLabel}</span><span style="color:var(--gold);font-weight:500;">− ${fmtEUR(t.remiseAmt)}</span></div>`;
+    totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:#a89880;">Sous-total HT</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(htBrutBuild)}</span></div>`;
+    totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:var(--gold);">${rLabel}</span><span style="color:var(--gold);font-weight:500;">− ${fmtEUR(remiseAmt)}</span></div>`;
   }
-  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:#a89880;">Total HT</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(t.htNet)}</span></div>`;
-  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:none;"><span style="color:#a89880;">TVA ${q.tva||20}%</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(t.tvaAmt)}</span></div>`;
+  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:#a89880;">Total HT</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(htNetBuild)}</span></div>`;
+  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:none;"><span style="color:#a89880;">TVA 20%</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(tvaAmt)}</span></div>`;
 
   return `
   <div style="margin-top:16px;background:rgba(255,255,255,.04);border-radius:4px;border:1px solid rgba(255,255,255,.12);overflow:hidden;">
@@ -3194,7 +3202,7 @@ function buildPrixLignesAdmin(q) {
     <div style="padding:4px 14px 8px;">${totaux}</div>
     <div style="padding:10px 14px;background:#1a1814;border-top:1px solid rgba(201,168,76,.3);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#a89880;">Total TTC</span>
-      <span style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:#c9a84c;">${fmtEUR(t.ttc)}</span>
+      <span style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:#c9a84c;">${fmtEUR(ttcBuild)}</span>
     </div>
   </div>`;
 }
@@ -3223,6 +3231,7 @@ async function showQuoteDetail(id) {
           <option value="cloture" ${q.status==='cloture'?'selected':''}>Clôturée</option>
         </select>
         ${q.status === 'commande' ? `<button class="btn btn-sm btn-gold" onclick="genererFacture('${id}')">🧾 Facture</button>` : ''}
+        ${q.status === 'commande' ? `<button class="btn btn-sm btn-secondary" onclick="ouvrirModalAcomptePro('${id}')">💶 Acompte</button>` : ''}
         <button class="btn btn-sm btn-secondary" onclick="exportBonDeCommande('${id}')">📄 BC</button>
         <button class="btn btn-sm btn-danger" onclick="deleteQuote('${id}','admin')" title="Supprimer ce devis">🗑 Supprimer</button>
         <button class="btn btn-sm btn-secondary" onclick="closeDrawer()">✕ Fermer</button>
@@ -3995,8 +4004,7 @@ function displayFilteredQuotes(quotes) {
       </div>
       <div style="text-align:right;">
         ${(() => {
-          const hasCoeff = currentUser?.coeffVenteActif && currentUser?.coeffVente > 1;
-          const htBrut = hasCoeff ? buildLignesCuisiniste(q, currentUser||{}).htTotal : (q.totalHT || null);
+          const htBrut = buildLignesCuisiniste(q, currentUser||{}).htTotal ?? (q.totalHT || null);
           const totaux = htBrut != null ? computeQuoteTotals({...q, totalHT: htBrut}) : null;
           return htBrut != null
             ? `<div class="qc-price">${fmtEUR(totaux.htNet)}</div><div class="qc-date">${totaux.remiseAmt > 0 ? 'Prix HT remisé' : 'Prix HT'}</div>`
@@ -4076,9 +4084,8 @@ function showProQuoteDetail(id) {
     if (px) previewLines += `<div class="summary-row"><span class="key">Pose & installation</span><span class="val">${fmtEUR(px)} HT</span></div>`;
   }
   const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
-  // Pour les cuisinistes avec coeff, recalculer depuis les lignes (cohérence avec PDF)
-  const hasCoeff = currentUser?.coeffVenteActif && currentUser?.coeffVente > 1;
-  const totalHTDisplay = (hasCoeff && htTotalPreview != null) ? htTotalPreview : (q.totalHT != null ? q.totalHT : htTotalPreview);
+  // Toujours utiliser buildLignesCuisiniste pour les comptes pro (source de vérité cohérente avec PDF/facture)
+  const totalHTDisplay = htTotalPreview != null ? htTotalPreview : (q.totalHT != null ? q.totalHT : null);
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
@@ -4843,7 +4850,7 @@ function computePrice() {
   const lines = [];
 
   if (surfacePlans > 0 && prixMat !== null)
-    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m² × ${prixMat} €/m²`, ht: surfacePlans*prixMat });
+    lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m² × ${prixMat} €/m²`, ht: Math.round(surfacePlans*prixMat*100)/100 });
   else if (surfacePlans > 0)
     lines.push({ cat:'Plans de travail', label:`${surfacePlans.toFixed(2)} m²`, ht: null });
 
@@ -4852,7 +4859,7 @@ function computePrice() {
     const epCred = document.getElementById('epaisseur-cred')?.value || ep;
     const epCredBlock = document.getElementById('epaisseur-cred-block');
     const credLabel = (epCredBlock?.style.display !== 'none' && epCred === '12') ? `12 mm` : `${ep} mm`;
-    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m² (${credLabel})`, ht: surfaceCred*(pc||0) });
+    lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m² × ${fmt2(pc)} €/m² (${credLabel})`, ht: Math.round(surfaceCred*(pc||0)*100)/100 });
   } else if (surfaceCred > 0)
     lines.push({ cat:'Crédences', label:`${surfaceCred.toFixed(2)} m²`, ht: null });
 
@@ -5119,8 +5126,8 @@ function submitQuote(action) {
       if (_rT === 'pct' && _rV > 0 && totalHT !== null) _remiseAmt = totalHT * (_rV / 100);
       else if (_rT === 'eur' && _rV > 0 && totalHT !== null) _remiseAmt = Math.min(_rV, totalHT);
     }
-    const _htNet = totalHT !== null ? (totalHT - _remiseAmt) : null;
-    const totalTTC = _htNet !== null ? _htNet * (1 + tva) : null;
+    const _htNet = totalHT !== null ? Math.round((totalHT - _remiseAmt) * 100) / 100 : null;
+    const totalTTC = _htNet !== null ? Math.round(_htNet * (1 + tva) * 100) / 100 : null;
     const datePose = document.getElementById('date-pose').value;
     const newStatus = action === 'commande' ? 'commande' : 'devise';
 
@@ -5172,7 +5179,7 @@ function submitQuote(action) {
     };
 
     // Pour cuisiniste avec coeff : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
-    if (currentUser?.role === 'pro' && currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 && quoteData.totalHT !== null && quoteMode !== 'direct') {
+    if (currentUser?.role === 'pro' && quoteData.totalHT !== null && quoteMode !== 'direct') {
       const { htTotal: htFromLignes } = buildLignesCuisiniste(quoteData, currentUser);
       if (htFromLignes !== null) {
         quoteData.totalHT = Math.round(htFromLignes * 100) / 100;
@@ -5288,20 +5295,22 @@ function buildLignesCuisiniste(q, pro) {
       if (!qty || exclCoeff.includes(key)) return;
       const opt = PRIX.options[key];
       if (!opt) return;
-      const prixCoeff = Math.round(opt.prix * qty * coeff * 100) / 100;
+      const prixCoeff = Math.round((q.optionsPrix?.[key] ?? opt.prix) * qty * coeff * 100) / 100;
       htTotal += prixCoeff;
       optLines += '<tr><td>'+opt.label+' × '+qty+'</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
     });
   }
   if (q.options?.['coupe-onglet-ml'] > 0) {
     const ml = q.options['coupe-onglet-ml']/1000;
-    const prixCoeff = Math.round(PRIX.options['coupe-onglet'].prix * ml * coeff * 100) / 100;
+    const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? PRIX.options['coupe-onglet']?.prix ?? 0;
+    const prixCoeff = Math.round(puCO * ml * coeff * 100) / 100;
     htTotal += prixCoeff;
     optLines += '<tr><td>Coupe d\'onglet — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
   }
   if (q.chant?.type && q.chant?.longueur) {
     const ml = q.chant.longueur/1000;
-    const prixCoeff = Math.round(PRIX.chants[q.chant.type] * ml * coeff * 100) / 100;
+    const puChant = q.chant.pu ?? PRIX.chants[q.chant.type] ?? 0;
+    const prixCoeff = Math.round(puChant * ml * coeff * 100) / 100;
     htTotal += prixCoeff;
     optLines += '<tr><td>Chant '+q.chant.type+' — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
   }
@@ -6468,8 +6477,9 @@ async function genererFacture(quoteId) {
       }
       const opt = PRIX.options[k];
       if (opt) {
-        const puOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * factCoeff * 100) / 100;
-        const htOpt = Math.round(puOpt * v * 100) / 100;
+        const _optCoeff = (k === 'prise-de-cote' || k === 'pose-installation') ? 1 : factCoeff;
+        const puOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * _optCoeff * 100) / 100;
+        const htOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * v * _optCoeff * 100) / 100;
         htBrutFact += htOpt;
         ligneNum++;
         lignesRows += `<tr>
@@ -6514,7 +6524,7 @@ async function genererFacture(quoteId) {
   const htBrut = Math.round(htBrutFact * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaAmt = Math.round(totalHT * (q.tva || 20) / 100 * 100) / 100;
+  const tvaAmt = Math.round(totalHT * 20 / 100 * 100) / 100;
   const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   // Adresse société
@@ -6656,7 +6666,7 @@ async function genererFacture(quoteId) {
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
     ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
-    <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-tva"><td>TVA 20%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
@@ -6701,8 +6711,11 @@ async function genererFacture(quoteId) {
 //  FACTURES D'ACOMPTE — PARTICULIERS
 // ═══════════════════════════════════════════════════════════════
 let _acompteStandaloneQuoteId = null;
+let _acompteStandaloneTvaOverride = null;
 
 function ouvrirModalAcompte(quoteId) {
+  _acompteStandaloneTvaOverride = null;
+
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
@@ -6743,17 +6756,22 @@ async function confirmerAcompteStandalone() {
   errEl.style.display = 'none';
   document.getElementById('modal-acompte-standalone').classList.remove('active');
   const numFA = await getNextAcompteNum();
-  await genererFactureAcompte(_acompteStandaloneQuoteId, montant, numFA);
+  await genererFactureAcompte(_acompteStandaloneQuoteId, montant, numFA, _acompteStandaloneTvaOverride);
 }
 
-async function genererFactureAcompte(quoteId, montantTTC, numFA) {
+function ouvrirModalAcomptePro(quoteId) {
+  ouvrirModalAcompte(quoteId);
+  _acompteStandaloneTvaOverride = 20;
+}
+
+async function genererFactureAcompte(quoteId, montantTTC, numFA, tvaOverride) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
   if (!q) return;
   const s = getSociete();
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const tvaRate = (q.tva || 10) / 100;
+  const tvaRate = (tvaOverride != null ? tvaOverride : (q.tva || 10)) / 100;
   const montantHT = Math.round((montantTTC / (1 + tvaRate)) * 100) / 100;
   const montantTVA = Math.round((montantTTC - montantHT) * 100) / 100;
   const addrClient = [q.client?.adresse, [q.client?.cp, q.client?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -6815,7 +6833,7 @@ async function genererFactureAcompte(quoteId, montantTTC, numFA) {
 </table>
 <table class="totals">
   <tr><td>Sous-total HT</td><td style="text-align:right;">${fmtEUR(montantHT)}</td></tr>
-  <tr><td>TVA ${q.tva || 10}%</td><td style="text-align:right;">${fmtEUR(montantTVA)}</td></tr>
+  <tr><td>TVA ${tvaOverride != null ? tvaOverride : (q.tva || 10)}%</td><td style="text-align:right;">${fmtEUR(montantTVA)}</td></tr>
   <tr><td>Total TTC</td><td style="text-align:right;">${fmtEUR(montantTTC)}</td></tr>
 </table>
 ${s.iban ? `<div style="margin-top:16px;font-size:8.5pt;color:#7a6f62;padding:10px 14px;background:#f5efe6;border-radius:3px;">Virement : IBAN ${s.iban}${s.bic ? ' &nbsp;·&nbsp; BIC : ' + s.bic : ''}</div>` : ''}
