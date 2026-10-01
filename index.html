@@ -5172,7 +5172,7 @@ function submitQuote(action) {
     };
 
     // Pour cuisiniste avec coeff : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
-    if (currentUser?.role === 'pro' && currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 && quoteData.totalHT !== null) {
+    if (currentUser?.role === 'pro' && currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 && quoteData.totalHT !== null && quoteMode !== 'direct') {
       const { htTotal: htFromLignes } = buildLignesCuisiniste(quoteData, currentUser);
       if (htFromLignes !== null) {
         quoteData.totalHT = Math.round(htFromLignes * 100) / 100;
@@ -6930,16 +6930,15 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   else if (q.livraison==='etage'&&PRIX.pose?.etage) htAutres+=PRIX.pose.etage;
   if (q.lignesCustom?.length>0) q.lignesCustom.forEach(l=>{const pu=parseFloat(l.pu)||0;if(pu)htAutres+=pu;});
 
-  const htMatTotal = q.totalHT ? Math.round((q.totalHT - htAutres) * 100) / 100 : null;
+  // Prix direct au m² : prix sauvegardé au devis ou recalculé depuis tarif courant
+  const _pCourant = q.prixMatVente ?? getColorisPrixDirect(mat,coloris,ep,finition) ?? getColorisPrice(mat,coloris,ep,finition);
+  const _cCourant = _pCourant !== null && _pCourant !== undefined ? (getPrixCredFromQuote(q, _pCourant) || _pCourant) : null;
+  const htPlansCalc = (surfPlans > 0 && _pCourant != null) ? Math.round(surfPlans * _pCourant * 100) / 100 : null;
+  const htCredCalc  = (surfCred  > 0 && _cCourant != null) ? Math.round(surfCred  * _cCourant * 100) / 100 : null;
+  const htMatTotal  = (htPlansCalc !== null || htCredCalc !== null) ? ((htPlansCalc || 0) + (htCredCalc || 0)) : null;
 
-  // Répartition plans / crédences via le ratio des surfaces (prix courant sert uniquement au ratio)
-  const _pCourant = getColorisPrixDirect(mat,coloris,ep,finition) || getColorisPrice(mat,coloris,ep,finition) || 1;
-  const _cCourant = getPrixCredFromQuote(q, _pCourant) || _pCourant;
-  const _wP = surfPlans * _pCourant, _wC = surfCred * _cCourant;
-  const ratioPlans = (_wP+_wC) > 0 ? _wP/(_wP+_wC) : 1;
-
-  if (surfPlans > 0 && htMatTotal !== null) {
-    const htPlans = surfCred > 0 ? Math.round(htMatTotal * ratioPlans * 100) / 100 : htMatTotal;
+  if (surfPlans > 0 && htPlansCalc !== null) {
+    const htPlans = htPlansCalc;
     const prixPlan = Math.round(htPlans / surfPlans * 100) / 100;
     let dimDetail = '';
     q.plans?.filter(p=>p.larg&&p.long).forEach((p,i)=>{
@@ -6956,8 +6955,8 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   }
 
   // 2. Crédences
-  if (surfCred > 0 && htMatTotal !== null) {
-    const htCred = surfPlans > 0 ? Math.round(htMatTotal * (1-ratioPlans) * 100) / 100 : htMatTotal;
+  if (surfCred > 0 && htCredCalc !== null) {
+    const htCred = htCredCalc;
     const prixCred = Math.round(htCred / surfCred * 100) / 100;
     const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
     const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3+' mm' : ''}`.trim();
@@ -7066,7 +7065,9 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   }
 
   // Totaux : on prend les montants exacts du devis validé, sans recalcul
-  const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
+  const htBrut = htMatTotal !== null
+    ? Math.round((htMatTotal + htAutres) * 100) / 100
+    : Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
