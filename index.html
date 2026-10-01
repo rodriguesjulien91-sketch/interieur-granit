@@ -8971,7 +8971,7 @@ function biblio_label(mat) {
 function biblio_aspect(finition) {
   const f = (finition || '').toUpperCase();
   const isPoli = /LUCID|POLI|LUCE|LUX|GLOSS|BRILLANT|MIRROR|SHINY/.test(f);
-  const isMat  = /\bNAT\b|NATURE|VELLU|VELVET|\bMAT\b|MATE\b|MATTE|SOFT|TEXTU|SABL|BROSS|HONED|GRIP|BUSH|SILK|SATIN/.test(f);
+  const isMat  = /\bNAT\b|NATURE|NATURAL|VELLU|VELVET|\bMAT\b|MATE\b|MATTE|SOFT|TEXTU|SABL|BROSS|HONED|GRIP|BUSH|SILK|SATIN|BOCCIARD|AGED|FLAMED|LEATHER|ANTICATO|LAPATO/.test(f);
   if (isPoli && isMat) return 'both';
   if (isPoli) return 'poli';
   if (isMat)  return 'mat';
