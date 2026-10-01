@@ -5171,6 +5171,16 @@ function submitQuote(action) {
       acompte2: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a2')?.value) || null) : null
     };
 
+    // Pour cuisiniste avec coeff : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
+    if (currentUser?.role === 'pro' && currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 && quoteData.totalHT !== null) {
+      const { htTotal: htFromLignes } = buildLignesCuisiniste(quoteData, currentUser);
+      if (htFromLignes !== null) {
+        quoteData.totalHT = Math.round(htFromLignes * 100) / 100;
+        const htNetSave = quoteData.totalHT - computeRemiseAmount(quoteData.totalHT, quoteData.remise);
+        quoteData.totalTTC = Math.round(htNetSave * (1 + tva) * 100) / 100;
+      }
+    }
+
     let savedQuoteId;
     if (currentEditingQuoteId) {
       const idx = db.quotes.findIndex(x => x.id === currentEditingQuoteId);
