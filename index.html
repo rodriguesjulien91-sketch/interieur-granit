@@ -405,6 +405,7 @@ textarea { resize: vertical; min-height: 80px; }
     <div class="header-right">
       <span class="admin-badge">Admin</span>
       <button class="btn btn-sm btn-secondary" onclick="openSocieteModal()" style="font-size:.75rem;padding:6px 14px;">⚙ Ma société</button>
+      <button class="btn btn-sm btn-secondary" onclick="migrerTotauxProQuotes()" style="font-size:.75rem;padding:6px 14px;" title="Recalcule et sauvegarde totalHT/TTC pour tous les devis pro">🔄 Recalculer totaux</button>
       <div class="user-chip">
         <div class="user-chip-avatar" id="admin-avatar">J</div>
         <span class="user-chip-name" id="admin-name">Julien</span>
@@ -8844,6 +8845,54 @@ function showCatalogueToast(msg) {
   el.textContent = msg;
   el.style.opacity = '1';
   setTimeout(() => { el.style.opacity = '0'; }, 2800);
+}
+
+// ─── MIGRATION : Recalcul totalHT/TTC pour tous les devis pro ────────────────
+async function migrerTotauxProQuotes() {
+  if (!confirm('Recalculer et sauvegarder les totaux HT/TTC de tous les devis cuisinistes ?\nCette opération met à jour Firestore. Elle peut être relancée sans risque.')) return;
+
+  await aLoad(); await fLoad();
+  const db = getDB();
+  const proQuotes = db.quotes.filter(q => q.proEmail && q.type !== 'direct');
+
+  let updated = 0, errors = 0;
+  const batch = [];
+
+  for (const q of proQuotes) {
+    try {
+      const pro = db.users[q.proEmail] || {};
+      const { htTotal } = buildLignesCuisiniste(q, pro);
+      if (htTotal == null) continue;
+      const htBrut = Math.round(htTotal * 100) / 100;
+      const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+      const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
+      const totalTTC = Math.round(htNet * 1.20 * 100) / 100;
+
+      if (Math.abs((q.totalHT || 0) - htBrut) < 0.001 && Math.abs((q.totalTTC || 0) - totalTTC) < 0.001) continue;
+
+      batch.push({ id: q.id, totalHT: htBrut, totalTTC });
+    } catch(e) { errors++; }
+  }
+
+  if (batch.length === 0) {
+    alert('Tous les devis pro sont déjà à jour. Aucune modification nécessaire.');
+    return;
+  }
+
+  const confirmMsg = `${batch.length} devis à mettre à jour${errors > 0 ? ` (${errors} erreurs ignorées)` : ''}.\n\nConfirmer la sauvegarde dans Firestore ?`;
+  if (!confirm(confirmMsg)) return;
+
+  for (const { id, totalHT, totalTTC } of batch) {
+    try {
+      await fbDb.collection('quotes').doc(id).update({ totalHT, totalTTC });
+      const q = db.quotes.find(x => x.id === id);
+      if (q) { q.totalHT = totalHT; q.totalTTC = totalTTC; }
+      updated++;
+    } catch(e) { errors++; }
+  }
+
+  alert(`Migration terminée.\n✓ ${updated} devis mis à jour${errors > 0 ? `\n✗ ${errors} erreurs` : ''}`);
+  renderAdminQuotesTable();
 }
 </script>
 <div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
