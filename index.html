@@ -2725,11 +2725,15 @@ function computeRemiseAmount(totalHT, remise) {
   return 0;
 }
 function computeQuoteTotals(q) {
-  const customTotal = (q.lignesCustom||[]).reduce((s,l) => s + (parseFloat(l.pu)||0), 0);
-  const htBrut = Math.round(((q.totalHT || 0) + customTotal) * 100) / 100;
+  // q.totalHT inclut déjà lignesCustom — ne pas les rajouter
+  const htBrut = Math.round((q.totalHT || 0) * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaRate = (q.tva || 20) / 100;
+  // Cuisiniste sans coeff → TVA 20% toujours (B2B)
+  const db = getDB();
+  const pro = db?.users?.[q.proEmail] || {};
+  const isProSansCoeff = q.proEmail && q.type !== 'direct' && !(pro.coeffVenteActif && pro.coeffVente > 1);
+  const tvaRate = isProSansCoeff ? 0.20 : (q.tva || 10) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
   return { htBrut, remiseAmt, htNet, tvaAmt, ttc, tvaRate };
@@ -3178,7 +3182,13 @@ function buildPrixLignesAdmin(q) {
   const pro = db.users[q.proEmail] || {};
   const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
   const surf = (q.surfacePlans||0) + (q.surfaceCred||0);
-  const prixEp = getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
+  // Prix figé à la création du devis en priorité (cohérence avec le PDF)
+  // Direct/particulier : fallback sur getColorisPrixDirect (avec coeff direct) comme exportDevisParticulier
+  const isDirectAdmin = !q.proEmail || q.type === 'direct';
+  const prixEp = q.prixMatVente
+    || (isDirectAdmin ? getColorisPrixDirect(q.materiau, q.coloris, q.epaisseur, q.finition) : null)
+    || getColorisPrice(q.materiau, q.coloris, q.epaisseur, q.finition)
+    || 0;
 
   const row = (label, val) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:.82rem;"><span style="color:#a89880;">${label}</span><span style="color:#fdfaf5;font-weight:500;">${val}</span></div>`;
 
@@ -3257,11 +3267,15 @@ function buildPrixLignesAdmin(q) {
 
   if (!lines) return '';
 
-  // Totaux — source de vérité = buildLignesCuisiniste (cohérent avec genererFacture)
-  const htBrutBuild = buildLignesCuisiniste(q, pro).htTotal ?? (q.totalHT || 0);
+  // Totaux — source de vérité selon type de devis
+  const isDirectParticulier = !q.proEmail || q.type === 'direct';
+  const htBrutBuild = isDirectParticulier
+    ? (computeHtBrutParticulier(q) ?? (q.totalHT || 0))
+    : (buildLignesCuisiniste(q, pro).htTotal ?? (q.totalHT || 0));
   const remiseAmt = Math.round(computeRemiseAmount(htBrutBuild, q.remise) * 100) / 100;
   const htNetBuild = Math.round((htBrutBuild - remiseAmt) * 100) / 100;
-  const tvaPct = 20; // B2B : toujours 20%
+  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
+  const tvaPct = (pro.coeffVenteActif && pro.coeffVente > 1) ? (q.tva || 10) : 20;
   const tvaAmt = Math.round(htNetBuild * tvaPct / 100 * 100) / 100;
   const ttcBuild = Math.round((htNetBuild + tvaAmt) * 100) / 100;
   let totaux = '';
@@ -3271,7 +3285,7 @@ function buildPrixLignesAdmin(q) {
     totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:var(--gold);">${rLabel}</span><span style="color:var(--gold);font-weight:500;">− ${fmtEUR(remiseAmt)}</span></div>`;
   }
   totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);"><span style="color:#a89880;">Total HT</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(htNetBuild)}</span></div>`;
-  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:none;"><span style="color:#a89880;">TVA 20%</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(tvaAmt)}</span></div>`;
+  totaux += `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:none;"><span style="color:#a89880;">TVA ${tvaPct}%</span><span style="color:#fdfaf5;font-weight:500;">${fmtEUR(tvaAmt)}</span></div>`;
 
   return `
   <div style="margin-top:16px;background:rgba(255,255,255,.04);border-radius:4px;border:1px solid rgba(255,255,255,.12);overflow:hidden;">
@@ -5430,7 +5444,9 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const s = getSociete();
 
   const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
-  const tvaRate = (q.tva || 20) / 100;
+  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
+  const tvaPct = (pro.coeffVenteActif && pro.coeffVente > 1) ? (q.tva || 10) : 20;
+  const tvaRate = tvaPct / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
@@ -5579,6 +5595,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
 
 function exportDevisCuisiniste(q, pro) {
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
+
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
   const ref = q.client?.ref || ('DEV-' + q.id.slice(-6).toUpperCase());
   const logoHtml = pro.logo ? '<img src="'+pro.logo+'" style="max-height:60px;max-width:140px;object-fit:contain;">' : '';
@@ -5588,7 +5605,9 @@ function exportDevisCuisiniste(q, pro) {
   const s = getSociete();
 
   const { prixMatCoeff, optLines, htTotal } = buildLignesCuisiniste(q, pro);
-  const tvaRate = (q.tva || 20) / 100;
+  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
+  const tvaPct = (pro.coeffVenteActif && pro.coeffVente > 1) ? (q.tva || 10) : 20;
+  const tvaRate = tvaPct / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htTotal, q.remise) * 100) / 100;
   const htNet = Math.round((htTotal - remiseAmt) * 100) / 100;
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
@@ -5997,6 +6016,56 @@ ${optRows ? `<div class="sec">
 // ═══════════════════════════════════════════════════════════════
 //  EXPORT DEVIS PARTICULIER (PDF via impression navigateur)
 // ═══════════════════════════════════════════════════════════════
+// Calcul HT brut pour devis particulier — même logique que exportDevisParticulier
+// Source de vérité partagée par buildPrixLignesAdmin et migrerTotaux
+function computeHtBrutParticulier(q) {
+  const prixMatVente = q.prixMatVente || getColorisPrixDirect(q.materiau, q.coloris, q.epaisseur, q.finition);
+  if (!prixMatVente) return null;
+  const prixCred = getPrixCredFromQuote(q, prixMatVente);
+  let ht = 0;
+  // Plans — arrondi par plan (identique au PDF)
+  if ((q.plans||[]).some(p => p.larg && p.long)) {
+    q.plans.filter(p => p.larg && p.long).forEach(p => {
+      const s = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
+      if (s > 0) ht += Math.round(s * prixMatVente * 100) / 100;
+    });
+  } else if (q.surfacePlans > 0) {
+    ht += Math.round(q.surfacePlans * prixMatVente * 100) / 100;
+  }
+  // Crédences — arrondi par crédence
+  if ((q.credences||[]).some(c => c.larg && c.long)) {
+    q.credences.filter(c => c.larg && c.long).forEach(c => {
+      const s = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
+      if (s > 0) ht += Math.round(s * prixCred * 100) / 100;
+    });
+  } else if (q.surfaceCred > 0) {
+    ht += Math.round(q.surfaceCred * prixCred * 100) / 100;
+  }
+  // Chant
+  if (q.chant?.type && q.chant?.longueur > 0) {
+    const pu = q.chant.pu || PRIX.chants?.[q.chant.type] || 0;
+    if (pu) ht += Math.round((q.chant.longueur / 1000) * pu * 100) / 100;
+  }
+  // Options (sans coeff — devis particulier)
+  if (q.options) {
+    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
+      if (k === 'coupe-onglet-ml') {
+        const opt = PRIX.options['coupe-onglet'];
+        if (opt) { const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix; ht += (v / 1000) * pu; }
+        return;
+      }
+      const opt = PRIX.options[k];
+      if (opt) { const pu = q.optionsPrix?.[k] ?? opt.prix; ht += pu * v; }
+    });
+  }
+  // Livraison
+  const livrPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
+  if (livrPrix) ht += livrPrix;
+  // Lignes custom
+  (q.lignesCustom || []).forEach(l => { const pu = parseFloat(l.pu) || 0; if (pu) ht += pu; });
+  return ht > 0 ? ht : null;
+}
+
 async function exportDevisParticulier(quoteId) {
   await vLoad();
   const db = getDB();
@@ -6191,7 +6260,8 @@ async function exportDevisParticulier(quoteId) {
   }
 
   // Totaux calculés depuis les lignes affichées (pas depuis q.totalHT)
-  const tvaLabel = q.tva || 20;
+  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
+  const tvaLabel = (factCoeff > 1) ? (q.tva || 10) : 20;
   const tvaRate = tvaLabel / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrutPdf, q.remise) * 100) / 100;
   const htNet = Math.round((htBrutPdf - remiseAmt) * 100) / 100;
@@ -9138,33 +9208,45 @@ async function renderProCatalogue() {
 
 // ─── MIGRATION : Recalcul totalHT/TTC pour tous les devis pro ────────────────
 async function migrerTotauxProQuotes() {
-  if (!confirm('Recalculer et sauvegarder les totaux HT/TTC de tous les devis cuisinistes ?\nCette opération met à jour Firestore. Elle peut être relancée sans risque.')) return;
+  if (!confirm('Recalculer et sauvegarder les totaux HT/TTC de tous les devis (cuisinistes + particuliers) ?\nCette opération met à jour Firestore. Elle peut être relancée sans risque.')) return;
 
   await aLoad(); await fLoad();
   const db = getDB();
-  const proQuotes = db.quotes.filter(q => q.proEmail && q.type !== 'direct');
 
   let updated = 0, errors = 0;
   const batch = [];
 
-  for (const q of proQuotes) {
+  for (const q of db.quotes) {
     try {
-      const pro = db.users[q.proEmail] || {};
-      const { htTotal } = buildLignesCuisiniste(q, pro);
-      if (htTotal == null) continue;
-      const htBrut = Math.round(htTotal * 100) / 100;
-      const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
-      const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
-      const totalTTC = Math.round(htNet * 1.20 * 100) / 100;
+      const isDirectParticulier = !q.proEmail || q.type === 'direct';
+      let htBrut, totalTTC;
+
+      if (isDirectParticulier) {
+        const ht = computeHtBrutParticulier(q);
+        if (ht == null) continue;
+        htBrut = Math.round(ht * 100) / 100;
+        const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+        const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
+        const tvaRate = (q.tva || 10) / 100;
+        totalTTC = Math.round(htNet * (1 + tvaRate) * 100) / 100;
+      } else {
+        const pro = db.users[q.proEmail] || {};
+        const { htTotal } = buildLignesCuisiniste(q, pro);
+        if (htTotal == null) continue;
+        htBrut = Math.round(htTotal * 100) / 100;
+        const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
+        const htNet = Math.round((htBrut - remiseAmt) * 100) / 100;
+        const tvaPct = (pro.coeffVenteActif && pro.coeffVente > 1) ? (q.tva || 10) : 20;
+        totalTTC = Math.round(htNet * (1 + tvaPct / 100) * 100) / 100;
+      }
 
       if (Math.abs((q.totalHT || 0) - htBrut) < 0.001 && Math.abs((q.totalTTC || 0) - totalTTC) < 0.001) continue;
-
       batch.push({ id: q.id, totalHT: htBrut, totalTTC });
     } catch(e) { errors++; }
   }
 
   if (batch.length === 0) {
-    alert('Tous les devis pro sont déjà à jour. Aucune modification nécessaire.');
+    alert('Tous les devis sont déjà à jour. Aucune modification nécessaire.');
     return;
   }
 
