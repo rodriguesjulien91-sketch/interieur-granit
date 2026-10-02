@@ -6260,8 +6260,8 @@ async function exportDevisParticulier(quoteId) {
   }
 
   // Totaux calculés depuis les lignes affichées (pas depuis q.totalHT)
-  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
-  const tvaLabel = (factCoeff > 1) ? (q.tva || 10) : 20;
+  // Devis particulier = toujours B2C → TVA selon q.tva (10% ou 20%)
+  const tvaLabel = q.tva || 10;
   const tvaRate = tvaLabel / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrutPdf, q.remise) * 100) / 100;
   const htNet = Math.round((htBrutPdf - remiseAmt) * 100) / 100;
@@ -7100,8 +7100,27 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   // Prix direct au m² : prix sauvegardé au devis ou recalculé depuis tarif courant
   const _pCourant = q.prixMatVente ?? getColorisPrixDirect(mat,coloris,ep,finition) ?? getColorisPrice(mat,coloris,ep,finition);
   const _cCourant = _pCourant !== null && _pCourant !== undefined ? (getPrixCredFromQuote(q, _pCourant) || _pCourant) : null;
-  const htPlansCalc = (surfPlans > 0 && _pCourant != null) ? Math.round(surfPlans * _pCourant * 100) / 100 : null;
-  const htCredCalc  = (surfCred  > 0 && _cCourant != null) ? Math.round(surfCred  * _cCourant * 100) / 100 : null;
+  // Calcul per-plan/per-crédence (source de vérité = même logique que devis PDF)
+  let htPlansCalc = null;
+  if ((q.plans||[]).some(p => p.larg && p.long) && _pCourant != null) {
+    htPlansCalc = 0;
+    q.plans.filter(p => p.larg && p.long).forEach(p => {
+      const s = (parseFloat(p.larg) * parseFloat(p.long)) / 1e6;
+      if (s > 0) htPlansCalc += Math.round(s * _pCourant * 100) / 100;
+    });
+  } else if (surfPlans > 0 && _pCourant != null) {
+    htPlansCalc = Math.round(surfPlans * _pCourant * 100) / 100;
+  }
+  let htCredCalc = null;
+  if ((q.credences||[]).some(c => c.larg && c.long) && _cCourant != null) {
+    htCredCalc = 0;
+    q.credences.filter(c => c.larg && c.long).forEach(c => {
+      const s = (parseFloat(c.larg) * parseFloat(c.long)) / 1e6;
+      if (s > 0) htCredCalc += Math.round(s * _cCourant * 100) / 100;
+    });
+  } else if (surfCred > 0 && _cCourant != null) {
+    htCredCalc = Math.round(surfCred * _cCourant * 100) / 100;
+  }
   const htMatTotal  = (htPlansCalc !== null || htCredCalc !== null) ? ((htPlansCalc || 0) + (htCredCalc || 0)) : null;
 
   if (surfPlans > 0 && htPlansCalc !== null) {
