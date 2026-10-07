@@ -3517,7 +3517,7 @@ function renderDevisDirectTab() {
       <div class="direct-quote-card" onclick="toggleDirectQuoteDetail('${q.id}', this)" id="dqc-${q.id}">
         <div>
           <div style="font-weight:500;margin-bottom:4px;">${clientName}</div>
-          <div style="font-size:.82rem;color:var(--stone-light);">${matLabel} · ${date} · ${prixHT}</div>
+          <div style="font-size:.82rem;color:var(--stone-light);">${matLabel} · ${date} · ${prixHT}${typeof q.coeffDirect === 'number' ? ' · coeff × ' + fmt2(q.coeffDirect) : ''}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;" onclick="event.stopPropagation()">
           ${statusTag(q.status)}
@@ -3651,6 +3651,7 @@ function buildDirectQuoteDetail(quoteId) {
           <div class="direct-detail-row"><span class="dk">Coloris</span><span class="dv">${q.coloris||'—'}</span></div>
           <div class="direct-detail-row"><span class="dk">Finition</span><span class="dv">${q.finition||'—'}</span></div>
           <div class="direct-detail-row"><span class="dk">Épaisseur</span><span class="dv">${q.epaisseur ? q.epaisseur+' mm' : '—'}</span></div>
+          <div class="direct-detail-row"><span class="dk">Coeff de vente</span><span class="dv">${typeof q.coeffDirect === 'number' ? '× ' + fmt2(q.coeffDirect) : 'non enregistré'}</span></div>
           <div class="direct-detail-row"><span class="dk">Surface totale</span><span class="dv">${surfTotal} m²</span></div>
         </div>
       </div>
@@ -5295,6 +5296,7 @@ function submitQuote(action) {
       totalHT: totalHT !== null ? totalHT : null,
       totalTTC: totalTTC !== null ? totalTTC : null,
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
+      coeffDirect: isDirect ? getCoeffDirect() : null,
       status: newStatus,
       type: isDirect ? 'direct' : 'pro',
       lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined,
