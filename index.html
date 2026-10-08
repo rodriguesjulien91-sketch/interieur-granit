@@ -2435,7 +2435,13 @@ function piecesDuDevis(q) {
   return pieces.filter(p => p.a > 0 && p.b > 0);
 }
 // Placement guillotine, rotation 90° autorisée ; essaie plusieurs ordres et garde le moins de tranches
+const calepCache = {};
 function calepiner(pieces, dims) {
+  const cle = JSON.stringify([pieces, dims.l, dims.w]);
+  if (!calepCache[cle]) calepCache[cle] = calepinerCalcul(pieces, dims);
+  return calepCache[cle];
+}
+function calepinerCalcul(pieces, dims) {
   const K = CALEP_TRAIT, B = CALEP_BORDURE;
   const W = dims.l - 2 * B + K, H = dims.w - 2 * B + K;
   const fits = (w, h, r) => w <= r.w && h <= r.h;
@@ -2453,50 +2459,86 @@ function calepiner(pieces, dims) {
     const seg = Math.ceil(g.long / g.n);
     return Array.from({ length: g.n }, (_, i) => ({ a: seg, b: g.court, label: g.p.label + String.fromCharCode(97 + i) }));
   };
-  const ordres = [
-    (x, y) => y.a * y.b - x.a * x.b,
-    (x, y) => Math.max(y.a, y.b) - Math.max(x.a, x.b),
-    (x, y) => y.a - x.a,
-    (x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b)
-  ];
-  const ranger = aPlacer => {
-  let best = null;
-  for (const ordre of ordres) {
-    for (const coupeCourte of [true, false]) {
-      const bins = [];
-      for (const p of [...aPlacer].sort(ordre)) {
-        let choix = null;
-        const essai = (bin, bi) => bin.free.forEach((r, ri) => {
-          [[p.a + K, p.b + K, false], [p.b + K, p.a + K, true]].forEach(([w, h, rot]) => {
-            if (!fits(w, h, r)) return;
-            const score = Math.min(r.w - w, r.h - h);
-            if (!choix || score < choix.score) choix = { bi, ri, w, h, rot, score };
-          });
-        });
-        bins.forEach(essai);
-        if (!choix) {
-          bins.push({ free: [{ x: 0, y: 0, w: W, h: H }], placed: [] });
-          essai(bins[bins.length - 1], bins.length - 1);
-        }
-        const bin = bins[choix.bi], r = bin.free[choix.ri];
-        bin.placed.push({ x: r.x + B, y: r.y + B, w: choix.w - K, h: choix.h - K, label: p.label, rot: choix.rot });
-        bin.free.splice(choix.ri, 1);
-        const restW = r.w - choix.w, restH = r.h - choix.h;
-        const horizontal = coupeCourte ? restW < restH : restW >= restH;
-        const nouveaux = horizontal
-          ? [{ x: r.x + choix.w, y: r.y, w: restW, h: choix.h }, { x: r.x, y: r.y + choix.h, w: r.w, h: restH }]
-          : [{ x: r.x + choix.w, y: r.y, w: restW, h: r.h }, { x: r.x, y: r.y + choix.h, w: choix.w, h: restH }];
-        nouveaux.filter(n => n.w > K && n.h > K).forEach(n => bin.free.push(n));
-      }
-      if (!best || bins.length < best.length) best = bins;
+  const surfUtile = (W - K) * (H - K);
+  const plancher = Math.ceil(groupes.reduce((s, g) => s + g.long * g.court, 0) / surfUtile - 1e-9);
+
+  // MaxRects (placement en bas à gauche) : accepte les dispositions en quinconce, pas seulement les coupes guillotine
+  const poser = (bin, x, y, w, h) => {
+    const nf = [];
+    for (const r of bin.free) {
+      if (x >= r.x + r.w || x + w <= r.x || y >= r.y + r.h || y + h <= r.y) { nf.push(r); continue; }
+      if (x > r.x) nf.push({ x: r.x, y: r.y, w: x - r.x, h: r.h });
+      if (x + w < r.x + r.w) nf.push({ x: x + w, y: r.y, w: r.x + r.w - x - w, h: r.h });
+      if (y > r.y) nf.push({ x: r.x, y: r.y, w: r.w, h: y - r.y });
+      if (y + h < r.y + r.h) nf.push({ x: r.x, y: y + h, w: r.w, h: r.y + r.h - y - h });
     }
-  }
-  return best || [];
+    bin.free = nf.filter((a, i) => !nf.some((b, j) => j !== i && a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h && (j < i || a.x !== b.x || a.y !== b.y || a.w !== b.w || a.h !== b.h)));
+  };
+  const emplacement = (bin, w, h) => {
+    let best = null;
+    for (const r of bin.free) {
+      if (w > r.w || h > r.h) continue;
+      if (!best || r.y + h < best.y + best.h || (r.y + h === best.y + best.h && r.x < best.x)) best = { x: r.x, y: r.y, w, h };
+    }
+    return best;
+  };
+  // sens : null = meilleure orientation choisie pièce par pièce, sinon masque de rotation imposé
+  const essayer = (ordre, sens) => {
+    const bins = [];
+    let complet = true;
+    ordre.forEach((p, i) => {
+      const orients = sens === null ? [[p.a + K, p.b + K], [p.b + K, p.a + K]] : [((sens >> i) & 1) ? [p.b + K, p.a + K] : [p.a + K, p.b + K]];
+      let choix = null;
+      for (const bin of [...bins, null]) {
+        const cible = bin || { free: [{ x: 0, y: 0, w: W, h: H }], placed: [] };
+        for (const [w, h] of orients) {
+          const e = emplacement(cible, w, h);
+          if (e && (!choix || e.y + e.h < choix.e.y + choix.e.h)) choix = { bin: cible, e, neuf: !bin };
+        }
+        if (choix) break;
+      }
+      // Orientation imposée impossible même sur une tranche neuve : essai rejeté
+      if (!choix) { complet = false; return; }
+      if (choix.neuf) bins.push(choix.bin);
+      const { x, y, w, h } = choix.e;
+      poser(choix.bin, x, y, w, h);
+      choix.bin.placed.push({ x: x + B, y: y + B, w: w - K, h: h - K, label: p.label });
+    });
+    return complet ? bins : null;
+  };
+  const permutations = a => a.length < 2 ? [a] : a.flatMap((x, i) => permutations([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
+  const ranger = aPlacer => {
+    let best = null;
+    const garder = bins => {
+      if (!bins) return false;
+      if (!best || bins.length < best.length) best = bins;
+      return best.length <= plancher;
+    };
+    if (aPlacer.length <= 5) {
+      // Peu de pièces : on essaie tous les ordres et toutes les rotations
+      for (const ordre of permutations(aPlacer))
+        for (let sens = 0; sens < (1 << ordre.length); sens++)
+          if (garder(essayer(ordre, sens))) return best;
+    } else {
+      const tris = [
+        (x, y) => y.a * y.b - x.a * x.b,
+        (x, y) => Math.max(y.a, y.b) - Math.max(x.a, x.b),
+        (x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b)
+      ];
+      for (const t of tris) if (garder(essayer([...aPlacer].sort(t), null))) return best;
+      // Ordres pseudo-aléatoires reproductibles (même résultat à chaque ouverture)
+      let graine = 12345;
+      const alea = () => (graine = (graine * 1103515245 + 12345) % 2147483648) / 2147483648;
+      for (let k = 0; k < 400; k++) {
+        const o = [...aPlacer];
+        for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(alea() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+        if (garder(essayer(o, null))) return best;
+      }
+    }
+    return best || [];
   };
   let best = ranger(groupes.flatMap(morceaux));
   // Optimisation : couper une crédence en 2 avec jonction si ça fait gagner une tranche (pas plus, pour l'esthétique)
-  const surfUtile = (W - K) * (H - K);
-  const plancher = Math.ceil(groupes.reduce((s, g) => s + g.long * g.court, 0) / surfUtile - 1e-9);
   let progres = true;
   while (progres && best.length > plancher) {
     progres = false;
