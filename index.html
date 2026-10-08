@@ -8095,12 +8095,12 @@ function updateMargeCell(cellId, r) {
   const cell = document.getElementById(cellId);
   if (!cell) return;
   if (r.prixAchat && r.prixVente) {
-    const surfEx = r.mat.startsWith('gc-') ? 1 : Math.round(surfaceTranche(r.mat) * 100) / 100;
+    const surfEx = r.mat.startsWith('gc-') ? 1 : surfaceTranche(r.mat);
     const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
     const pv = r.prixVente * surfEx;
     const pct = ((pv - cout) / pv * 100);
     cell.textContent = pct.toFixed(0) + '%';
-    cell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
+    cell.title = 'Sur ' + surfEx.toFixed(2) + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
     cell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
   } else {
     cell.textContent = '—';
@@ -8359,12 +8359,12 @@ async function renderAchatsTab() {
       mCell.id = 'marge_' + eid;
       mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
       if (r.prixAchat && r.prixVente) {
-        const surfEx = r.mat.startsWith('gc-') ? 1 : Math.round(surfaceTranche(r.mat) * 100) / 100;
+        const surfEx = r.mat.startsWith('gc-') ? 1 : surfaceTranche(r.mat);
         const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
         const pv = r.prixVente * surfEx;
         const pct = ((pv - cout) / pv * 100);
         mCell.textContent = pct.toFixed(0) + '%';
-        mCell.title = 'Sur ' + surfEx + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
+        mCell.title = 'Sur ' + surfEx.toFixed(2) + 'm² : PV=' + pv.toFixed(0) + '€ / Coût=' + cout.toFixed(0) + '€';
         mCell.style.color = pct >= 30 ? '#2d7a4f' : pct >= 15 ? '#b87333' : '#c0392b';
       } else { mCell.textContent = '—'; mCell.style.color = 'var(--stone-light)'; }
       row.appendChild(mCell);
