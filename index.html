@@ -2406,6 +2406,12 @@ function getColorisPrixDirect(mat, coloris, ep, finition) {
   return Math.round(base * getCoeffDirect());
 }
 
+// Coût d'achat catalogue complet : surface d'une tranche fournisseur (m²)
+const SURFACE_TRANCHE = 4.2;
+// Petite tolérance : 8,4 / 4,2 en flottant peut donner 2,0000000001 et compter une tranche de trop
+function nbTranchesPour(surface) { return Math.ceil(surface / SURFACE_TRANCHE - 1e-9); }
+function chutePour(surface, nbTranches) { return Math.max(0, Math.round((nbTranches * SURFACE_TRANCHE - surface) * 1e4) / 1e4); }
+
 // Surfaces facturées : chaque pièce arrondie à 0,01 m² pour que Qté × PU = Total HT.
 // Les devis clôturés (factures émises) gardent l'ancien calcul exact pour rester figés.
 function isFige(q) { return q?.status === 'cloture'; }
@@ -3096,8 +3102,8 @@ function buildCoutsSection(q) {
   } else {
     coutMat = calcCoutAchat(q.materiau, surf, pa);
   }
-  const nbTranches = isGC ? null : Math.ceil(surf / 5);
-  const chute = isGC ? 0 : (nbTranches * 5) - surf;
+  const nbTranches = isGC ? null : nbTranchesPour(surf);
+  const chute = isGC ? 0 : chutePour(surf, nbTranches);
 
   const lignes = [];
   if (q.options) {
@@ -3162,7 +3168,7 @@ function buildCoutsSection(q) {
     h += ln('Matiere utile - '+surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(surf*pa));
     if (chute > 0) {
       h += ln('Chute - '+chute.toFixed(2)+' m2 x '+(pa*0.605).toFixed(2)+' EUR/m2 (60,5%)', fmtEUR(chute*pa*0.605));
-      h += ln(nbTranches+' tranche(s) x 5 m2 - Cout materiau total', fmtEUR(coutMat));
+      h += ln(nbTranches+' tranche(s) x '+String(SURFACE_TRANCHE).replace('.', ',')+' m2 - Cout materiau total', fmtEUR(coutMat));
     }
   }
   if (lignes.length > 0) {
@@ -7916,8 +7922,8 @@ function aGetPrix(mat, coloris, finition, epaisseur) {
 
 // Calcule le coût d'achat réel selon le type de gamme
 // Gamme courte (gc-*) : coût = surface × prix_m2
-// Catalogue complet   : coût = surface × prix_m2 + chute × (prix_m2 × 35%)
-//   avec chute = (nb_tranches × 5) - surface, tranche = 5 m²
+// Catalogue complet   : coût = surface × prix_m2 + chute × (prix_m2 × 60,5%)
+//   avec chute = (nb_tranches × SURFACE_TRANCHE) - surface
 function calcCoutAchat(mat, surface, prixM2) {
   if (!prixM2 || !surface) return null;
   const isGC = mat.startsWith('gc-');
@@ -7925,11 +7931,8 @@ function calcCoutAchat(mat, surface, prixM2) {
     // Gamme courte : prix simple au m²
     return surface * prixM2;
   } else {
-    // Catalogue complet : calcul par tranches de 5 m²
-    const TRANCHE = 5;
-    const nbTranches = Math.ceil(surface / TRANCHE);
-    const totalTranche = nbTranches * TRANCHE;
-    const chute = totalTranche - surface;
+    const nbTranches = nbTranchesPour(surface);
+    const chute = chutePour(surface, nbTranches);
     // Matière utile au prix plein + chute à 60,5% du prix (remise ~39,5% fournisseur)
     return (surface * prixM2) + (chute * prixM2 * 0.605);
   }
