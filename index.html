@@ -2439,14 +2439,27 @@ function calepiner(pieces, dims) {
   const K = CALEP_TRAIT, B = CALEP_BORDURE;
   const W = dims.l - 2 * B + K, H = dims.w - 2 * B + K;
   const fits = (w, h, r) => w <= r.w && h <= r.h;
-  const tropGrandes = pieces.filter(p => !fits(p.a + K, p.b + K, { w: W, h: H }) && !fits(p.b + K, p.a + K, { w: W, h: H }));
-  const aPlacer = pieces.filter(p => !tropGrandes.includes(p));
+  const tranche = { w: W, h: H };
+  const tropGrandes = [], groupes = [];
+  pieces.forEach(p => {
+    const long = Math.max(p.a, p.b), court = Math.min(p.a, p.b);
+    if (court + K > H) { tropGrandes.push(p); return; }
+    // Pièce trop longue : coupée d'office en morceaux égaux avec joint
+    const nMin = Math.ceil((long + K) / W - 1e-9);
+    groupes.push({ p, long, court, n: nMin, nMin });
+  });
+  const morceaux = g => {
+    if (g.n === 1) return [g.p];
+    const seg = Math.ceil(g.long / g.n);
+    return Array.from({ length: g.n }, (_, i) => ({ a: seg, b: g.court, label: g.p.label + String.fromCharCode(97 + i) }));
+  };
   const ordres = [
     (x, y) => y.a * y.b - x.a * x.b,
     (x, y) => Math.max(y.a, y.b) - Math.max(x.a, x.b),
     (x, y) => y.a - x.a,
     (x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b)
   ];
+  const ranger = aPlacer => {
   let best = null;
   for (const ordre of ordres) {
     for (const coupeCourte of [true, false]) {
@@ -2478,10 +2491,27 @@ function calepiner(pieces, dims) {
       if (!best || bins.length < best.length) best = bins;
     }
   }
-  const tranches = (best || []).map(b => b.placed);
+  return best || [];
+  };
+  let best = ranger(groupes.flatMap(morceaux));
+  // Optimisation : couper une crédence en 2 avec jonction si ça fait gagner une tranche (pas plus, pour l'esthétique)
+  const surfUtile = (W - K) * (H - K);
+  const plancher = Math.ceil(groupes.reduce((s, g) => s + g.long * g.court, 0) / surfUtile - 1e-9);
+  let progres = true;
+  while (progres && best.length > plancher) {
+    progres = false;
+    for (const g of groupes.filter(g => g.p.label.startsWith('C') && g.n < 2)) {
+      g.n++;
+      const essai = ranger(groupes.flatMap(morceaux));
+      if (essai.length < best.length) { best = essai; progres = true; break; }
+      g.n--;
+    }
+  }
+  const coupees = groupes.filter(g => g.n > 1).map(g => g.p.label + ' en ' + g.n + (g.n > g.nMin ? ' (pour gagner une tranche)' : ''));
+  const tranches = best.map(b => b.placed);
   const surfPieces = pieces.reduce((s, p) => s + p.a * p.b / 1e6, 0);
   const nb = tranches.length + tropGrandes.length;
-  return { tranches, nb, tropGrandes: tropGrandes.map(p => p.label), utilisation: nb ? surfPieces / (nb * dims.l * dims.w / 1e6) : 0 };
+  return { tranches, nb, tropGrandes: tropGrandes.map(p => p.label), coupees, utilisation: nb ? surfPieces / (nb * dims.l * dims.w / 1e6) : 0 };
 }
 // Nombre de tranches retenu pour le coût d'achat : forcé > calepinage > surface ÷ surface de tranche
 function trancheInfo(q, surf) {
@@ -2499,10 +2529,11 @@ function schemaTranche(placed, dims) {
   let svg = `<svg viewBox="0 0 ${dims.l} ${dims.w}" style="width:100%;height:auto;display:block;margin:6px 0;" xmlns="http://www.w3.org/2000/svg">`;
   svg += `<rect x="0" y="0" width="${dims.l}" height="${dims.w}" fill="#f2c4bd" stroke="#c0392b" stroke-width="12"/>`;
   placed.forEach(p => {
-    const dimTxt = `${p.w} × ${p.h}`;
-    const fs = Math.min(lbl, p.h / 2.6, p.w / 6);
+    const txt = `${p.label} · ${p.w} × ${p.h}`;
+    // Taille de police bornée par la largeur de la pièce pour que le texte ne déborde pas
+    const fs = Math.min(lbl, p.h / 2.6, (p.w * 0.9) / (txt.length * 0.58));
     svg += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#7fbf8e" stroke="#2d7a4f" stroke-width="8"/>`;
-    svg += `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle" fill="#123d22" font-family="Arial">${p.label} · ${dimTxt}${p.rot ? ' ↻' : ''}</text>`;
+    svg += `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle" fill="#123d22" font-family="Arial">${txt}</text>`;
   });
   return svg + '</svg>';
 }
@@ -3313,12 +3344,13 @@ function buildCalepinageBlock(q, ti) {
   } else {
     const c = ti.calep;
     h += '<div style="'+SM+'">Calcul automatique : <strong style="color:#1a1814;">'+c.nb+' tranche(s)</strong> · utilisation '+Math.round(c.utilisation*100)+' % · trait de scie '+CALEP_TRAIT+' mm, bordure '+CALEP_BORDURE+' mm, rotation 90° autorisée.</div>';
-    if (c.tropGrandes.length) h += '<div style="'+SM+'color:#c0392b;">Pièce(s) plus grande(s) que la tranche : '+c.tropGrandes.join(', ')+' (comptée(s) une tranche chacune, non dessinée(s)).</div>';
+    if (c.coupees.length) h += '<div style="'+SM+'color:#b87333;">Pièce(s) plus longue(s) que la tranche, coupée(s) avec joint : '+c.coupees.map(x => x + ' morceaux').join(', ')+'.</div>';
+    if (c.tropGrandes.length) h += '<div style="'+SM+'color:#c0392b;">Pièce(s) plus large(s) que la tranche : '+c.tropGrandes.join(', ')+' (comptée(s) une tranche chacune, non dessinée(s)).</div>';
     c.tranches.forEach((placed, i) => {
       h += '<div style="'+SM+'margin-top:8px;">Tranche '+(i+1)+' — '+placed.map(p => p.label).join(', ')+'</div>';
       h += schemaTranche(placed, ti.dims);
     });
-    h += '<div style="'+SM+'"><span style="display:inline-block;width:10px;height:10px;background:#7fbf8e;border:1px solid #2d7a4f;vertical-align:middle;"></span> pièces &nbsp; <span style="display:inline-block;width:10px;height:10px;background:#f2c4bd;border:1px solid #c0392b;vertical-align:middle;"></span> chutes &nbsp; ↻ pièce tournée</div>';
+    h += '<div style="'+SM+'"><span style="display:inline-block;width:10px;height:10px;background:#7fbf8e;border:1px solid #2d7a4f;vertical-align:middle;"></span> pièces &nbsp; <span style="display:inline-block;width:10px;height:10px;background:#f2c4bd;border:1px solid #c0392b;vertical-align:middle;"></span> chutes</div>';
   }
   h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;'+SM+'">';
   h += '<span>Nombre de tranches retenu :</span>';
