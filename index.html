@@ -595,6 +595,7 @@ textarea { resize: vertical; min-height: 80px; }
         Saisissez vos prix d'achat fournisseur HT en €/m² pour chaque coloris et finition.
         La marge sera calculée automatiquement sur chaque devis.
       </p>
+      <div id="tranches-dims" style="margin-bottom:20px;"></div>
       <div id="achats-stats" style="font-size:.82rem;color:var(--stone-light);margin-bottom:16px;"></div>
       <div id="achats-table"></div>
 
@@ -2409,8 +2410,102 @@ function getColorisPrixDirect(mat, coloris, ep, finition) {
 // Coût d'achat catalogue complet : surface d'une tranche fournisseur (m²)
 const SURFACE_TRANCHE = 4.2;
 // Petite tolérance : 8,4 / 4,2 en flottant peut donner 2,0000000001 et compter une tranche de trop
-function nbTranchesPour(surface) { return Math.ceil(surface / SURFACE_TRANCHE - 1e-9); }
-function chutePour(surface, nbTranches) { return Math.max(0, Math.round((nbTranches * SURFACE_TRANCHE - surface) * 1e4) / 1e4); }
+function nbTranchesPour(surface, st) { return Math.ceil(surface / (st || SURFACE_TRANCHE) - 1e-9); }
+function chutePour(surface, nbTranches, st) { return Math.max(0, Math.round((nbTranches * (st || SURFACE_TRANCHE) - surface) * 1e4) / 1e4); }
+
+// ─── Calepinage (coût d'achat uniquement) ───────────────────────
+const CALEP_TRAIT = 5;     // trait de scie (mm)
+const CALEP_BORDURE = 20;  // bordure écartée sur le pourtour de la tranche (mm)
+function getTrancheDims(mat) {
+  const d = appCache._tranches?.[mat];
+  return (d && d.l > 0 && d.w > 0) ? d : null;
+}
+function surfaceTranche(mat) {
+  const d = getTrancheDims(mat);
+  return d ? d.l * d.w / 1e6 : SURFACE_TRANCHE;
+}
+// null si une catégorie avec surface n'a pas ses dimensions détaillées
+function piecesDuDevis(q) {
+  const pieces = [];
+  const plans = (q.plans || []).filter(p => p.larg && p.long);
+  const creds = (q.credences || []).filter(c => c.larg && c.long);
+  if ((q.surfacePlans > 0 && !plans.length) || (q.surfaceCred > 0 && !creds.length)) return null;
+  plans.forEach((p, i) => pieces.push({ a: parseFloat(p.long), b: parseFloat(p.larg), label: 'P' + (i + 1) }));
+  creds.forEach((c, i) => pieces.push({ a: parseFloat(c.long), b: parseFloat(c.larg), label: 'C' + (i + 1) }));
+  return pieces.filter(p => p.a > 0 && p.b > 0);
+}
+// Placement guillotine, rotation 90° autorisée ; essaie plusieurs ordres et garde le moins de tranches
+function calepiner(pieces, dims) {
+  const K = CALEP_TRAIT, B = CALEP_BORDURE;
+  const W = dims.l - 2 * B + K, H = dims.w - 2 * B + K;
+  const fits = (w, h, r) => w <= r.w && h <= r.h;
+  const tropGrandes = pieces.filter(p => !fits(p.a + K, p.b + K, { w: W, h: H }) && !fits(p.b + K, p.a + K, { w: W, h: H }));
+  const aPlacer = pieces.filter(p => !tropGrandes.includes(p));
+  const ordres = [
+    (x, y) => y.a * y.b - x.a * x.b,
+    (x, y) => Math.max(y.a, y.b) - Math.max(x.a, x.b),
+    (x, y) => y.a - x.a,
+    (x, y) => Math.min(y.a, y.b) - Math.min(x.a, x.b)
+  ];
+  let best = null;
+  for (const ordre of ordres) {
+    for (const coupeCourte of [true, false]) {
+      const bins = [];
+      for (const p of [...aPlacer].sort(ordre)) {
+        let choix = null;
+        const essai = (bin, bi) => bin.free.forEach((r, ri) => {
+          [[p.a + K, p.b + K, false], [p.b + K, p.a + K, true]].forEach(([w, h, rot]) => {
+            if (!fits(w, h, r)) return;
+            const score = Math.min(r.w - w, r.h - h);
+            if (!choix || score < choix.score) choix = { bi, ri, w, h, rot, score };
+          });
+        });
+        bins.forEach(essai);
+        if (!choix) {
+          bins.push({ free: [{ x: 0, y: 0, w: W, h: H }], placed: [] });
+          essai(bins[bins.length - 1], bins.length - 1);
+        }
+        const bin = bins[choix.bi], r = bin.free[choix.ri];
+        bin.placed.push({ x: r.x + B, y: r.y + B, w: choix.w - K, h: choix.h - K, label: p.label, rot: choix.rot });
+        bin.free.splice(choix.ri, 1);
+        const restW = r.w - choix.w, restH = r.h - choix.h;
+        const horizontal = coupeCourte ? restW < restH : restW >= restH;
+        const nouveaux = horizontal
+          ? [{ x: r.x + choix.w, y: r.y, w: restW, h: choix.h }, { x: r.x, y: r.y + choix.h, w: r.w, h: restH }]
+          : [{ x: r.x + choix.w, y: r.y, w: restW, h: r.h }, { x: r.x, y: r.y + choix.h, w: choix.w, h: restH }];
+        nouveaux.filter(n => n.w > K && n.h > K).forEach(n => bin.free.push(n));
+      }
+      if (!best || bins.length < best.length) best = bins;
+    }
+  }
+  const tranches = (best || []).map(b => b.placed);
+  const surfPieces = pieces.reduce((s, p) => s + p.a * p.b / 1e6, 0);
+  const nb = tranches.length + tropGrandes.length;
+  return { tranches, nb, tropGrandes: tropGrandes.map(p => p.label), utilisation: nb ? surfPieces / (nb * dims.l * dims.w / 1e6) : 0 };
+}
+// Nombre de tranches retenu pour le coût d'achat : forcé > calepinage > surface ÷ surface de tranche
+function trancheInfo(q, surf) {
+  if ((q.materiau || '').startsWith('gc-')) return null;
+  const dims = getTrancheDims(q.materiau);
+  const st = surfaceTranche(q.materiau);
+  const pieces = dims ? piecesDuDevis(q) : null;
+  const calep = pieces && pieces.length ? calepiner(pieces, dims) : null;
+  const nbAuto = calep ? calep.nb : nbTranchesPour(surf, st);
+  const forced = q.nbTranchesForce > 0;
+  return { dims, st, calep, nbAuto, nb: forced ? q.nbTranchesForce : nbAuto, forced };
+}
+function schemaTranche(placed, dims) {
+  const lbl = Math.max(dims.w / 9, 60);
+  let svg = `<svg viewBox="0 0 ${dims.l} ${dims.w}" style="width:100%;height:auto;display:block;margin:6px 0;" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect x="0" y="0" width="${dims.l}" height="${dims.w}" fill="#f2c4bd" stroke="#c0392b" stroke-width="12"/>`;
+  placed.forEach(p => {
+    const dimTxt = `${p.w} × ${p.h}`;
+    const fs = Math.min(lbl, p.h / 2.6, p.w / 6);
+    svg += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="#7fbf8e" stroke="#2d7a4f" stroke-width="8"/>`;
+    svg += `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle" fill="#123d22" font-family="Arial">${p.label} · ${dimTxt}${p.rot ? ' ↻' : ''}</text>`;
+  });
+  return svg + '</svg>';
+}
 
 // Surfaces facturées : chaque pièce arrondie à 0,01 m² pour que Qté × PU = Total HT.
 // Les devis clôturés (factures émises) gardent l'ancien calcul exact pour rester figés.
@@ -2571,7 +2666,9 @@ async function loadAppData() {
     appCache._societe  = s.societe  ?? { raisonSociale: 'Intérieur Granit' };
     appCache._factures = { counter: s.factureCounter ?? 0, year: s.factureYear ?? 0 };
     appCache._acomptes = { counter: s.acompteCounter ?? 0, year: s.acompteYear ?? 0 };
+    appCache._tranches = s.tranchesDims || {};
   } else {
+    appCache._tranches = {};
     appCache._coeff    = 1.00;
     appCache._societe  = { raisonSociale: 'Intérieur Granit' };
     appCache._factures = { counter: 0, year: 0 };
@@ -2882,7 +2979,7 @@ function renderQuotesTable() {
         if (!pa) return '<span style="color:var(--stone-light);">—</span>';
         const surf = surfPlansQ(q) + surfCredQ(q);
         // Coût matériau (formule tranches catalogue ou GC)
-        let cout = calcCoutAchat(q.materiau, surf, pa);
+        let cout = calcCoutAchat(q.materiau, surf, pa, trancheInfo(q, surf)?.nb);
         // Prix de vente = HT net après remise éventuelle
         // Coût façonnage (options + chant + coupe d'onglet)
         // Pose, livraison, prise de cote = 100% marge → pas de coût achat
@@ -3086,10 +3183,11 @@ function buildCoutsSection(q) {
   if (!(currentUser && currentUser.role === 'admin')) return '';
   const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
   if (!pa) return '';
-  const surfPlans = q.surfacePlans || 0;
-  const surfCred  = q.surfaceCred  || 0;
+  const surfPlans = surfPlansQ(q);
+  const surfCred  = surfCredQ(q);
   const surf = surfPlans + surfCred;
   const isGC = (q.materiau||'').startsWith('gc-');
+  const ti = trancheInfo(q, surf);
 
   // Coût matériau : crédences en 12mm ont un PA différent
   const paCred12 = (isGC && q.epaisseurCred === '12') ? aGetPrix(q.materiau, q.coloris, q.finition, '12') : null;
@@ -3100,10 +3198,10 @@ function buildCoutsSection(q) {
     const coutCred  = calcCoutAchat(q.materiau, surfCred,  paCred12);
     coutMat = (coutPlans || 0) + (coutCred || 0);
   } else {
-    coutMat = calcCoutAchat(q.materiau, surf, pa);
+    coutMat = calcCoutAchat(q.materiau, surf, pa, ti?.nb);
   }
-  const nbTranches = isGC ? null : nbTranchesPour(surf);
-  const chute = isGC ? 0 : chutePour(surf, nbTranches);
+  const nbTranches = isGC ? null : ti.nb;
+  const chute = isGC ? 0 : chutePour(surf, nbTranches, ti.st);
 
   const lignes = [];
   if (q.options) {
@@ -3148,7 +3246,7 @@ function buildCoutsSection(q) {
   const DK = 'color:#7a6f62;'; const DV = 'color:#1a1814;font-weight:500;';
   const ln = (l, v) => '<div style="'+R+'"><span style="'+DK+'">'+l+'</span><span style="'+DV+'">'+v+'</span></div>';
 
-  let h = '<div style="margin-top:18px;padding:14px 16px;background:#f8f5ef;border-radius:4px;border:1px solid #ede6d6;">';
+  let h = '<div id="couts-'+q.id+'" style="margin-top:18px;padding:14px 16px;background:#f8f5ef;border-radius:4px;border:1px solid #ede6d6;">';
   h += '<div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#c9a84c;margin-bottom:12px;font-weight:600;">Analyse des couts fournisseurs</div>';
   h += '<div style="font-size:.72rem;color:#7a6f62;margin-bottom:4px;font-weight:600;">Materiau</div>';
   if (isGC) {
@@ -3166,10 +3264,12 @@ function buildCoutsSection(q) {
     }
   } else {
     h += ln('Matiere utile - '+surf.toFixed(2)+' m2 x '+pa.toFixed(2)+' EUR/m2', fmtEUR(surf*pa));
+    const trancheLbl = ti.dims ? ti.dims.l+' × '+ti.dims.w+' mm' : String(SURFACE_TRANCHE).replace('.', ',')+' m2';
     if (chute > 0) {
       h += ln('Chute - '+chute.toFixed(2)+' m2 x '+(pa*0.605).toFixed(2)+' EUR/m2 (60,5%)', fmtEUR(chute*pa*0.605));
-      h += ln(nbTranches+' tranche(s) x '+String(SURFACE_TRANCHE).replace('.', ',')+' m2 - Cout materiau total', fmtEUR(coutMat));
     }
+    h += ln(nbTranches+' tranche(s) de '+trancheLbl+' - Cout materiau total', fmtEUR(coutMat));
+    h += buildCalepinageBlock(q, ti);
   }
   if (lignes.length > 0) {
     h += '<div style="font-size:.72rem;color:#7a6f62;margin:10px 0 4px;font-weight:600;">Faconnage</div>';
@@ -3201,6 +3301,44 @@ function buildCoutsSection(q) {
   return h;
 }
 
+
+function buildCalepinageBlock(q, ti) {
+  const SM = 'font-size:.74rem;color:#7a6f62;';
+  let h = '<div style="margin:10px 0 4px;padding:10px 12px;background:#fff;border:1px solid #ede6d6;border-radius:4px;">';
+  h += '<div style="font-size:.72rem;color:#7a6f62;font-weight:600;margin-bottom:6px;">Calepinage</div>';
+  if (!ti.dims) {
+    h += '<div style="'+SM+'">Dimensions de tranche non renseignées pour ce matériau (onglet Prix d\'achat) : calcul sur '+String(SURFACE_TRANCHE).replace('.', ',')+' m² par tranche.</div>';
+  } else if (!ti.calep) {
+    h += '<div style="'+SM+'">Dimensions des pièces non détaillées sur ce devis : nombre de tranches estimé sur la surface.</div>';
+  } else {
+    const c = ti.calep;
+    h += '<div style="'+SM+'">Calcul automatique : <strong style="color:#1a1814;">'+c.nb+' tranche(s)</strong> · utilisation '+Math.round(c.utilisation*100)+' % · trait de scie '+CALEP_TRAIT+' mm, bordure '+CALEP_BORDURE+' mm, rotation 90° autorisée.</div>';
+    if (c.tropGrandes.length) h += '<div style="'+SM+'color:#c0392b;">Pièce(s) plus grande(s) que la tranche : '+c.tropGrandes.join(', ')+' (comptée(s) une tranche chacune, non dessinée(s)).</div>';
+    c.tranches.forEach((placed, i) => {
+      h += '<div style="'+SM+'margin-top:8px;">Tranche '+(i+1)+' — '+placed.map(p => p.label).join(', ')+'</div>';
+      h += schemaTranche(placed, ti.dims);
+    });
+    h += '<div style="'+SM+'"><span style="display:inline-block;width:10px;height:10px;background:#7fbf8e;border:1px solid #2d7a4f;vertical-align:middle;"></span> pièces &nbsp; <span style="display:inline-block;width:10px;height:10px;background:#f2c4bd;border:1px solid #c0392b;vertical-align:middle;"></span> chutes &nbsp; ↻ pièce tournée</div>';
+  }
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;'+SM+'">';
+  h += '<span>Nombre de tranches retenu :</span>';
+  h += '<input type="number" min="1" step="1" value="'+(ti.forced ? ti.nb : '')+'" placeholder="'+ti.nbAuto+' (auto)" style="width:90px;padding:4px 6px;font-size:.78rem;" onchange="setNbTranchesForce(\''+q.id+'\', this.value)">';
+  h += ti.forced ? '<span style="color:#b87333;">forcé (vider le champ pour revenir à l\'automatique)</span>' : '<span>automatique</span>';
+  h += '</div></div>';
+  return h;
+}
+
+async function setNbTranchesForce(quoteId, val) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const n = parseInt(val, 10);
+  q.nbTranchesForce = n > 0 ? n : null;
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ nbTranchesForce: q.nbTranchesForce });
+  } catch (e) { alert('Erreur sauvegarde : ' + e.message); }
+  const el = document.getElementById('couts-' + quoteId);
+  if (el) el.outerHTML = buildCoutsSection(q);
+}
 
 function buildPrixLignesAdmin(q) {
   const db = getDB();
@@ -7924,15 +8062,16 @@ function aGetPrix(mat, coloris, finition, epaisseur) {
 // Gamme courte (gc-*) : coût = surface × prix_m2
 // Catalogue complet   : coût = surface × prix_m2 + chute × (prix_m2 × 60,5%)
 //   avec chute = (nb_tranches × SURFACE_TRANCHE) - surface
-function calcCoutAchat(mat, surface, prixM2) {
+function calcCoutAchat(mat, surface, prixM2, nbTranchesImpose) {
   if (!prixM2 || !surface) return null;
   const isGC = mat.startsWith('gc-');
   if (isGC) {
     // Gamme courte : prix simple au m²
     return surface * prixM2;
   } else {
-    const nbTranches = nbTranchesPour(surface);
-    const chute = chutePour(surface, nbTranches);
+    const st = surfaceTranche(mat);
+    const nbTranches = nbTranchesImpose > 0 ? nbTranchesImpose : nbTranchesPour(surface, st);
+    const chute = chutePour(surface, nbTranches, st);
     // Matière utile au prix plein + chute à 60,5% du prix (remise ~39,5% fournisseur)
     return (surface * prixM2) + (chute * prixM2 * 0.605);
   }
@@ -7956,7 +8095,7 @@ function updateMargeCell(cellId, r) {
   const cell = document.getElementById(cellId);
   if (!cell) return;
   if (r.prixAchat && r.prixVente) {
-    const surfEx = r.mat.startsWith('gc-') ? 1 : 5;
+    const surfEx = r.mat.startsWith('gc-') ? 1 : Math.round(surfaceTranche(r.mat) * 100) / 100;
     const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
     const pv = r.prixVente * surfEx;
     const pct = ((pv - cout) / pv * 100);
@@ -7969,8 +8108,39 @@ function updateMargeCell(cellId, r) {
   }
 }
 
+function renderTranchesDims() {
+  const el = document.getElementById('tranches-dims');
+  if (!el) return;
+  const mats = { ...(PRIX.materiaux || {}), ...(typeof customMaterials !== 'undefined' ? customMaterials : {}) };
+  const rows = Object.entries(mats).filter(([k]) => !k.startsWith('gc-')).map(([k, m]) => {
+    const d = appCache._tranches?.[k] || {};
+    const inp = (f, v) => `<input type="number" min="0" step="1" value="${v || ''}" placeholder="mm" style="width:90px;padding:5px 7px;font-size:.8rem;" onchange="saveTrancheDim('${k}','${f}',this.value)">`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cream-dark);font-size:.82rem;flex-wrap:wrap;">
+      <span style="min-width:200px;color:var(--stone);">${m.label || k}</span>
+      ${inp('l', d.l)} <span style="color:var(--stone-light);">×</span> ${inp('w', d.w)} <span style="color:var(--stone-light);">mm</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<details ${Object.keys(appCache._tranches || {}).length ? '' : 'open'} style="background:var(--cream);border:1px solid var(--cream-dark);border-radius:4px;padding:12px 16px;">
+    <summary style="cursor:pointer;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:600;">Dimensions des tranches par matériau (calepinage)</summary>
+    <p style="font-size:.78rem;color:var(--stone-light);margin:8px 0;">Longueur × largeur d'une tranche fournisseur. Sert uniquement au calcul du coût d'achat. Sans dimensions, le calcul reste sur ${String(SURFACE_TRANCHE).replace('.', ',')} m² par tranche.</p>
+    ${rows}
+  </details>`;
+}
+
+async function saveTrancheDim(mat, champ, val) {
+  const n = parseFloat(String(val).replace(',', '.'));
+  const t = appCache._tranches = appCache._tranches || {};
+  t[mat] = { ...(t[mat] || {}), [champ]: n > 0 ? n : null };
+  if (!t[mat].l && !t[mat].w) delete t[mat];
+  try {
+    // update() remplace uniquement le champ tranchesDims, sans toucher au reste des réglages
+    await fbDb.collection('settings').doc('app').update({ tranchesDims: t });
+  } catch (e) { alert('Erreur sauvegarde : ' + e.message); }
+}
+
 async function renderAchatsTab() {
   await aLoad();
+  renderTranchesDims();
   const matFilterEl = document.getElementById('achats-mat-filter');
   const matF    = (matFilterEl || {}).value || 'all';
   const statusF = (document.getElementById('achats-status-filter') || {}).value || 'all';
@@ -8189,7 +8359,7 @@ async function renderAchatsTab() {
       mCell.id = 'marge_' + eid;
       mCell.style.cssText = 'font-size:.75rem;padding:4px 6px;font-weight:500;';
       if (r.prixAchat && r.prixVente) {
-        const surfEx = r.mat.startsWith('gc-') ? 1 : 5;
+        const surfEx = r.mat.startsWith('gc-') ? 1 : Math.round(surfaceTranche(r.mat) * 100) / 100;
         const cout = calcCoutAchat(r.mat, surfEx, r.prixAchat);
         const pv = r.prixVente * surfEx;
         const pct = ((pv - cout) / pv * 100);
