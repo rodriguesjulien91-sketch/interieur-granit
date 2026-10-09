@@ -3431,6 +3431,20 @@ function buildPrixLignesAdmin(q) {
 
   let lines = '';
 
+  if (!isDirectAdmin) {
+    // Cuisiniste : mêmes lignes que bon de commande / facture (prix validés si commandé)
+    lignesCuisiniste(q, pro).forEach(l => {
+      const qte = l.unite ? `${fmt2(l.qty)} ${l.unite} × ${fmtEUR(l.pu)}/${l.unite}` : (l.qty > 1 ? `× ${l.qty}` : '');
+      lines += row(`${l.label}${qte ? ' — ' + qte : ''}`, `${fmtEUR(l.ht)} HT`);
+      if (l.mat && l.label.startsWith('Plans')) (q.plans||[]).filter(p => p.larg && p.long).forEach((p, i) => {
+        lines += row(`&nbsp;&nbsp;↳ Plan ${i+1} : ${p.larg} × ${p.long} mm`, `${surfPiece(p.larg, p.long, isFige(q)).toFixed(2)} m²`);
+      });
+      if (l.mat && l.label.startsWith('Crédences')) (q.credences||[]).filter(c => c.larg && c.long).forEach((c, i) => {
+        lines += row(`&nbsp;&nbsp;↳ Crédence ${i+1} : ${c.larg} × ${c.long} mm`, `${surfPiece(c.larg, c.long, isFige(q)).toFixed(2)} m²`);
+      });
+    });
+    if (isValide(q)) lines += `<div style="font-size:.72rem;color:#a89880;padding:6px 0 2px;">Prix validés à la commande</div>`;
+  } else {
   // Matériau
   if (prixEp && surf) {
     const puClient = Math.round(prixEp * coeff * 100) / 100;
@@ -3501,6 +3515,7 @@ function buildPrixLignesAdmin(q) {
     if (!pu) return;
     lines += row(l.label||'Prestation complémentaire', `${fmtEUR(Math.round(pu * coeff * 100) / 100)} HT`);
   });
+  }
 
   if (!lines) return '';
 
@@ -4356,65 +4371,16 @@ function showProQuoteDetail(id) {
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ');
   const surfNum = surfPlansQ(q) + surfCredQ(q);
   const surf = surfNum.toFixed(2);
-  const coeff = (currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1;
-  const prixEpBase = getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = Math.round(prixEpBase * coeff * 100) / 100;
-  const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
-
-  const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
+  // Mêmes lignes que le bon de commande et la facture (prix validés si commandé)
   let previewLines = '';
-  const _sP = surfPlansQ(q), _sC = surfCredQ(q);
-  if (_sP > 0) {
-    const htPlans = Math.round(_sP * prixPlanCoeff * 100) / 100;
-    previewLines += `<div class="summary-row"><span class="key">Plans — ${_sP.toFixed(2)} m² × ${fmt2(prixPlanCoeff)} €/m²</span><span class="val">${fmtEUR(htPlans)} HT</span></div>`;
-    if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
-      q.plans.filter(p=>p.larg&&p.long).forEach((p,i) => {
-        previewLines += `<div class="summary-row" style="padding-left:12px;opacity:.75;"><span class="key">↳ P${i+1} : ${p.larg} × ${p.long} mm</span><span class="val">${surfPiece(p.larg, p.long, isFige(q)).toFixed(2)} m²</span></div>`;
-      });
-    }
-  }
-  if (_sC > 0) {
-    const htCred = Math.round(_sC * prixCredCoeff * 100) / 100;
-    const epCredLabel = q.epaisseurCred === '12' ? ' (12 mm)' : '';
-    previewLines += `<div class="summary-row"><span class="key">Crédences${epCredLabel} — ${_sC.toFixed(2)} m² × ${fmt2(prixCredCoeff)} €/m²</span><span class="val">${fmtEUR(htCred)} HT</span></div>`;
-    if (q.credences?.filter(c=>c.larg&&c.long).length > 0) {
-      q.credences.filter(c=>c.larg&&c.long).forEach((c,i) => {
-        previewLines += `<div class="summary-row" style="padding-left:12px;opacity:.75;"><span class="key">↳ C${i+1} : ${c.larg} × ${c.long} mm</span><span class="val">${surfPiece(c.larg, c.long, isFige(q)).toFixed(2)} m²</span></div>`;
-      });
-    }
-  }
-  if (!previewLines) {
-    const prixMat = Math.round(prixEpBase * coeff * surfNum * 100) / 100;
-    previewLines = `<div class="summary-row"><span class="key">Matériau — ${surfNum.toFixed(2)} m²</span><span class="val">${fmtEUR(prixMat)} HT</span></div>`;
-  }
-  if (q.options) {
-    Object.entries(q.options).forEach(([key, qty]) => {
-      if (!qty || exclCoeff.includes(key)) return;
-      const opt = PRIX.options[key]; if (!opt) return;
-      const mt = Math.round(opt.prix * qty * coeff * 100) / 100;
-      previewLines += `<div class="summary-row"><span class="key">${opt.label} × ${qty}</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
+  lignesCuisiniste(q, currentUser||{}).forEach(l => {
+    const qte = l.unite ? ` — ${fmt2(l.qty)} ${l.unite} × ${fmtEUR(l.pu)}/${l.unite}` : (l.qty > 1 ? ` × ${l.qty}` : '');
+    previewLines += `<div class="summary-row"><span class="key">${l.label}${qte}</span><span class="val">${fmtEUR(l.ht)} HT</span></div>`;
+    const pieces = l.mat ? (l.label.startsWith('Plans') ? [q.plans, 'P'] : [q.credences, 'C']) : null;
+    if (pieces) (pieces[0]||[]).filter(x => x.larg && x.long).forEach((x, i) => {
+      previewLines += `<div class="summary-row" style="padding-left:12px;opacity:.75;"><span class="key">↳ ${pieces[1]}${i+1} : ${x.larg} × ${x.long} mm</span><span class="val">${surfPiece(x.larg, x.long, isFige(q)).toFixed(2)} m²</span></div>`;
     });
-  }
-  if (q.options?.['coupe-onglet-ml'] > 0) {
-    const ml = q.options['coupe-onglet-ml']/1000;
-    const mt = Math.round(PRIX.options['coupe-onglet'].prix * ml * coeff * 100) / 100;
-    previewLines += `<div class="summary-row"><span class="key">Coupe d'onglet — ${ml.toFixed(2)} ml</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
-  }
-  if (q.chant?.type && q.chant?.longueur) {
-    const ml = q.chant.longueur/1000;
-    const mt = Math.round((PRIX.chants?.[q.chant.type]||0) * ml * coeff * 100) / 100;
-    previewLines += `<div class="summary-row"><span class="key">Chant ${q.chant.type} — ${ml.toFixed(2)} ml</span><span class="val">${fmtEUR(mt)} HT</span></div>`;
-  }
-  const livrPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
-  if (livrPrix) previewLines += `<div class="summary-row"><span class="key">Livraison / accès chantier</span><span class="val">${fmtEUR(livrPrix)} HT</span></div>`;
-  if (q.options?.['prise-de-cote'] > 0) {
-    const px = PRIX.options['prise-de-cote']?.prix || 0;
-    if (px) previewLines += `<div class="summary-row"><span class="key">Prise de cote / gabarit</span><span class="val">${fmtEUR(px)} HT</span></div>`;
-  }
-  if (q.options?.['pose-installation'] > 0) {
-    const px = PRIX.options['pose-installation']?.prix || 0;
-    if (px) previewLines += `<div class="summary-row"><span class="key">Pose & installation</span><span class="val">${fmtEUR(px)} HT</span></div>`;
-  }
+  });
   const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
   // Toujours utiliser buildLignesCuisiniste pour les comptes pro (source de vérité cohérente avec PDF/facture)
   const totalHTDisplay = htTotalPreview != null ? htTotalPreview : (q.totalHT != null ? q.totalHT : null);
@@ -5515,6 +5481,10 @@ function submitQuote(action) {
       totalTTC: totalTTC !== null ? totalTTC : null,
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       coeffDirect: isDirect ? getCoeffDirect() : null,
+      // Prix figés au moment de l'enregistrement : utilisés tels quels une fois le devis validé
+      prixMatBase: isDirect ? null : (getColorisPriceBase(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) || null),
+      coeffPro: isDirect ? null : ((currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1),
+      livraisonPrix: (() => { const l = document.querySelector('input[name="livraison"]:checked')?.value; return (l === 'rdc' ? PRIX.pose?.rdc : l === 'etage' ? PRIX.pose?.etage : 0) || 0; })(),
       status: newStatus,
       type: isDirect ? 'direct' : 'pro',
       lignesCustom: isDirect && formCustomLines.length > 0 ? [...formCustomLines] : undefined,
@@ -5526,7 +5496,8 @@ function submitQuote(action) {
 
     // Pour cuisiniste avec coeff : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
     if (currentUser?.role === 'pro' && quoteData.totalHT !== null && quoteMode !== 'direct') {
-      const { htTotal: htFromLignes } = buildLignesCuisiniste(quoteData, currentUser);
+      // Calcul « non validé » : c'est ce calcul qui fixe le prix enregistré, même si on commande directement
+      const { htTotal: htFromLignes } = buildLignesCuisiniste({ ...quoteData, status: 'devise' }, currentUser);
       if (htFromLignes !== null) {
         quoteData.totalHT = Math.round(htFromLignes * 100) / 100;
         const htNetSave = quoteData.totalHT - computeRemiseAmount(quoteData.totalHT, quoteData.remise);
@@ -5620,69 +5591,92 @@ function showToast(msg) {
 //  EXPORT BON DE COMMANDE (PDF via impression navigateur)
 // ═══════════════════════════════════════════════════════════════
 // BC détaillé pour cuisinistes avec coefficient de vente
-function buildLignesCuisiniste(q, pro) {
-  const coeff = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
-  const surfPlans = surfPlansQ(q);
-  const surfCred  = surfCredQ(q);
-  // Prix de BASE (sans currentUser) × coeff du pro : robust quel que soit l'utilisateur connecté
-  const prixEpBase = getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition) || 0;
-  const prixPlanCoeff = Math.round(prixEpBase * coeff * 100) / 100;
-  const prixCredCoeff = Math.round(getPrixCredFromQuote(q, prixPlanCoeff) * 100) / 100;
-  const htPlans = Math.round(surfPlans * prixPlanCoeff * 100) / 100;
-  const htCred  = Math.round(surfCred  * prixCredCoeff  * 100) / 100;
-  const prixMatCoeff = htPlans + htCred;
-  let htTotal = prixMatCoeff;
-  let optLines = '';
+// Devis validé (commandé, facturé, clôturé) : le total HT enregistré à la validation fait foi
+function isValide(q) { return ['commande', 'facture', 'cloture'].includes(q?.status); }
 
-  // Options avec coeff (sauf prise-de-cote et pose-installation traités séparément)
-  const exclCoeff = ['prise-de-cote','pose-installation','coupe-onglet-ml'];
-  if (q.options) {
-    Object.entries(q.options).forEach(([key, qty]) => {
-      if (!qty || exclCoeff.includes(key)) return;
-      const opt = PRIX.options[key];
-      if (!opt) return;
-      const prixCoeff = Math.round((q.optionsPrix?.[key] ?? opt.prix) * qty * coeff * 100) / 100;
-      htTotal += prixCoeff;
-      optLines += '<tr><td>'+opt.label+' × '+qty+'</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
-    });
+// Pour un devis validé dont le recalcul ne retombe pas sur le total enregistré (tarif, marge ou coeff
+// modifiés depuis, ou ancien devis sans prix figés) : le prix au m² du matériau est recalé pour que
+// la somme des lignes = total validé. La dernière ligne matière absorbe les centimes restants.
+function recalerSurTotalValide(q, lignes) {
+  if (!isValide(q) || !(q.totalHT > 0)) return lignes;
+  const total = Math.round(lignes.reduce((s, l) => s + l.ht, 0) * 100) / 100;
+  const cible = Math.round(q.totalHT * 100) / 100;
+  if (Math.abs(total - cible) < 0.005) return lignes;
+  const mats = lignes.filter(l => l.mat && l.qty > 0);
+  const autres = lignes.filter(l => !l.mat).reduce((s, l) => s + l.ht, 0);
+  const resteMat = Math.round((cible - autres) * 100) / 100;
+  if (!mats.length || resteMat <= 0) {
+    lignes.push({ label: 'Ajustement prix validé', qty: 1, unite: '', pu: Math.round((cible - total) * 100) / 100, ht: Math.round((cible - total) * 100) / 100, mat: false });
+    return lignes;
   }
-  if (q.options?.['coupe-onglet-ml'] > 0) {
-    const ml = q.options['coupe-onglet-ml']/1000;
-    const puCO = q.optionsPrix?.['coupe-onglet-ml'] ?? PRIX.options['coupe-onglet']?.prix ?? 0;
-    const prixCoeff = Math.round(puCO * ml * coeff * 100) / 100;
-    htTotal += prixCoeff;
-    optLines += '<tr><td>Coupe d\'onglet — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
-  }
+  // Rapport entre les prix (crédence 12 mm ≠ plan) conservé
+  const ref = mats[0].pu || 1;
+  const surfEq = mats.reduce((s, l) => s + l.qty * ((l.pu || ref) / ref), 0);
+  const puRef = Math.round(resteMat / surfEq * 100) / 100;
+  let cumul = 0;
+  mats.forEach((l, i) => {
+    l.pu = Math.round(puRef * ((l.pu || ref) / ref) * 100) / 100;
+    l.ht = i < mats.length - 1 ? Math.round(l.qty * l.pu * 100) / 100 : Math.round((resteMat - cumul) * 100) / 100;
+    cumul += l.ht;
+  });
+  return lignes;
+}
+
+// Lignes d'un devis cuisiniste (source unique : panneau admin, bon de commande, devis, facture, totaux)
+function lignesCuisiniste(q, pro) {
+  const valide = isValide(q);
+  const coeffActuel = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
+  const coeff = (valide && q.coeffPro > 0) ? q.coeffPro : coeffActuel;
+  const r2 = v => Math.round(v * 100) / 100;
+  const lignes = [];
+  const surfPlans = surfPlansQ(q), surfCred = surfCredQ(q);
+  // Prix de BASE (sans currentUser) × coeff du pro : robuste quel que soit l'utilisateur connecté
+  const prixEpBase = (valide && q.prixMatBase > 0 ? q.prixMatBase : getColorisPriceBase(q.materiau, q.coloris, q.epaisseur, q.finition)) || 0;
+  const prixPlanCoeff = r2(prixEpBase * coeff);
+  const prixCredCoeff = r2(getPrixCredFromQuote(q, prixPlanCoeff));
+  if (surfPlans > 0) lignes.push({ label: 'Plans de travail', qty: surfPlans, unite: 'm²', pu: prixPlanCoeff, ht: r2(surfPlans * prixPlanCoeff), mat: true });
+  if (surfCred > 0) lignes.push({ label: 'Crédences' + (q.epaisseurCred === '12' ? ' (12 mm)' : ''), qty: surfCred, unite: 'm²', pu: prixCredCoeff, ht: r2(surfCred * prixCredCoeff), mat: true });
+
+  const sansCoeff = ['prise-de-cote', 'pose-installation'];
+  Object.entries(q.options || {}).forEach(([key, qty]) => {
+    if (!qty) return;
+    if (key === 'coupe-onglet-ml') {
+      const ml = r2(qty / 1000);
+      const pu = r2((q.optionsPrix?.['coupe-onglet-ml'] ?? PRIX.options['coupe-onglet']?.prix ?? 0) * coeff);
+      if (pu) lignes.push({ label: "Coupe d'onglet", qty: ml, unite: 'ml', pu, ht: r2(ml * pu) });
+      return;
+    }
+    const opt = PRIX.options[key];
+    if (!opt) return;
+    const pu = r2((q.optionsPrix?.[key] ?? opt.prix) * (sansCoeff.includes(key) ? 1 : coeff));
+    lignes.push({ label: opt.label, qty, unite: '', pu, ht: r2(pu * qty) });
+  });
   if (q.chant?.type && q.chant?.longueur) {
-    const ml = q.chant.longueur/1000;
-    const puChant = q.chant.pu ?? PRIX.chants[q.chant.type] ?? 0;
-    const prixCoeff = Math.round(puChant * ml * coeff * 100) / 100;
-    htTotal += prixCoeff;
-    optLines += '<tr><td>Chant '+q.chant.type+' — '+ml.toFixed(2)+' ml</td><td style="text-align:right;">'+fmtEUR(prixCoeff)+' HT</td></tr>';
+    const ml = r2(q.chant.longueur / 1000);
+    const pu = r2((q.chant.pu || PRIX.chants?.[q.chant.type] || 0) * coeff);
+    if (pu) lignes.push({ label: 'Chant ' + q.chant.type, qty: ml, unite: 'ml', pu, ht: r2(ml * pu) });
   }
   // Livraison sans coeff
-  const livraisonPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
-  if (livraisonPrix) { htTotal += livraisonPrix; optLines += '<tr><td>Livraison / accès chantier</td><td style="text-align:right;">'+fmtEUR(livraisonPrix)+' HT</td></tr>'; }
-  // Prise de cote et pose sans coeff (une seule fois)
-  if (q.options?.['prise-de-cote'] > 0) {
-    const px = PRIX.options['prise-de-cote']?.prix || 0;
-    if (px) { htTotal += px * (q.options['prise-de-cote']||1); optLines += '<tr><td>Prise de cote / gabarit</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>'; }
-  }
-  if (q.options?.['pose-installation'] > 0) {
-    const px = PRIX.options['pose-installation']?.prix || 0;
-    if (px) { htTotal += px * (q.options['pose-installation']||1); optLines += '<tr><td>Pose & installation</td><td style="text-align:right;">'+fmtEUR(px)+' HT</td></tr>'; }
-  }
+  const livr = (valide && q.livraisonPrix > 0) ? q.livraisonPrix
+    : ((q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0);
+  if (livr) lignes.push({ label: q.livraison === 'etage' ? 'Livraison — Étage / Paris' : 'Livraison — Rez-de-chaussée', qty: 1, unite: '', pu: livr, ht: livr });
   // Lignes complémentaires avec coeff
-  if (q.lignesCustom?.length > 0) {
-    q.lignesCustom.forEach(l => {
-      const pu = parseFloat(l.pu) || 0;
-      if (!pu) return;
-      const puCoeff = Math.round(pu * coeff * 100) / 100;
-      htTotal += puCoeff;
-      optLines += '<tr><td>'+(l.label||'Prestation complémentaire')+'</td><td style="text-align:right;">'+fmtEUR(puCoeff)+' HT</td></tr>';
-    });
-  }
-  return { prixMatCoeff, optLines, htTotal };
+  (q.lignesCustom || []).forEach(l => {
+    const pu = parseFloat(l.pu) || 0;
+    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu: r2(pu * coeff), ht: r2(pu * coeff) });
+  });
+  return recalerSurTotalValide(q, lignes);
+}
+
+function buildLignesCuisiniste(q, pro) {
+  const lignes = lignesCuisiniste(q, pro);
+  const prixMatCoeff = Math.round(lignes.filter(l => l.mat).reduce((s, l) => s + l.ht, 0) * 100) / 100;
+  const htTotal = Math.round(lignes.reduce((s, l) => s + l.ht, 0) * 100) / 100;
+  const optLines = lignes.filter(l => !l.mat).map(l => {
+    const qte = l.unite ? ' — ' + fmt2(l.qty) + ' ' + l.unite : (l.qty > 1 ? ' × ' + l.qty : '');
+    return '<tr><td>' + l.label + qte + '</td><td style="text-align:right;">' + fmtEUR(l.ht) + ' HT</td></tr>';
+  }).join('');
+  return { prixMatCoeff, optLines, htTotal, lignes };
 }
 
 function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
@@ -5800,7 +5794,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   <tfoot>
     ${remiseLigne}
     <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
-    <tr class="total-row"><td>TVA ${q.tva||20}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row"><td>TVA ${tvaPct}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
     <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
   </tfoot>
 </table>
@@ -5960,7 +5954,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
   <tfoot>
     ${remiseLigne}
     <tr class="total-row"><td>Total HT</td><td style="text-align:right;">${fmtEUR(htNet)}</td></tr>
-    <tr class="total-row"><td>TVA ${q.tva||20}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="total-row"><td>TVA ${tvaPct}%</td><td style="text-align:right;">${fmtEUR(tvaAmt)}</td></tr>
     <tr class="total-row total-ttc"><td>Total TTC</td><td style="text-align:right;">${fmtEUR(ttc)}</td></tr>
   </tfoot>
 </table>
@@ -6271,53 +6265,77 @@ ${optRows ? `<div class="sec">
 // ═══════════════════════════════════════════════════════════════
 // Calcul HT brut pour devis particulier — même logique que exportDevisParticulier
 // Source de vérité partagée par buildPrixLignesAdmin et migrerTotaux
-function computeHtBrutParticulier(q) {
-  const prixMatVente = q.prixMatVente || getColorisPrixDirect(q.materiau, q.coloris, q.epaisseur, q.finition);
-  if (!prixMatVente) return null;
-  const prixCred = getPrixCredFromQuote(q, prixMatVente);
-  let ht = 0;
-  // Plans — arrondi par plan (identique au PDF)
+// Lignes d'un devis particulier (source unique : devis PDF, facture, totaux, recalcul)
+function lignesParticulier(q) {
+  const valide = isValide(q);
+  const r2 = v => Math.round(v * 100) / 100;
+  const lignes = [];
   const fige = isFige(q);
-  if ((q.plans||[]).some(p => p.larg && p.long)) {
-    q.plans.filter(p => p.larg && p.long).forEach(p => {
+  const prixMat = q.prixMatVente || getColorisPrixDirect(q.materiau, q.coloris, q.epaisseur, q.finition) || null;
+  const prixCred = prixMat ? getPrixCredFromQuote(q, prixMat) : null;
+  if (prixMat) {
+    const plansV = (q.plans || []).filter(p => p.larg && p.long);
+    if (plansV.length) plansV.forEach((p, i) => {
       const s = surfPiece(p.larg, p.long, fige);
-      if (s > 0) ht += Math.round(s * prixMatVente * 100) / 100;
+      if (s > 0) lignes.push({ mat: true, kind: 'plan', label: 'Plan de travail P' + (i + 1), detail: p.larg + ' × ' + p.long + ' mm', qty: s, unite: 'm²', pu: prixMat, ht: r2(s * prixMat) });
     });
-  } else if (q.surfacePlans > 0) {
-    ht += Math.round(surfPlansQ(q) * prixMatVente * 100) / 100;
+    else if (q.surfacePlans > 0) lignes.push({ mat: true, kind: 'plan', label: 'Plans de travail', detail: '', qty: surfPlansQ(q), unite: 'm²', pu: prixMat, ht: r2(surfPlansQ(q) * prixMat) });
   }
-  // Crédences — arrondi par crédence
-  if ((q.credences||[]).some(c => c.larg && c.long)) {
-    q.credences.filter(c => c.larg && c.long).forEach(c => {
+  if (prixCred) {
+    const credV = (q.credences || []).filter(c => c.larg && c.long);
+    if (credV.length) credV.forEach((c, i) => {
       const s = surfPiece(c.larg, c.long, fige);
-      if (s > 0) ht += Math.round(s * prixCred * 100) / 100;
+      if (s > 0) lignes.push({ mat: true, kind: 'cred', label: 'Crédence C' + (i + 1), detail: c.larg + ' × ' + c.long + ' mm', qty: s, unite: 'm²', pu: prixCred, ht: r2(s * prixCred) });
     });
-  } else if (q.surfaceCred > 0) {
-    ht += Math.round(surfCredQ(q) * prixCred * 100) / 100;
+    else if (q.surfaceCred > 0) lignes.push({ mat: true, kind: 'cred', label: 'Crédences', detail: '', qty: surfCredQ(q), unite: 'm²', pu: prixCred, ht: r2(surfCredQ(q) * prixCred) });
   }
-  // Chant
   if (q.chant?.type && q.chant?.longueur > 0) {
     const pu = q.chant.pu || PRIX.chants?.[q.chant.type] || 0;
-    if (pu) ht += Math.round((q.chant.longueur / 1000) * pu * 100) / 100;
+    const ml = r2(q.chant.longueur / 1000);
+    if (pu) lignes.push({ label: 'Chant — ' + q.chant.type, qty: ml, unite: 'ml', pu, ht: r2(ml * pu) });
   }
-  // Options (sans coeff — devis particulier)
-  if (q.options) {
-    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
-      if (k === 'coupe-onglet-ml') {
-        const opt = PRIX.options['coupe-onglet'];
-        if (opt) { const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix; ht += Math.round(parseFloat((v / 1000).toFixed(2)) * pu * 100) / 100; }
-        return;
-      }
-      const opt = PRIX.options[k];
-      if (opt) { const pu = q.optionsPrix?.[k] ?? opt.prix; ht += Math.round(pu * v * 100) / 100; }
-    });
-  }
-  // Livraison
-  const livrPrix = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
-  if (livrPrix) ht += livrPrix;
-  // Lignes custom
-  (q.lignesCustom || []).forEach(l => { const pu = parseFloat(l.pu) || 0; if (pu) ht += pu; });
+  Object.entries(q.options || {}).filter(([, v]) => v > 0).forEach(([k, v]) => {
+    if (k === 'coupe-onglet-ml') {
+      const opt = PRIX.options['coupe-onglet'];
+      if (!opt) return;
+      const ml = r2(v / 1000), pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
+      lignes.push({ label: "Coupe d'onglet", qty: ml, unite: 'ml', pu, ht: r2(ml * pu) });
+      return;
+    }
+    const opt = PRIX.options[k];
+    if (!opt) return;
+    const pu = q.optionsPrix?.[k] ?? opt.prix;
+    lignes.push({ label: opt.label, qty: v, unite: '', pu, ht: r2(pu * v) });
+  });
+  const livr = (valide && q.livraisonPrix > 0) ? q.livraisonPrix
+    : ((q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0);
+  if (livr) lignes.push({ label: q.livraison === 'etage' ? 'Livraison — Étage / Paris' : 'Livraison — Rez-de-chaussée', qty: 1, unite: '', pu: livr, ht: livr });
+  (q.lignesCustom || []).forEach(l => {
+    const pu = parseFloat(l.pu) || 0;
+    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu, ht: pu });
+  });
+  return recalerSurTotalValide(q, lignes);
+}
+
+function computeHtBrutParticulier(q) {
+  const ht = Math.round(lignesParticulier(q).reduce((s, l) => s + l.ht, 0) * 100) / 100;
   return ht > 0 ? ht : null;
+}
+
+// Rendu HTML commun devis / facture particulier : retourne { rows, ht, nb }
+function rowsParticulier(q, matDesc, matDescCred) {
+  const lignes = lignesParticulier(q);
+  const rows = lignes.map(l => {
+    const desc = l.mat ? l.label + ' — ' + (l.kind === 'cred' ? matDescCred : matDesc) : l.label;
+    const detail = l.mat && l.detail ? `<br><span class="li-detail">${l.detail} &nbsp;·&nbsp; ${fmt2(l.qty)} m²</span>` : '';
+    return `<tr>
+      <td class="li-desc">${desc}${detail}</td>
+      <td class="li-right">${l.unite ? fmt2(l.qty) + ' ' + l.unite : l.qty}</td>
+      <td class="li-right">${fmtEUR(l.pu)}</td>
+      <td class="li-right">${fmtEUR(l.ht)}</td>
+    </tr>`;
+  }).join('');
+  return { rows, ht: Math.round(lignes.reduce((s, l) => s + l.ht, 0) * 100) / 100, nb: lignes.length };
 }
 
 async function exportDevisParticulier(quoteId) {
@@ -6340,166 +6358,12 @@ async function exportDevisParticulier(quoteId) {
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${ep ? ' · ' + ep + ' mm' : ''}`;
 
-  // Prix de vente particulier — prix figé à la création du devis, sinon prix catalogue actuel
-  const prixMatVente = q.prixMatVente ?? getColorisPrixDirect(mat, coloris, ep, finition);
-
-  let lignesRows = '';
-  let ligneNum = 0;
-  let htBrutPdf = 0;
-
-  // 1. Plans de travail — un ligne PAR plan
-  if ((q.plans||[]).some(p => p.larg && p.long) && prixMatVente !== null) {
-    const plansValid = q.plans.filter(p => p.larg && p.long);
-    plansValid.forEach((p, i) => {
-      const surf = surfPiece(p.larg, p.long, isFige(q));
-      if (surf > 0) {
-        const htPlan = Math.round(surf * prixMatVente * 100) / 100;
-        htBrutPdf += htPlan;
-        ligneNum++;
-        lignesRows += `<tr>
-          <td class="li-desc">Plan de travail P${i+1} — ${matDesc}<br><span class="li-detail">${p.larg} × ${p.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
-          <td class="li-right">${surf.toFixed(2)} m²</td>
-          <td class="li-right">${fmt2(prixMatVente)} €</td>
-          <td class="li-right">${fmtEUR(htPlan)}</td>
-        </tr>`;
-      }
-    });
-  } else if (q.surfacePlans > 0 && prixMatVente !== null) {
-    const ht = Math.round(surfPlansQ(q) * prixMatVente * 100) / 100;
-    htBrutPdf += ht;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Plans de travail — ${matDesc}</td>
-      <td class="li-right">${surfPlansQ(q).toFixed(2)} m²</td>
-      <td class="li-right">${fmt2(prixMatVente)} €</td>
-      <td class="li-right">${fmtEUR(ht)}</td>
-    </tr>`;
-  }
-
-  // 2. Crédences — une ligne PAR crédence
-  if ((q.credences||[]).some(c => c.larg && c.long) && prixMatVente !== null) {
-    const prixCred = getPrixCredFromQuote(q, prixMatVente);
-    const epCred = q.epaisseurCred === '12' ? '12' : ep;
-    const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
-    const credValid = q.credences.filter(c => c.larg && c.long);
-    credValid.forEach((c, i) => {
-      const surf = surfPiece(c.larg, c.long, isFige(q));
-      if (surf > 0) {
-        const htCred = Math.round(surf * prixCred * 100) / 100;
-        htBrutPdf += htCred;
-        ligneNum++;
-        lignesRows += `<tr>
-          <td class="li-desc">Crédence C${i+1} — ${matDescCred}<br><span class="li-detail">${c.larg} × ${c.long} mm &nbsp;·&nbsp; ${surf.toFixed(2)} m²</span></td>
-          <td class="li-right">${surf.toFixed(2)} m²</td>
-          <td class="li-right">${fmt2(prixCred)} €</td>
-          <td class="li-right">${fmtEUR(htCred)}</td>
-        </tr>`;
-      }
-    });
-  } else if (q.surfaceCred > 0 && prixMatVente !== null) {
-    const prixCred = getPrixCredFromQuote(q, prixMatVente);
-    const epCred = q.epaisseurCred === '12' ? '12' : ep;
-    const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCred ? ' · ' + epCred + ' mm' : ''}`;
-    const ht = Math.round(surfCredQ(q) * prixCred * 100) / 100;
-    htBrutPdf += ht;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Crédences — ${matDescCred}</td>
-      <td class="li-right">${surfCredQ(q).toFixed(2)} m²</td>
-      <td class="li-right">${fmt2(prixCred)} €</td>
-      <td class="li-right">${fmtEUR(ht)}</td>
-    </tr>`;
-  }
-
-  // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
-    const ml = q.chant.longueur / 1000;
-    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
-    const htChant = Math.round(ml * puChant * 100) / 100;
-    htBrutPdf += htChant;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Chant — ${q.chant.type}</td>
-      <td class="li-right">${ml.toFixed(2)} ml</td>
-      <td class="li-right">${fmtEUR(puChant)}</td>
-      <td class="li-right">${fmtEUR(htChant)}</td>
-    </tr>`;
-  }
-
-  // 4. Options (évidements, perçages, découpes)
-  if (q.options) {
-    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
-      if (k === 'coupe-onglet-ml') {
-        const opt = PRIX.options['coupe-onglet'];
-        if (opt) {
-          const ml = (v / 1000).toFixed(2);
-          const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
-          const ht = Math.round(ml * pu * 100) / 100;
-          htBrutPdf += ht;
-          ligneNum++;
-          lignesRows += `<tr>
-            <td class="li-desc">Coupe d'onglet</td>
-            <td class="li-right">${ml} ml</td>
-            <td class="li-right">${fmtEUR(pu)}</td>
-            <td class="li-right">${fmtEUR(ht)}</td>
-          </tr>`;
-        }
-        return;
-      }
-      const opt = PRIX.options[k];
-      if (opt) {
-        const pu = q.optionsPrix?.[k] ?? opt.prix;
-        const ht = Math.round(pu * v * 100) / 100;
-        htBrutPdf += ht;
-        ligneNum++;
-        lignesRows += `<tr>
-          <td class="li-desc">${opt.label}</td>
-          <td class="li-right">${v}</td>
-          <td class="li-right">${fmtEUR(pu)}</td>
-          <td class="li-right">${fmtEUR(ht)}</td>
-        </tr>`;
-      }
-    });
-  }
-
-  // 5. Livraison
-  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
-    const pu = PRIX.pose.rdc;
-    htBrutPdf += pu;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Rez-de-chaussée</td>
-      <td class="li-right">1</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-    </tr>`;
-  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
-    const pu = PRIX.pose.etage;
-    htBrutPdf += pu;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Étage / Paris</td>
-      <td class="li-right">1</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-    </tr>`;
-  }
-
-  // Lignes personnalisées (évier, prise, etc.)
-  if (q.lignesCustom?.length > 0) {
-    q.lignesCustom.forEach(l => {
-      const pu = parseFloat(l.pu) || 0;
-      if (!pu) return;
-      htBrutPdf += pu;
-      ligneNum++;
-      lignesRows += `<tr>
-        <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
-        <td class="li-right">1</td>
-        <td class="li-right">${fmtEUR(pu)}</td>
-        <td class="li-right">${fmtEUR(pu)}</td>
-      </tr>`;
-    });
-  }
+  const epCredD = q.epaisseurCred === '12' ? '12' : ep;
+  const matDescCred = `${matLabel}${coloris ? ' — ' + coloris : ''}${finition ? ' · ' + finition : ''}${epCredD ? ' · ' + epCredD + ' mm' : ''}`;
+  const _rp = rowsParticulier(q, matDesc, matDescCred);
+  let lignesRows = _rp.rows;
+  let ligneNum = _rp.nb;
+  let htBrutPdf = _rp.ht;
 
   // Fallback si aucune ligne n'a pu être générée
   if (ligneNum === 0) {
@@ -6813,109 +6677,21 @@ async function genererFacture(quoteId) {
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
 
-  let prixMat = getColorisPriceBase(mat, coloris, ep, finition);
-  if (prixMat !== null) prixMat = Math.round(prixMat * factCoeff * 100) / 100;
-  const _fsP = surfPlansQ(q), _fsC = surfCredQ(q);
-  if (_fsP > 0 && prixMat !== null) {
-    const htPlans = Math.round(_fsP * prixMat * 100) / 100;
-    htBrutFact += htPlans;
+  const _lignesFact = lignesCuisiniste(q, pro);
+  const _dimsFact = (items, prefix) => (items || []).filter(x => x.larg && x.long)
+    .map((x, i) => `<br><span class="li-detail" style="padding-left:10px;">↳ ${prefix}${i + 1} : ${x.larg} × ${x.long} mm · ${surfPiece(x.larg, x.long, isFige(q)).toFixed(2)} m²</span>`).join('');
+  _lignesFact.forEach(l => {
+    let desc = l.label;
+    if (l.mat) desc += ' — ' + matDesc + (l.label.startsWith('Plans') ? _dimsFact(q.plans, 'P') : _dimsFact(q.credences, 'C'));
+    htBrutFact += l.ht;
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">Plan de travail — ${matDesc}<br><span class="li-detail">Surface : ${_fsP.toFixed(2)} m²</span></td>
-      <td class="li-qty">${_fsP.toFixed(2)} m²</td>
-      <td class="li-pu">${fmt2(prixMat)} €</td>
-      <td class="li-total">${fmtEUR(htPlans)}</td>
+      <td class="li-desc">${desc}</td>
+      <td class="li-qty">${l.unite ? fmt2(l.qty) + ' ' + l.unite : l.qty}</td>
+      <td class="li-pu">${fmtEUR(l.pu)}</td>
+      <td class="li-total">${fmtEUR(l.ht)}</td>
     </tr>`;
-  }
-
-  // 2. Crédences
-  if (_fsC > 0 && prixMat !== null) {
-    const prixCred = Math.round(getPrixCredFromQuote(q, prixMat) * 100) / 100;
-    const epCred2 = q.epaisseurCred === '12' ? '12' : ep;
-    const matDescCred2 = `${matLabel} ${coloris} ${finition} ${epCred2 ? epCred2 + ' mm' : ''}`.trim();
-    const htCred = Math.round(_fsC * prixCred * 100) / 100;
-    htBrutFact += htCred;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Crédence — ${matDescCred2}<br><span class="li-detail">Surface : ${_fsC.toFixed(2)} m²</span></td>
-      <td class="li-qty">${_fsC.toFixed(2)} m²</td>
-      <td class="li-pu">${fmt2(prixCred)} €</td>
-      <td class="li-total">${fmtEUR(htCred)}</td>
-    </tr>`;
-  }
-
-  // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
-    const ml = q.chant.longueur / 1000;
-    const puChant = Math.round((q.chant.pu || PRIX.chants[q.chant.type]) * factCoeff * 100) / 100;
-    const htChant = Math.round(ml * puChant * 100) / 100;
-    htBrutFact += htChant;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Chant — ${q.chant.type}</td>
-      <td class="li-qty">${ml.toFixed(2)} ml</td>
-      <td class="li-pu">${fmtEUR(puChant)}</td>
-      <td class="li-total">${fmtEUR(htChant)}</td>
-    </tr>`;
-  }
-
-  // 4. Options (évidements, perçages, découpes)
-  if (q.options) {
-    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
-      if (k === 'coupe-onglet-ml') {
-        const opt = PRIX.options['coupe-onglet'];
-        if (opt) {
-          const ml = (v / 1000).toFixed(2);
-          const puCO = Math.round((q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix) * factCoeff * 100) / 100;
-          const ht = Math.round(ml * puCO * 100) / 100;
-          htBrutFact += ht;
-          ligneNum++;
-          lignesRows += `<tr>
-            <td class="li-desc">Coupe d'onglet</td>
-            <td class="li-qty">${ml} ml</td>
-            <td class="li-pu">${fmtEUR(puCO)}</td>
-            <td class="li-total">${fmtEUR(ht)}</td>
-          </tr>`;
-        }
-        return;
-      }
-      const opt = PRIX.options[k];
-      if (opt) {
-        const _optCoeff = (k === 'prise-de-cote' || k === 'pose-installation') ? 1 : factCoeff;
-        const puOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * _optCoeff * 100) / 100;
-        const htOpt = Math.round((q.optionsPrix?.[k] ?? opt.prix) * v * _optCoeff * 100) / 100;
-        htBrutFact += htOpt;
-        ligneNum++;
-        lignesRows += `<tr>
-          <td class="li-desc">${opt.label}</td>
-          <td class="li-qty">${v}</td>
-          <td class="li-pu">${fmtEUR(puOpt)}</td>
-          <td class="li-total">${fmtEUR(htOpt)}</td>
-        </tr>`;
-      }
-    });
-  }
-
-  // 5. Livraison
-  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
-    htBrutFact += PRIX.pose.rdc;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Rez-de-chaussée</td>
-      <td class="li-qty">1</td>
-      <td class="li-pu">${fmtEUR(PRIX.pose.rdc)}</td>
-      <td class="li-total">${fmtEUR(PRIX.pose.rdc)}</td>
-    </tr>`;
-  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
-    htBrutFact += PRIX.pose.etage;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Étage / Paris</td>
-      <td class="li-qty">1</td>
-      <td class="li-pu">${fmtEUR(PRIX.pose.etage)}</td>
-      <td class="li-total">${fmtEUR(PRIX.pose.etage)}</td>
-    </tr>`;
-  }
+  });
 
   // Fallback : si aucune ligne détaillée n'a pu être générée, afficher une ligne globale
   if (ligneNum === 0) {
@@ -6928,7 +6704,9 @@ async function genererFacture(quoteId) {
   const htBrut = Math.round(htBrutFact * 100) / 100;
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
-  const tvaAmt = Math.round(totalHT * 20 / 100 * 100) / 100;
+  // Avec coeff = facture comme particulier → TVA selon q.tva ; sans coeff = B2B → TVA 20%
+  const tvaPct = factCoeff > 1 ? (q.tva || 10) : 20;
+  const tvaAmt = Math.round(totalHT * tvaPct / 100 * 100) / 100;
   const totalTTC = Math.round((totalHT + tvaAmt) * 100) / 100;
 
   // Adresse société
@@ -7070,7 +6848,7 @@ async function genererFacture(quoteId) {
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
     ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
-    <tr class="row-tva"><td>TVA 20%</td><td>${fmtEUR(tvaAmt)}</td></tr>
+    <tr class="row-tva"><td>TVA ${tvaPct}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
   </table>
 </div>
@@ -7336,154 +7114,15 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   const finition = q.finition || '';
   const matLabel = q.materiauLabel || mat || '';
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
-  const surfPlans = q.surfacePlans || 0;
-  const surfCred  = q.surfaceCred  || 0;
-
-  // 1. Plans de travail — prix/m² dérivé du totalHT validé au devis
-  // On calcule d'abord les lignes "autres" pour en déduire le HT matériaux exact
-  let htAutres = 0;
-  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type]))
-    htAutres += Math.round((q.chant.longueur / 1000) * (q.chant.pu || PRIX.chants[q.chant.type]) * 100) / 100;
-  if (q.options) Object.entries(q.options).filter(([,v])=>v>0).forEach(([k,v])=>{
-    if (k==='coupe-onglet-ml') { const opt=PRIX.options['coupe-onglet']; if(opt) htAutres+=Math.round(parseFloat((v/1000).toFixed(2))*(q.optionsPrix?.['coupe-onglet-ml']??opt.prix)*100)/100; }
-    else { const opt=PRIX.options[k]; if(opt) htAutres+=Math.round((q.optionsPrix?.[k]??opt.prix)*v*100)/100; }
-  });
-  if (q.livraison==='rdc'&&PRIX.pose?.rdc) htAutres+=PRIX.pose.rdc;
-  else if (q.livraison==='etage'&&PRIX.pose?.etage) htAutres+=PRIX.pose.etage;
-  if (q.lignesCustom?.length>0) q.lignesCustom.forEach(l=>{const pu=parseFloat(l.pu)||0;if(pu)htAutres+=pu;});
-
-  // Prix direct au m² : prix sauvegardé au devis ou recalculé depuis tarif courant
-  // Même prix et même découpage que le devis PDF (computeHtBrutParticulier)
-  const _pCourant = q.prixMatVente || getColorisPrixDirect(mat,coloris,ep,finition) || null;
-  const _cCourant = _pCourant ? getPrixCredFromQuote(q, _pCourant) : null;
-  const fige = isFige(q);
   const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
   const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3+' mm' : ''}`.trim();
-  let htMatTotal = null;
-  const ligneSurface = (label, detail, surf, pu) => {
-    const ht = Math.round(surf * pu * 100) / 100;
-    htMatTotal = (htMatTotal || 0) + ht;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">${label}${detail ? `<br><span class="li-detail">${detail}</span>` : ''}</td>
-      <td class="li-right">${surf.toFixed(2)} m²</td>
-      <td class="li-right">${fmt2(pu)} €</td>
-      <td class="li-right">${fmtEUR(ht)}</td>
-    </tr>`;
-  };
-
-  if (_pCourant) {
-    const plansV = (q.plans||[]).filter(p => p.larg && p.long);
-    if (plansV.length) {
-      plansV.forEach((p, i) => {
-        const s = surfPiece(p.larg, p.long, fige);
-        if (s > 0) ligneSurface(`Plan de travail P${i+1} — ${matDesc}`, `${p.larg} × ${p.long} mm`, s, _pCourant);
-      });
-    } else if (surfPlans > 0) {
-      ligneSurface(`Plan de travail — ${matDesc}`, '', surfPlansQ(q), _pCourant);
-    }
-  }
-
-  // 2. Crédences
-  if (_cCourant) {
-    const credV = (q.credences||[]).filter(c => c.larg && c.long);
-    if (credV.length) {
-      credV.forEach((c, i) => {
-        const s = surfPiece(c.larg, c.long, fige);
-        if (s > 0) ligneSurface(`Crédence C${i+1} — ${matDescCred3}`, `${c.larg} × ${c.long} mm`, s, _cCourant);
-      });
-    } else if (surfCred > 0) {
-      ligneSurface(`Crédence — ${matDescCred3}`, '', surfCredQ(q), _cCourant);
-    }
-  }
-
-  // 3. Chant
-  if (q.chant?.type && q.chant?.longueur > 0 && (q.chant.pu || PRIX.chants?.[q.chant.type])) {
-    const ml = q.chant.longueur / 1000;
-    const puChant = q.chant.pu || PRIX.chants[q.chant.type];
-    const htChant = Math.round(ml * puChant * 100) / 100;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Chant — ${q.chant.type}</td>
-      <td class="li-right">${ml.toFixed(2)} ml</td>
-      <td class="li-right">${fmtEUR(puChant)}</td>
-      <td class="li-right">${fmtEUR(htChant)}</td>
-    </tr>`;
-  }
-
-  // 4. Options
-  if (q.options) {
-    Object.entries(q.options).filter(([,v]) => v > 0).forEach(([k, v]) => {
-      if (k === 'coupe-onglet-ml') {
-        const opt = PRIX.options['coupe-onglet'];
-        if (opt) {
-          const ml = (v / 1000).toFixed(2);
-          const pu = q.optionsPrix?.['coupe-onglet-ml'] ?? opt.prix;
-          const ht = Math.round(ml * pu * 100) / 100;
-          ligneNum++;
-          lignesRows += `<tr>
-            <td class="li-desc">Coupe d'onglet</td>
-            <td class="li-right">${ml} ml</td>
-            <td class="li-right">${fmtEUR(pu)}</td>
-            <td class="li-right">${fmtEUR(ht)}</td>
-          </tr>`;
-        }
-        return;
-      }
-      const opt = PRIX.options[k];
-      if (opt) {
-        const pu = q.optionsPrix?.[k] ?? opt.prix;
-        const ht = Math.round(pu * v * 100) / 100;
-        ligneNum++;
-        lignesRows += `<tr>
-          <td class="li-desc">${opt.label}</td>
-          <td class="li-right">${v}</td>
-          <td class="li-right">${fmtEUR(pu)}</td>
-          <td class="li-right">${fmtEUR(ht)}</td>
-        </tr>`;
-      }
-    });
-  }
-
-  // 5. Livraison
-  if (q.livraison === 'rdc' && PRIX.pose?.rdc) {
-    const pu = PRIX.pose.rdc;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Rez-de-chaussée</td>
-      <td class="li-right">1</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-    </tr>`;
-  } else if (q.livraison === 'etage' && PRIX.pose?.etage) {
-    const pu = PRIX.pose.etage;
-    ligneNum++;
-    lignesRows += `<tr>
-      <td class="li-desc">Livraison — Étage / Paris</td>
-      <td class="li-right">1</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-      <td class="li-right">${fmtEUR(pu)}</td>
-    </tr>`;
-  }
-
-  // 6. Lignes complémentaires
-  if (q.lignesCustom?.length > 0) {
-    q.lignesCustom.forEach(l => {
-      const pu = parseFloat(l.pu) || 0;
-      if (!pu) return;
-      ligneNum++;
-      lignesRows += `<tr>
-        <td class="li-desc">${l.label||'Prestation complémentaire'}</td>
-        <td class="li-right">1</td>
-        <td class="li-right">${fmtEUR(pu)}</td>
-        <td class="li-right">${fmtEUR(pu)}</td>
-      </tr>`;
-    });
-  }
+  const _rf = rowsParticulier(q, matDesc, matDescCred3);
+  lignesRows = _rf.rows;
+  ligneNum = _rf.nb;
 
   // Fallback si aucune ligne construite
   if (ligneNum === 0) {
-    const surf = (surfPlans + surfCred).toFixed(2);
+    const surf = (surfPlansQ(q) + surfCredQ(q)).toFixed(2);
     lignesRows = `<tr>
       <td class="li-desc">Fourniture et pose — ${matDesc}<br><span class="li-detail">Surface totale : ${surf} m²</span></td>
       <td class="li-right">1</td>
@@ -7492,10 +7131,9 @@ async function _genererFactureDirecte(quoteId, acomptes) {
     </tr>`;
   }
 
-  // Totaux : on prend les montants exacts du devis validé, sans recalcul
-  const htBrut = htMatTotal !== null
-    ? Math.round((htMatTotal + htAutres) * 100) / 100
-    : Math.round((q.totalHT || 0) * 100) / 100;
+  // Totaux : mêmes lignes que le devis ; un devis validé retombe sur son total enregistré
+  const htBrut = ligneNum > 0 ? _rf.ht : Math.round((q.totalHT || 0) * 100) / 100;
+
   const remiseAmt = Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100;
   const totalHT = Math.round((htBrut - remiseAmt) * 100) / 100;
   const tvaRate = (q.tva || 10) / 100;
@@ -9498,7 +9136,7 @@ async function renderProCatalogue() {
 
 // ─── MIGRATION : Recalcul totalHT/TTC pour tous les devis pro ────────────────
 async function migrerTotauxProQuotes() {
-  if (!confirm('Recalculer et sauvegarder les totaux HT/TTC de tous les devis (cuisinistes + particuliers) ?\nCette opération met à jour Firestore. Elle peut être relancée sans risque.')) return;
+  if (!confirm('Recalculer et sauvegarder les totaux HT/TTC des devis non validés (cuisinistes + particuliers) ?\nLes devis commandés, facturés et clôturés gardent leur prix validé.\nCette opération met à jour Firestore. Elle peut être relancée sans risque.')) return;
 
   await aLoad(); await fLoad();
   const db = getDB();
@@ -9507,7 +9145,8 @@ async function migrerTotauxProQuotes() {
   const batch = [];
 
   for (const q of db.quotes) {
-    if (isFige(q)) continue;
+    // Devis commandé / facturé / clôturé : le prix validé ne bouge plus
+    if (isValide(q)) continue;
     try {
       const isDirectParticulier = !q.proEmail || q.type === 'direct';
       let htBrut, totalTTC;
