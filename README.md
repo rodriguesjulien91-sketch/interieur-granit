@@ -4228,3 +4228,4 @@ document.getElementById('modal-new-client').addEventListener('click', function(e
   if (e.target === this) closeModal();
 });
 document.getElementById('modal-edit-client').addEventListener('cli
+
