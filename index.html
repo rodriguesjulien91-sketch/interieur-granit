@@ -505,7 +505,7 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <table class="data-table" id="quotes-table">
         <thead><tr>
-          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Date installation</th><th>Statut</th>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Ville / adresse</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Date installation</th><th>Statut</th>
         </tr></thead>
         <tbody id="quotes-tbody"></tbody>
       </table>
@@ -3032,7 +3032,7 @@ function renderQuotesTable() {
 
   const tbody = document.getElementById('quotes-tbody');
   if (quotes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Aucune demande pour ces critères</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-state">Aucune demande pour ces critères</td></tr>';
     return;
   }
   tbody.innerHTML = quotes.map(q => {
@@ -3042,6 +3042,12 @@ function renderQuotesTable() {
       <td class="secondary">${q.client?.ref||q.id.slice(-6)}</td>
       <td><div class="company">${q.proSociete}</div></td>
       <td>${clientName}</td>
+      <td>${(function(){
+        const esc = s => String(s||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+        const ville = [q.client?.cp, q.client?.ville].filter(Boolean).join(' ');
+        if (!ville && !q.client?.adresse) return '<span class="secondary">—</span>';
+        return (ville ? '<div>'+esc(ville)+'</div>' : '') + (q.client?.adresse ? '<div class="secondary" style="font-size:.75rem;">'+esc(q.client.adresse)+'</div>' : '');
+      })()}</td>
       <td>${q.materiauLabel||q.materiau}</td>
       <td>${surf} m²</td>
       <td class="price">${q.totalHT ? fmtEUR(computeQuoteTotals(q).htNet) : 'Sur devis'}</td>
@@ -4361,6 +4367,39 @@ function displayFilteredQuotes(quotes) {
   }).join('');
 }
 
+// Correction d'adresse seule : ne touche ni au statut ni au prix (utilisable même sur un devis commandé)
+function buildAdresseEditor(q) {
+  const esc = s => String(s||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const inp = (champ, val, ph, w) => `<input id="adr-${champ}-${q.id}" value="${esc(val)}" placeholder="${ph}" style="flex:${w};min-width:0;padding:7px 9px;font-size:.82rem;">`;
+  return `<div id="adr-edit-${q.id}" hidden style="margin-top:12px;padding:12px;border:1px solid var(--cream-dark);border-radius:4px;background:var(--cream);">
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:600;margin-bottom:8px;">Adresse du chantier</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${inp('adresse', q.client?.adresse, 'Adresse', 3)}${inp('cp', q.client?.cp, 'Code postal', 1)}${inp('ville', q.client?.ville, 'Ville', 2)}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+      <button class="btn btn-primary btn-sm" onclick="saveAdresseDevis('${q.id}')">Enregistrer l'adresse</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('adr-edit-${q.id}').hidden=true">Annuler</button>
+      <span style="font-size:.75rem;color:var(--stone-light);">Le statut et le prix du devis ne changent pas.</span>
+    </div>
+  </div>`;
+}
+
+async function saveAdresseDevis(quoteId) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const val = champ => (document.getElementById(`adr-${champ}-${quoteId}`)?.value || '').trim();
+  const adresse = val('adresse'), cp = val('cp'), ville = val('ville');
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ 'client.adresse': adresse, 'client.cp': cp, 'client.ville': ville });
+  } catch (e) { alert("Erreur lors de l'enregistrement de l'adresse : " + e.message); return; }
+  q.client = { ...(q.client || {}), adresse, cp, ville };
+  showToast('✓ Adresse mise à jour');
+  const drawer = document.getElementById('side-drawer');
+  if (drawer) delete drawer.dataset.openId;
+  showProQuoteDetail(quoteId);
+  if (typeof renderProQuotes === 'function' && document.getElementById('view-pro')?.classList.contains('active')) renderProQuotes();
+}
+
 function showProQuoteDetail(id) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === id);
@@ -4424,8 +4463,10 @@ function showProQuoteDetail(id) {
       </div>
     </div>
     ${commandeInfo}
+    ${buildAdresseEditor(q)}
     <div class="pro-detail-actions">
       <button class="btn btn-primary btn-sm" onclick="loadQuoteIntoForm('${id}', false)">✏️ Modifier</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('adr-edit-${id}').hidden=false">📍 Modifier l'adresse</button>
       <button class="btn btn-secondary btn-sm" onclick="loadQuoteIntoForm('${id}', true)">⧉ Dupliquer</button>
       ${cmdAction}
       ${currentUser?.coeffVenteActif && currentUser?.coeffVente > 1 ? `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportDevisCuisinistById('${id}')">📋 Devis</button>${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>` : ''}` : `<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="exportBonDeCommande('${id}')">📄 Bon de commande</button>`}
