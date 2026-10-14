@@ -102,7 +102,12 @@ textarea { resize: vertical; min-height: 80px; }
 
 /* ═══ ADMIN VIEW ═══════════════════════════════════════════════════ */
 #view-admin { min-height: 100vh; }
-.admin-body { max-width: 1100px; margin: 0 auto; padding: 36px 32px 80px; }
+.admin-body { max-width: 1500px; margin: 0 auto; padding: 36px 24px 80px; }
+/* Tableau « Tous les chiffrages » : 12 colonnes, compacté pour tenir sans défilement horizontal */
+#quotes-table th { padding: 10px 8px; font-size: .64rem; letter-spacing: .05em; }
+#quotes-table td { padding: 10px 8px; font-size: .78rem; }
+#quotes-table .secondary { font-size: .72rem; }
+#quotes-table .price { font-size: .92rem; white-space: nowrap; }
 
 /* Stats */
 .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
