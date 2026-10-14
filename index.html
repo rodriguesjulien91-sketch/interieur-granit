@@ -102,18 +102,23 @@ textarea { resize: vertical; min-height: 80px; }
 
 /* ═══ ADMIN VIEW ═══════════════════════════════════════════════════ */
 #view-admin { min-height: 100vh; }
-.admin-body { max-width: 1500px; margin: 0 auto; padding: 36px 24px 80px; }
-/* Tableau « Tous les chiffrages » : 12 colonnes, compacté pour tenir sans défilement horizontal */
-#quotes-table th { padding: 10px 8px; font-size: .64rem; letter-spacing: .05em; }
-#quotes-table td { padding: 10px 8px; font-size: .78rem; }
-#quotes-table .secondary { font-size: .72rem; }
-#quotes-table .price { font-size: .92rem; white-space: nowrap; }
+.admin-body { max-width: 1100px; margin: 0 auto; padding: 36px 32px 80px; }
+/* Seul l'onglet « Tous les chiffrages » (12 colonnes) a besoin de plus de largeur */
+.admin-body:has(#tab-quotes.active) { max-width: 1360px; padding-left: 40px; padding-right: 40px; }
+/* Tableau « Tous les chiffrages » : 12 colonnes, cellules un peu resserrées pour tenir sans défilement */
+#quotes-table th { padding: 12px 8px; font-size: .66rem; letter-spacing: .05em; }
+#quotes-table td { padding: 12px 8px; font-size: .82rem; }
+/* Chiffres : même police que le tableau, alignés à droite en colonnes (surface, HT, TTC, marge) */
+#quotes-table .price { font-family: inherit; font-size: .88rem; font-weight: 500; white-space: nowrap; }
+#quotes-table th:nth-child(n+6):nth-child(-n+9),
+#quotes-table td:nth-child(n+6):nth-child(-n+9) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#quotes-table td:nth-child(9) { font-size: .82rem !important; }
 
-/* Stats */
-.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
-.stat-card { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 22px 24px; }
-.stat-card .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--stone-light); margin-bottom: 8px; }
-.stat-card .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 400; color: var(--stone); }
+/* Stats : une seule rangée compacte */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat-card { background: var(--white); border: 1px solid var(--cream-dark); border-radius: 4px; padding: 14px 16px; }
+.stat-card .stat-label { font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: var(--stone-light); margin-bottom: 4px; }
+.stat-card .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 400; color: var(--stone); }
 .stat-card .stat-sub { font-size: .75rem; color: var(--stone-light); margin-top: 2px; }
 
 /* Tabs */
