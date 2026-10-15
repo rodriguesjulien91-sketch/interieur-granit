@@ -515,7 +515,7 @@ textarea { resize: vertical; min-height: 80px; }
       </div>
       <table class="data-table" id="quotes-table">
         <thead><tr>
-          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Ville / adresse</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Date installation</th><th>Statut</th>
+          <th>Réf.</th><th>Cuisiniste</th><th>Client final</th><th>Ville / adresse</th><th>Matériau</th><th>Surface</th><th>Total HT</th><th>Total TTC</th><th>Marge</th><th>Date</th><th>Fin de pose</th><th>Statut</th>
         </tr></thead>
         <tbody id="quotes-tbody"></tbody>
       </table>
@@ -852,7 +852,7 @@ textarea { resize: vertical; min-height: 80px; }
             <label>Ville *</label>
             <input type="text" id="ville" placeholder="Paris">
           </div>
-          <div class="field">
+          <div class="field" id="date-pose-field">
             <label>Date souhaitée de pose</label>
             <input type="date" id="date-pose">
           </div>
@@ -1446,10 +1446,10 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="commande-quote-recap" style="background:var(--stone);color:var(--cream);border-radius:4px;padding:14px 18px;margin-bottom:24px;font-size:.84rem;"></div>
 
     <div class="commande-section">
-      <h4>📅 Date d'installation souhaitée *</h4>
+      <h4>📅 Date de fin de pose *</h4>
       <div class="field">
         <input type="date" id="commande-date-install">
-        <span class="field-hint">Date à laquelle vous souhaitez que la pose soit réalisée</span>
+        <span class="field-hint">Date à partir de laquelle la prise de gabarit est possible</span>
       </div>
     </div>
 
@@ -3629,7 +3629,7 @@ async function showQuoteDetail(id) {
     ${q.commande ? `
     <div style="margin-top:18px;padding:14px;background:rgba(45,122,79,.1);border-radius:6px;">
       <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#1a6640;margin-bottom:10px;font-weight:600;">✓ Commande passée</div>
-      <div class="detail-row"><span class="dk">Date d'installation</span><span class="dv">${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</span></div>
+      <div class="detail-row"><span class="dk">Date de fin de pose</span><span class="dv">${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</span></div>
       ${q.commande.notes ? `<div class="detail-row"><span class="dk">Notes</span><span class="dv">${q.commande.notes}</span></div>` : ''}
       ${q.commande.planFile ? `<div class="detail-row"><span class="dk">📐 Plan cuisine</span><span class="dv">${
         (q.commande.planUrl || q.commande.planFileData)
@@ -4435,7 +4435,7 @@ function showProQuoteDetail(id) {
   const totalHTDisplay = htTotalPreview != null ? htTotalPreview : (q.totalHT != null ? q.totalHT : null);
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
-         <strong style="color:#1a6640;">✓ Commande passée</strong> · Installation : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
+         <strong style="color:#1a6640;">✓ Commande passée</strong> · Fin de pose : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
          ${q.commande.notes ? `<br><span style="color:var(--stone-light);">Note : ${q.commande.notes}</span>` : ''}
          ${q.commande.planFile
            ? `<br>📐 Plan : ${(q.commande.planUrl || q.commande.planFileData)
@@ -4554,7 +4554,7 @@ async function confirmCommande() {
     const dateInstall = document.getElementById('commande-date-install').value;
     const notes = document.getElementById('commande-notes').value.trim();
 
-    if (!dateInstall) { errEl.textContent = 'Veuillez indiquer une date d\'installation souhaitée.'; errEl.style.display = 'block'; return; }
+    if (!dateInstall) { errEl.textContent = 'Veuillez indiquer la date de fin de pose.'; errEl.style.display = 'block'; return; }
 
     const planInputHasFile = document.getElementById('file-plan').files.length > 0;
     const devisInputHasFile = document.getElementById('file-devis').files.length > 0;
@@ -4615,12 +4615,12 @@ async function confirmCommande() {
 
     if (isDirectQuote) {
       renderDevisDirectTab();
-      showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
+      showToast('✓ Commande passée — fin de pose le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
     } else {
       renderProQuotes();
       closeDrawer();
       setTimeout(() => showProQuoteDetail(quoteId), 150);
-      showToast('✓ Commande passée — installation le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
+      showToast('✓ Commande passée — fin de pose le ' + new Date(dateInstall).toLocaleDateString('fr-FR'));
     }
   } catch(e) {
     console.error('Erreur confirmCommande:', e);
@@ -4902,6 +4902,9 @@ function validateFormStep(step) {
 }
 
 function renderStep() {
+  // Cuisiniste : la date est demandée au passage de commande (date de fin de pose), pas dans le devis
+  const datePoseField = document.getElementById('date-pose-field');
+  if (datePoseField) datePoseField.style.display = quoteMode === 'direct' ? '' : 'none';
   document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('step-' + currentStep)?.classList.add('active');
   document.querySelectorAll('#view-form .step-item').forEach((item, i) => {
@@ -6218,7 +6221,7 @@ async function exportBonDeCommande(quoteId) {
     <div class="p-name">${q.client?.adresse || '—'}</div>
     <div class="p-detail">
       ${q.client?.cp || ''} ${q.client?.ville || ''}
-      ${installDate ? '<br>Date installation : <strong>' + installDate + '</strong>' : ''}
+      ${installDate ? '<br>' + (q.commande?.dateInstall ? 'Date de fin de pose (prise de gabarit possible)' : 'Date souhaitée') + ' : <strong>' + installDate + '</strong>' : ''}
     </div>
   </div>
 </div>
