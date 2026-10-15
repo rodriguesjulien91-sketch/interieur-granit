@@ -6691,6 +6691,182 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
 // ═══════════════════════════════════════════════════════════════
 //  GÉNÉRATION DE FACTURE CUISINISTE (PDF)
 // ═══════════════════════════════════════════════════════════════
+// Modèle commun facture / facture d'acompte cuisiniste (mêmes infos vendeur, société cliente et chantier)
+function factureProHtml(o) {
+  const { q, pro, s, titre, numFac, today, echeance, condPay, lignesRows, totauxHtml } = o;
+  const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
+  const addrFact = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join('<br>');
+  const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const socFooter = [
+    s.raisonSociale, s.formeJuridique ? s.formeJuridique + (s.capitalSocial ? ' au capital de ' + s.capitalSocial : '') : '',
+    s.siret ? 'SIRET : ' + s.siret : '',
+    s.naf ? 'NAF : ' + s.naf : '',
+    s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>${titre} ${numFac}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;font-size:10.5px;color:#1a1814;background:#fff;padding:30px 36px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;padding-bottom:18px;border-bottom:2.5px solid #1a1814;}
+  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
+  .co-sub{font-size:9px;color:#7a6f62;margin-top:4px;line-height:1.8;}
+  .doc-meta{text-align:right;}
+  .doc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;}
+  .doc-num{font-size:11px;font-weight:500;color:#1a1814;margin-top:5px;}
+  .doc-date{font-size:9px;color:#7a6f62;margin-top:3px;}
+  .parties{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;}
+  .party{border:1px solid #ede6d6;border-radius:3px;padding:12px 14px;}
+  .p-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:#c9a84c;font-weight:600;margin-bottom:6px;}
+  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
+  .p-detail{font-size:9.5px;color:#3d3830;line-height:1.7;}
+  .p-legal{font-size:8.5px;color:#7a6f62;margin-top:4px;}
+  /* tableau lignes */
+  .li-table{width:100%;border-collapse:collapse;margin-bottom:0;font-size:10px;}
+  .li-table thead tr{background:#1a1814;color:#f5f0e8;}
+  .li-table thead td{padding:7px 9px;font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:500;}
+  .li-table tbody tr{border-bottom:1px solid #f0ebe0;}
+  .li-table tbody tr:last-child{border-bottom:none;}
+  .li-desc{padding:8px 9px;line-height:1.5;}
+  .li-detail{font-size:8.5px;color:#7a6f62;}
+  .li-qty,.li-pu,.li-total{padding:8px 9px;text-align:right;white-space:nowrap;}
+  .li-total{font-weight:500;}
+  /* totaux */
+  .totaux{display:flex;justify-content:flex-end;margin-top:0;}
+  .totaux table{border-collapse:collapse;min-width:260px;border:1px solid #ede6d6;border-radius:3px;overflow:hidden;}
+  .totaux td{padding:6px 12px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
+  .totaux td:last-child{text-align:right;font-weight:500;}
+  .totaux .row-tva td{color:#7a6f62;}
+  .totaux .row-ttc td{background:#1a1814;color:#f5f0e8;font-size:13px;border-bottom:none;}
+  .totaux .row-ttc td:last-child{font-family:'Cormorant Garamond',serif;font-size:17px;color:#c9a84c;}
+  /* paiement */
+  .paiement-box{border:1px solid #ede6d6;border-radius:3px;padding:12px 16px;margin-top:16px;}
+  .paiement-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;font-weight:600;margin-bottom:9px;}
+  .paiement-row{display:flex;gap:28px;flex-wrap:wrap;}
+  .paiement-item{font-size:9.5px;color:#3d3830;line-height:1.6;}
+  .paiement-item .lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.09em;color:#7a6f62;display:block;margin-bottom:2px;}
+  .rib{font-family:monospace;font-size:9px;letter-spacing:.04em;}
+  /* mentions */
+  .mentions{font-size:8px;color:#7a6f62;margin-top:14px;line-height:1.6;padding-top:10px;border-top:1px solid #ede6d6;}
+  .footer{margin-top:12px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
+  @media print{body{padding:14mm 13mm;}@page{margin:0;size:A4;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;gap:16px;align-items:flex-start;">
+    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
+    <div>
+      <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
+      <div class="co-sub">
+        ${socAddr || ''}
+        ${s.tel ? '<br>' + s.tel : ''}
+        ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
+        ${s.web ? '<br>' + s.web : ''}
+      </div>
+    </div>
+  </div>
+  <div class="doc-meta">
+    <div class="doc-title"${titre.length > 10 ? ' style="font-size:22px;letter-spacing:.12em;"' : ''}>${titre}</div>
+    <div class="doc-num">${numFac}</div>
+    <div class="doc-date">Émise le ${today}</div>
+    <div class="doc-date" style="margin-top:3px;color:#c0392b;font-weight:500;">Échéance : ${echeance}</div>
+  </div>
+</div>
+
+<div class="parties">
+  <div class="party">
+    <div class="p-label">Vendeur</div>
+    <div class="p-name">${s.raisonSociale || 'Intérieur Granit'}</div>
+    <div class="p-detail">${socAddr || ''}</div>
+    <div class="p-legal">
+      ${s.siret ? 'SIRET : ' + s.siret : ''}
+      ${s.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + s.tvaIntra : ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Client (acheteur)</div>
+    <div class="p-name">${pro.raisonSociale || pro.societe || q.proSociete}</div>
+    <div class="p-detail">
+      ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
+      ${pro.email ? '<br>' + pro.email : ''}
+      ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
+      ${addrFact ? '<br>' + addrFact : ''}
+    </div>
+    <div class="p-legal">
+      ${pro.siret ? 'SIRET : ' + pro.siret : ''}
+      ${pro.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + pro.tvaIntra : ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Chantier — Client final</div>
+    <div class="p-name">${clientName || '—'}</div>
+    <div class="p-detail">
+      ${q.client?.tel || ''}${q.client?.tel && q.client?.email ? ' &nbsp;·&nbsp; ' : ''}${q.client?.email || ''}
+      ${q.client?.adresse ? '<br>' + q.client.adresse : ''}
+      ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
+    </div>
+  </div>
+</div>
+
+<!-- TABLEAU PRESTATIONS -->
+<table class="li-table">
+  <thead><tr>
+    <td style="width:55%;">Désignation</td>
+    <td style="text-align:right;">Qté</td>
+    <td style="text-align:right;">PU HT</td>
+    <td style="text-align:right;">Total HT</td>
+  </tr></thead>
+  <tbody>
+    ${lignesRows}
+  </tbody>
+</table>
+
+${totauxHtml}
+
+<div class="paiement-box">
+  <div class="paiement-title">Règlement</div>
+  <div class="paiement-row">
+    <div class="paiement-item"><span class="lbl">Conditions</span>${condPay}</div>
+    <div class="paiement-item"><span class="lbl">Échéance</span>${echeance}</div>
+    ${s.iban ? `<div class="paiement-item"><span class="lbl">IBAN</span><span class="rib">${s.iban}</span></div>` : ''}
+    ${s.bic ? `<div class="paiement-item"><span class="lbl">BIC</span><span class="rib">${s.bic}</span></div>` : ''}
+    ${s.banque ? `<div class="paiement-item"><span class="lbl">Banque</span>${s.banque}</div>` : ''}
+  </div>
+</div>
+
+<div class="mentions">
+  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.<br>
+  TVA non applicable, art. 293 B du CGI — <em>à adapter selon votre régime TVA</em>.
+</div>
+
+<div class="footer">
+  ${socFooter}
+</div>
+
+<script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
+<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
+  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="coloris-lightbox-img" src="" alt="">
+  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
+</div>
+</body>
+</html>`;
+}
+
+function ouvrirDocumentPdf(html) {
+  const _blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+  const _blobUrl = URL.createObjectURL(_blob);
+  const win = window.open(_blobUrl, '_blank', 'width=960,height=720');
+  if (!win) { alert('Veuillez autoriser les pop-ups pour générer la facture.'); URL.revokeObjectURL(_blobUrl); return; }
+  setTimeout(() => URL.revokeObjectURL(_blobUrl), 60000);
+}
+
 async function genererFacture(quoteId) {
   const db = getDB();
   const q = db.quotes.find(x => x.id === quoteId);
@@ -6772,169 +6948,22 @@ async function genererFacture(quoteId) {
     s.tvaIntra ? 'TVA : ' + s.tvaIntra : ''
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
-  const imgColoris = vGetImage(q.materiau, q.coloris);
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Facture ${numFac}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;font-size:10.5px;color:#1a1814;background:#fff;padding:30px 36px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;padding-bottom:18px;border-bottom:2.5px solid #1a1814;}
-  .co-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:.05em;}
-  .co-sub{font-size:9px;color:#7a6f62;margin-top:4px;line-height:1.8;}
-  .doc-meta{text-align:right;}
-  .doc-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;}
-  .doc-num{font-size:11px;font-weight:500;color:#1a1814;margin-top:5px;}
-  .doc-date{font-size:9px;color:#7a6f62;margin-top:3px;}
-  .parties{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;}
-  .party{border:1px solid #ede6d6;border-radius:3px;padding:12px 14px;}
-  .p-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:#c9a84c;font-weight:600;margin-bottom:6px;}
-  .p-name{font-size:13px;font-weight:500;margin-bottom:4px;font-family:'Cormorant Garamond',serif;}
-  .p-detail{font-size:9.5px;color:#3d3830;line-height:1.7;}
-  .p-legal{font-size:8.5px;color:#7a6f62;margin-top:4px;}
-  /* tableau lignes */
-  .li-table{width:100%;border-collapse:collapse;margin-bottom:0;font-size:10px;}
-  .li-table thead tr{background:#1a1814;color:#f5f0e8;}
-  .li-table thead td{padding:7px 9px;font-size:7.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:500;}
-  .li-table tbody tr{border-bottom:1px solid #f0ebe0;}
-  .li-table tbody tr:last-child{border-bottom:none;}
-  .li-desc{padding:8px 9px;line-height:1.5;}
-  .li-detail{font-size:8.5px;color:#7a6f62;}
-  .li-qty,.li-pu,.li-total{padding:8px 9px;text-align:right;white-space:nowrap;}
-  .li-total{font-weight:500;}
-  /* totaux */
-  .totaux{display:flex;justify-content:flex-end;margin-top:0;}
-  .totaux table{border-collapse:collapse;min-width:260px;border:1px solid #ede6d6;border-radius:3px;overflow:hidden;}
-  .totaux td{padding:6px 12px;font-size:10.5px;border-bottom:1px solid #f0ebe0;}
-  .totaux td:last-child{text-align:right;font-weight:500;}
-  .totaux .row-tva td{color:#7a6f62;}
-  .totaux .row-ttc td{background:#1a1814;color:#f5f0e8;font-size:13px;border-bottom:none;}
-  .totaux .row-ttc td:last-child{font-family:'Cormorant Garamond',serif;font-size:17px;color:#c9a84c;}
-  /* paiement */
-  .paiement-box{border:1px solid #ede6d6;border-radius:3px;padding:12px 16px;margin-top:16px;}
-  .paiement-title{font-size:7.5px;text-transform:uppercase;letter-spacing:.12em;color:#c9a84c;font-weight:600;margin-bottom:9px;}
-  .paiement-row{display:flex;gap:28px;flex-wrap:wrap;}
-  .paiement-item{font-size:9.5px;color:#3d3830;line-height:1.6;}
-  .paiement-item .lbl{font-size:7.5px;text-transform:uppercase;letter-spacing:.09em;color:#7a6f62;display:block;margin-bottom:2px;}
-  .rib{font-family:monospace;font-size:9px;letter-spacing:.04em;}
-  /* mentions */
-  .mentions{font-size:8px;color:#7a6f62;margin-top:14px;line-height:1.6;padding-top:10px;border-top:1px solid #ede6d6;}
-  .footer{margin-top:12px;padding-top:9px;border-top:1px solid #ede6d6;font-size:7.5px;color:#7a6f62;text-align:center;line-height:1.7;}
-  @media print{body{padding:14mm 13mm;}@page{margin:0;size:A4;}}
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div style="display:flex;gap:16px;align-items:flex-start;">
-    ${s.logo ? `<img src="${s.logo}" alt="Logo" style="max-width:90px;max-height:90px;object-fit:contain;flex-shrink:0;">` : ''}
-    <div>
-      <div class="co-name">${s.raisonSociale || 'Intérieur Granit'}</div>
-      <div class="co-sub">
-        ${socAddr || ''}
-        ${s.tel ? '<br>' + s.tel : ''}
-        ${s.email ? ' &nbsp;·&nbsp; ' + s.email : ''}
-        ${s.web ? '<br>' + s.web : ''}
-      </div>
-    </div>
-  </div>
-  <div class="doc-meta">
-    <div class="doc-title">Facture</div>
-    <div class="doc-num">${numFac}</div>
-    <div class="doc-date">Émise le ${today}</div>
-    <div class="doc-date" style="margin-top:3px;color:#c0392b;font-weight:500;">Échéance : ${echeance}</div>
-  </div>
-</div>
-
-<div class="parties">
-  <div class="party">
-    <div class="p-label">Vendeur</div>
-    <div class="p-name">${s.raisonSociale || 'Intérieur Granit'}</div>
-    <div class="p-detail">${socAddr || ''}</div>
-    <div class="p-legal">
-      ${s.siret ? 'SIRET : ' + s.siret : ''}
-      ${s.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + s.tvaIntra : ''}
-    </div>
-  </div>
-  <div class="party">
-    <div class="p-label">Client (acheteur)</div>
-    <div class="p-name">${pro.raisonSociale || pro.societe || q.proSociete}</div>
-    <div class="p-detail">
-      ${[pro.prenom, pro.nom].filter(Boolean).join(' ')}
-      ${pro.email ? '<br>' + pro.email : ''}
-      ${pro.tel ? ' &nbsp;·&nbsp; ' + pro.tel : ''}
-      ${addrFact ? '<br>' + addrFact : ''}
-    </div>
-    <div class="p-legal">
-      ${pro.siret ? 'SIRET : ' + pro.siret : ''}
-      ${pro.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + pro.tvaIntra : ''}
-    </div>
-  </div>
-  <div class="party">
-    <div class="p-label">Chantier — Client final</div>
-    <div class="p-name">${clientName || '—'}</div>
-    <div class="p-detail">
-      ${q.client?.tel || ''}${q.client?.tel && q.client?.email ? ' &nbsp;·&nbsp; ' : ''}${q.client?.email || ''}
-      ${q.client?.adresse ? '<br>' + q.client.adresse : ''}
-      ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
-    </div>
-  </div>
-</div>
-
-<!-- TABLEAU PRESTATIONS -->
-<table class="li-table">
-  <thead><tr>
-    <td style="width:55%;">Désignation</td>
-    <td style="text-align:right;">Qté</td>
-    <td style="text-align:right;">PU HT</td>
-    <td style="text-align:right;">Total HT</td>
-  </tr></thead>
-  <tbody>
-    ${lignesRows}
-  </tbody>
-</table>
-
-<div class="totaux">
+  // Acomptes déjà facturés : déduits du TTC, comme sur les factures particulier
+  const acomptesFA = (q.facturesAcompte || []).filter(fa => fa.montant > 0);
+  const totalAcomptes = Math.round(acomptesFA.reduce((t, fa) => t + fa.montant, 0) * 100) / 100;
+  const resteAPayer = Math.round((totalTTC - totalAcomptes) * 100) / 100;
+  const totauxHtml = `<div class="totaux">
   <table>
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
     ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
     <tr class="row-tva"><td>TVA ${tvaPct}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
-    <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
+    <tr class="${acomptesFA.length ? '' : 'row-ttc'}"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
+    ${acomptesFA.map(fa => `<tr class="row-tva"><td>Acompte versé ${fa.num} (${fa.date})</td><td>− ${fmtEUR(fa.montant)}</td></tr>`).join('')}
+    ${acomptesFA.length ? `<tr class="row-ttc"><td>Reste à payer</td><td>${fmtEUR(resteAPayer)}</td></tr>` : ''}
   </table>
-</div>
-
-<div class="paiement-box">
-  <div class="paiement-title">Règlement</div>
-  <div class="paiement-row">
-    <div class="paiement-item"><span class="lbl">Conditions</span>${condPay}</div>
-    <div class="paiement-item"><span class="lbl">Échéance</span>${echeance}</div>
-    ${s.iban ? `<div class="paiement-item"><span class="lbl">IBAN</span><span class="rib">${s.iban}</span></div>` : ''}
-    ${s.bic ? `<div class="paiement-item"><span class="lbl">BIC</span><span class="rib">${s.bic}</span></div>` : ''}
-    ${s.banque ? `<div class="paiement-item"><span class="lbl">Banque</span>${s.banque}</div>` : ''}
-  </div>
-</div>
-
-<div class="mentions">
-  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.<br>
-  TVA non applicable, art. 293 B du CGI — <em>à adapter selon votre régime TVA</em>.
-</div>
-
-<div class="footer">
-  ${socFooter}
-</div>
-
-<script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
-<div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
-  <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
-  <img id="coloris-lightbox-img" src="" alt="">
-  <div class="coloris-lightbox-caption" id="coloris-lightbox-caption"></div>
-</div>
-</body>
-</html>`;
+</div>`;
+  const html = factureProHtml({ q, pro, s, titre: 'Facture', numFac, today, echeance, condPay, lignesRows, totauxHtml });
 
   const _blob = new Blob([html], { type: 'text/html; charset=utf-8' });
   const _blobUrl = URL.createObjectURL(_blob);
@@ -6958,27 +6987,51 @@ function ouvrirModalAcompte(quoteId) {
   _acompteStandaloneQuoteId = quoteId;
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const matDesc = `${q.materiauLabel || q.materiau || ''} ${q.coloris || ''} ${q.finition || ''}`.trim();
+  // TTC selon la TVA réellement appliquée (cuisiniste sans coeff = 20 %)
+  const t = q.totalHT ? computeQuoteTotals(q) : null;
   document.getElementById('modal-acompte-sa-recap').innerHTML =
-    `<strong>${clientName}</strong> &nbsp;·&nbsp; ${matDesc} &nbsp;·&nbsp; ${q.totalTTC ? fmtEUR(q.totalTTC) + ' TTC' : ''}`;
+    `<strong>${clientName}</strong> &nbsp;·&nbsp; ${matDesc} &nbsp;·&nbsp; ${t ? fmtEUR(t.ttc) + ' TTC (TVA ' + tvaPctQuote(q) + ' %)' : ''}`;
   document.getElementById('acompte-sa-montant').value = '';
   document.getElementById('modal-acompte-sa-error').style.display = 'none';
-  // Afficher les acomptes déjà facturés
+  renderListeAcomptes(q);
+  document.getElementById('modal-acompte-standalone').classList.add('active');
+}
+
+// TVA appliquée à un devis : particulier et cuisiniste avec coeff = TVA choisie ; cuisiniste sans coeff = 20 % (B2B)
+function tvaPctQuote(q) {
+  if (!q.proEmail || q.type === 'direct') return q.tva || 10;
+  const pro = getDB().users?.[q.proEmail] || {};
+  return (pro.coeffVenteActif && pro.coeffVente > 1) ? (q.tva || 10) : 20;
+}
+
+function renderListeAcomptes(q) {
   const existants = q.facturesAcompte || [];
   const existDiv = document.getElementById('modal-acompte-sa-existants');
   const listeDiv = document.getElementById('modal-acompte-sa-liste');
-  if (existants.length > 0) {
-    listeDiv.innerHTML = existants.map(fa =>
-      `<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--cream);border-radius:3px;">
-        <span style="color:var(--stone);font-weight:600;">${fa.num}</span>
-        <span>${fmtEUR(fa.montant)}</span>
-        <span style="color:var(--stone-light);">${fa.date}</span>
-      </div>`
-    ).join('');
-    existDiv.style.display = 'block';
-  } else {
-    existDiv.style.display = 'none';
-  }
-  document.getElementById('modal-acompte-standalone').classList.add('active');
+  if (!existants.length) { existDiv.style.display = 'none'; return; }
+  listeDiv.innerHTML = existants.map((fa, i) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 8px;background:var(--cream);border-radius:3px;">
+      <span style="color:var(--stone);font-weight:600;">${fa.num}</span>
+      <span>${fmtEUR(fa.montant)} TTC</span>
+      <span style="color:var(--stone-light);">${fa.date}</span>
+      <button type="button" title="Supprimer cet acompte" onclick="supprimerAcompte('${q.id}', ${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;padding:0 4px;">✕</button>
+    </div>`
+  ).join('');
+  existDiv.style.display = 'block';
+}
+
+async function supprimerAcompte(quoteId, index) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  const fa = q?.facturesAcompte?.[index];
+  if (!fa) return;
+  if (!confirm(`Supprimer la facture d'acompte ${fa.num} (${fmtEUR(fa.montant)} TTC) ?\nElle ne sera plus déduite de la facture finale.`)) return;
+  const updated = q.facturesAcompte.filter((_, i) => i !== index);
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ facturesAcompte: updated });
+  } catch (e) { alert('Erreur lors de la suppression : ' + e.message); return; }
+  q.facturesAcompte = updated;
+  renderListeAcomptes(q);
+  showToast('✓ Acompte ' + fa.num + ' supprimé');
 }
 
 async function confirmerAcompteStandalone() {
@@ -6992,12 +7045,53 @@ async function confirmerAcompteStandalone() {
   errEl.style.display = 'none';
   document.getElementById('modal-acompte-standalone').classList.remove('active');
   const numFA = await getNextAcompteNum();
-  await genererFactureAcompte(_acompteStandaloneQuoteId, montant, numFA, _acompteStandaloneTvaOverride);
+  const q = getDB().quotes.find(x => x.id === _acompteStandaloneQuoteId);
+  if (q && q.proEmail && q.type !== 'direct') await genererFactureAcomptePro(_acompteStandaloneQuoteId, montant, numFA);
+  else await genererFactureAcompte(_acompteStandaloneQuoteId, montant, numFA, _acompteStandaloneTvaOverride);
 }
 
 function ouvrirModalAcomptePro(quoteId) {
   ouvrirModalAcompte(quoteId);
-  _acompteStandaloneTvaOverride = 20;
+}
+
+// Facture d'acompte cuisiniste : même mise en page que la facture (société cliente, SIRET, TVA, chantier)
+async function genererFactureAcomptePro(quoteId, montantTTC, numFA) {
+  const db = getDB();
+  const q = db.quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const s = getSociete();
+  const pro = db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail };
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const condPay = 'Comptant à réception de facture';
+  const tvaPct = tvaPctQuote(q);
+  const montantHT = Math.round((montantTTC / (1 + tvaPct / 100)) * 100) / 100;
+  const montantTVA = Math.round((montantTTC - montantHT) * 100) / 100;
+  const matDesc = `${q.materiauLabel || q.materiau || ''} ${q.coloris || ''} ${q.finition || ''} ${q.epaisseur ? q.epaisseur + ' mm' : ''}`.trim();
+  const ref = q.commande?.ref || q.client?.ref || ('Réf. ' + q.id.slice(-6).toUpperCase());
+  const t = q.totalHT ? computeQuoteTotals(q) : null;
+
+  const lignesRows = `<tr>
+      <td class="li-desc">Acompte sur commande — ${matDesc}<br><span class="li-detail">Commande ${ref}${t ? ' · montant total ' + fmtEUR(t.ttc) + ' TTC' : ''}</span></td>
+      <td class="li-qty">1</td>
+      <td class="li-pu">${fmtEUR(montantHT)}</td>
+      <td class="li-total">${fmtEUR(montantHT)}</td>
+    </tr>`;
+  const totauxHtml = `<div class="totaux">
+  <table>
+    <tr><td>Total HT</td><td>${fmtEUR(montantHT)}</td></tr>
+    <tr class="row-tva"><td>TVA ${tvaPct}%</td><td>${fmtEUR(montantTVA)}</td></tr>
+    <tr class="row-ttc"><td>Acompte TTC</td><td>${fmtEUR(montantTTC)}</td></tr>
+  </table>
+</div>`;
+  ouvrirDocumentPdf(factureProHtml({ q, pro, s, titre: "Facture d'acompte", numFac: numFA, today, echeance: today, condPay, lignesRows, totauxHtml }));
+
+  const faEntry = { num: numFA, montant: montantTTC, montantHT, tva: tvaPct, date: today, dateISO: new Date().toISOString() };
+  const updatedFA = [...(q.facturesAcompte || []), faEntry];
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ facturesAcompte: updatedFA });
+  } catch (e) { alert("Erreur lors de l'enregistrement de l'acompte : " + e.message); return; }
+  q.facturesAcompte = updatedFA;
+  showToast('✓ Facture d\'acompte ' + numFA + ' générée');
 }
 
 async function genererFactureAcompte(quoteId, montantTTC, numFA, tvaOverride) {
