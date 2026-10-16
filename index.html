@@ -1208,6 +1208,36 @@ textarea { resize: vertical; min-height: 80px; }
   </div>
 </div>
 
+<!-- Modal : coordonnées client d'un devis validé (prix et statut inchangés) -->
+<div id="modal-coordonnees" class="modal-backdrop" style="z-index:1300;">
+  <div class="modal fade-in" style="max-width:560px;">
+    <h2>✏️ Modifier les coordonnées</h2>
+    <p style="font-size:.82rem;color:var(--stone-light);margin-bottom:18px;">Seules les coordonnées changent : le prix validé et le statut du devis restent identiques.</p>
+    <input type="hidden" id="coord-quote-id">
+    <div class="form-grid">
+      <div class="field">
+        <label>Civilité</label>
+        <select id="coord-civilite"><option value="">—</option><option>M.</option><option>Mme</option><option>Société</option></select>
+      </div>
+      <div class="field"></div>
+      <div class="field"><label>Nom du client *</label><input type="text" id="coord-nom"></div>
+      <div class="field"><label>Prénom du client</label><input type="text" id="coord-prenom"></div>
+      <div class="field"><label>Téléphone client</label><input type="tel" id="coord-tel"></div>
+      <div class="field"><label>Email client</label><input type="email" id="coord-email"></div>
+      <div class="field span-2"><label>Adresse de pose *</label><input type="text" id="coord-adresse"></div>
+      <div class="field"><label>Code postal *</label><input type="text" id="coord-cp"></div>
+      <div class="field"><label>Ville *</label><input type="text" id="coord-ville"></div>
+      <div class="field"><label>Date souhaitée de pose</label><input type="date" id="coord-date-pose"></div>
+      <div class="field"><label>Référence chantier</label><input type="text" id="coord-ref"></div>
+    </div>
+    <div id="coord-error" style="color:#c0392b;font-size:.82rem;margin-top:8px;display:none;"></div>
+    <div class="modal-footer" style="margin-top:20px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-coordonnees').classList.remove('active')">Annuler</button>
+      <button class="btn btn-gold" onclick="enregistrerCoordonnees()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal facture d'acompte standalone (en cours de chantier) -->
 <div id="modal-acompte-standalone" class="modal-backdrop">
   <div class="modal fade-in" style="max-width:420px;">
@@ -3773,6 +3803,7 @@ function renderDevisDirectTab() {
           ${q.status === 'commande' ? `<button class="btn btn-sm" style="background:var(--stone-light);color:#fff;border:none;" onclick="cloturerDevisDirect('${q.id}')">✓ Clôturer</button>` : ''}
           ${q.status === 'cloture' ? `<button class="btn btn-sm" style="background:var(--gold);color:#1a1814;border:none;" onclick="rebasculerDevisDirect('${q.id}')">↩ Commandé</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="editDirectQuote('${q.id}')">Modifier</button>
+          ${isValide(q) ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalCoordonnees('${q.id}')">Modifier coordonnées</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="duplicateDirectQuote('${q.id}')">Dupliquer</button>
           <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
           ${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalAcompte('${q.id}')">💶 Acompte</button>` : ''}
@@ -3822,6 +3853,45 @@ async function toggleDirectQuoteDetail(quoteId, cardEl) {
   document.querySelectorAll('.direct-quote-card').forEach(c => c.style.borderColor = '');
   if (cardEl) cardEl.style.borderColor = 'var(--gold)';
   openDrawer(buildDirectQuoteDetail(quoteId));
+}
+
+const COORD_CHAMPS = { civilite: 'civilite', nom: 'nom', prenom: 'prenom', tel: 'tel', email: 'email', adresse: 'adresse', cp: 'cp', ville: 'ville', 'date-pose': 'datePose', ref: 'ref' };
+
+function ouvrirModalCoordonnees(quoteId) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  document.getElementById('coord-quote-id').value = quoteId;
+  Object.entries(COORD_CHAMPS).forEach(([id, champ]) => {
+    document.getElementById('coord-' + id).value = q.client?.[champ] || '';
+  });
+  document.getElementById('coord-error').style.display = 'none';
+  document.getElementById('modal-coordonnees').classList.add('active');
+}
+
+async function enregistrerCoordonnees() {
+  const quoteId = document.getElementById('coord-quote-id').value;
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const client = {};
+  Object.entries(COORD_CHAMPS).forEach(([id, champ]) => { client[champ] = document.getElementById('coord-' + id).value.trim(); });
+  const errEl = document.getElementById('coord-error');
+  if (!client.nom || !client.adresse || !client.cp || !client.ville) {
+    errEl.textContent = 'Le nom, l\'adresse, le code postal et la ville sont obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  // Mise à jour champ par champ : le reste du devis (prix, statut, acomptes) n'est pas touché
+  const maj = {};
+  Object.entries(client).forEach(([champ, val]) => { maj['client.' + champ] = val; });
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update(maj);
+  } catch (e) { errEl.textContent = 'Erreur lors de l\'enregistrement : ' + e.message; errEl.style.display = 'block'; return; }
+  q.client = { ...(q.client || {}), ...client };
+  document.getElementById('modal-coordonnees').classList.remove('active');
+  showToast('✓ Coordonnées mises à jour');
+  renderDevisDirectTab();
+  const drawer = document.getElementById('side-drawer');
+  if (drawer?.classList.contains('open') && drawer.dataset.openId === quoteId) openDrawer(buildDirectQuoteDetail(quoteId));
 }
 
 function buildDirectQuoteDetail(quoteId) {
@@ -3875,6 +3945,7 @@ function buildDirectQuoteDetail(quoteId) {
           <option value="cloture" ${q.status==='cloture'?'selected':''}>Clôturée</option>
         </select>
         <button class="btn btn-gold btn-sm" onclick="exportDevisParticulier('${q.id}')">📄 PDF</button>
+        ${isValide(q) ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalCoordonnees('${q.id}')">✏️ Modifier coordonnées</button>` : ''}
         ${q.status !== 'commande' && q.status !== 'facture' ? `<button class="btn btn-commande btn-sm" onclick="event.stopPropagation();openCommandeModal('${q.id}')">🛒 Commander</button>` : ''}
         ${q.status === 'commande' ? `<button class="btn btn-secondary btn-sm" onclick="ouvrirModalAcompte('${q.id}')">💶 Acompte</button>` : ''}
         ${q.status === 'commande' || q.status === 'facture' ? `<button class="btn btn-secondary btn-sm" onclick="genererFactureDirecte('${q.id}')">🧾 Facture</button>` : ''}
