@@ -5339,6 +5339,14 @@ function computePrice() {
     lines.push({ cat:'Livraison', label:'Livraison étage / Paris', ht: P.pose.etage });
   }
 
+  // Lignes complémentaires (devis particulier) : comptées dans le total enregistré, comme dans le PDF
+  if (quoteMode === 'direct') {
+    formCustomLines.forEach(l => {
+      const pu = parseFloat(l.pu) || 0;
+      if (pu) lines.push({ cat:'Lignes complémentaires', label: l.label || 'Prestation complémentaire', ht: pu });
+    });
+  }
+
   const totalHT = lines.every(l => l.ht !== null) && lines.length > 0
     ? lines.reduce((s,l) => s+(l.ht||0), 0) : null;
 
@@ -9374,8 +9382,23 @@ async function migrerTotauxProQuotes() {
   const batch = [];
 
   for (const q of db.quotes) {
-    // Devis commandé / facturé / clôturé : le prix validé ne bouge plus
-    if (isValide(q)) continue;
+    // Devis commandé / facturé / clôturé : le prix validé ne bouge plus…
+    if (isValide(q)) {
+      // …sauf l'ancien oubli : lignes complémentaires d'un devis particulier jamais comptées dans le total.
+      // On ne corrige que si le total enregistré correspond exactement au calcul SANS ces lignes.
+      const isDirect = !q.proEmail || q.type === 'direct';
+      const custom = Math.round((q.lignesCustom || []).reduce((t, l) => t + (parseFloat(l.pu) || 0), 0) * 100) / 100;
+      if (isDirect && custom > 0 && q.totalHT > 0) {
+        const frais = computeHtBrutParticulier({ ...q, status: 'devise' });
+        if (frais && Math.abs(frais - custom - q.totalHT) < 0.01) {
+          const htBrut = Math.round((q.totalHT + custom) * 100) / 100;
+          const htNet = Math.round((htBrut - Math.round(computeRemiseAmount(htBrut, q.remise) * 100) / 100) * 100) / 100;
+          const totalTTC = Math.round(htNet * (1 + (q.tva || 10) / 100) * 100) / 100;
+          batch.push({ id: q.id, totalHT: htBrut, totalTTC });
+        }
+      }
+      continue;
+    }
     try {
       const isDirectParticulier = !q.proEmail || q.type === 'direct';
       let htBrut, totalTTC;
