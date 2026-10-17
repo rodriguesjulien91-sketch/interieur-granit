@@ -4061,7 +4061,7 @@ function addCustomLine(quoteId) {
   if (!db.quotes[idx].lignesCustom) db.quotes[idx].lignesCustom = [];
   db.quotes[idx].lignesCustom.push({ label, pu, ...(pa > 0 ? { pa } : {}) });
   saveDB(db);
-  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom }).catch(console.error);
+  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom, ...ajusterTotalLigne(db.quotes[idx], pu) }).catch(console.error);
   renderDevisDirectTab();
   setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
 }
@@ -4071,11 +4071,21 @@ function removeCustomLine(quoteId, lineIdx) {
   const db = getDB();
   const idx = db.quotes.findIndex(x => x.id === quoteId);
   if (idx === -1) return;
+  const retiree = (db.quotes[idx].lignesCustom||[])[lineIdx];
   db.quotes[idx].lignesCustom = (db.quotes[idx].lignesCustom||[]).filter((_,i) => i !== lineIdx);
   saveDB(db);
-  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom }).catch(console.error);
+  fbDb.collection('quotes').doc(quoteId).update({ lignesCustom: db.quotes[idx].lignesCustom, ...ajusterTotalLigne(db.quotes[idx], -(parseFloat(retiree?.pu) || 0)) }).catch(console.error);
   renderDevisDirectTab();
   setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
+}
+
+// Ajout / suppression d'une ligne complémentaire : le total HT enregistré suit (même sur un devis validé,
+// sinon l'aperçu et la carte resteraient sur l'ancien total alors que le PDF compte la ligne)
+function ajusterTotalLigne(q, deltaHT) {
+  if (!deltaHT || !(q.totalHT > 0)) return {};
+  q.totalHT = Math.round((q.totalHT + deltaHT) * 100) / 100;
+  q.totalTTC = computeQuoteTotals(q).ttc;
+  return { totalHT: q.totalHT, totalTTC: q.totalTTC };
 }
 
 function editDirectQuote(quoteId) {
