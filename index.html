@@ -3153,7 +3153,11 @@ function renderQuotesTable() {
         return '<span style="color:' + col + ';font-weight:500;">' + marge.toFixed(0) + '€ (' + pct.toFixed(0) + '%)</span>';
       })()}</td>
       <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
-      <td class="secondary" style="font-weight:${q.commande?.dateInstall?'600':'400'};color:${q.commande?.dateInstall?'var(--stone)':'var(--stone-light)'};">${q.commande?.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}</td>
+      ${(function(){
+        // Date de fin de pose affichée seulement sur un devis réellement commandé (même pour d'anciennes données)
+        const d = isValide(q) ? q.commande?.dateInstall : null;
+        return `<td class="secondary" style="font-weight:${d?'600':'400'};color:${d?'var(--stone)':'var(--stone-light)'};">${d ? new Date(d).toLocaleDateString('fr-FR') : '—'}</td>`;
+      })()}
       <td>${statusTag(q.status, q)}</td>
     </tr>`;
   }).join('');
