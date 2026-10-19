@@ -3668,7 +3668,7 @@ async function showQuoteDetail(id) {
     ${buildCommissionSection(q)}
     ${currentUser && currentUser.role === 'admin' ? buildRemiseEditor(q, 'admin') : ''}
     ${q.commentaire?`<div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);font-size:.82rem;color:var(--stone-light);">${q.commentaire}</div>`:''}
-    ${q.commande ? `
+    ${q.commande && isValide(q) ? `
     <div style="margin-top:18px;padding:14px;background:rgba(45,122,79,.1);border-radius:6px;">
       <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#1a6640;margin-bottom:10px;font-weight:600;">✓ Commande passée</div>
       <div class="detail-row"><span class="dk">Date de fin de pose</span><span class="dv">${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'}</span></div>
@@ -3713,10 +3713,18 @@ function updateQuoteStatus(id, status) {
   const q = db.quotes.find(x => x.id === id);
   if (q) {
     q.status = status;
+    const maj = { status };
+    // Retour avant commande (nouveau, en cours, devisé) : la date de fin de pose et la commande usine
+    // ne valent plus. Plan et devis signé sont conservés pour une prochaine commande.
+    if (!isValide(q)) {
+      if (q.commande?.dateInstall) { q.commande.dateInstall = null; maj['commande.dateInstall'] = null; }
+      if (q.commandeUsine) { q.commandeUsine = null; maj.commandeUsine = null; }
+    }
     saveDB(db);
-    fbDb.collection('quotes').doc(id).update({ status }).catch(console.error);
+    fbDb.collection('quotes').doc(id).update(maj).catch(console.error);
     renderQuotesTable();
     renderAdminDashboard();
+    if (document.getElementById('side-drawer')?.classList.contains('open')) showQuoteDetail(id);
   }
 }
 
@@ -4553,7 +4561,7 @@ function showProQuoteDetail(id) {
   const { htTotal: htTotalPreview } = buildLignesCuisiniste(q, currentUser||{});
   // Toujours utiliser buildLignesCuisiniste pour les comptes pro (source de vérité cohérente avec PDF/facture)
   const totalHTDisplay = htTotalPreview != null ? htTotalPreview : (q.totalHT != null ? q.totalHT : null);
-  const commandeInfo = q.commande
+  const commandeInfo = q.commande && isValide(q)
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Fin de pose : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
          ${q.commandeUsine ? `<br><strong style="color:#24507f;">🏭 Commande passée à l'usine</strong> le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}` : ''}
