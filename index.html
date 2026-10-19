@@ -77,6 +77,8 @@ textarea { resize: vertical; min-height: 80px; }
 .tag-commande::before { background: #1a6640; }
 .tag-facture { background: rgba(201,168,76,.18); color: #8a6d1a; }
 .tag-facture::before { background: #c9a84c; }
+.tag-usine { background: rgba(42,92,150,.15); color: #24507f; }
+.tag-usine::before { background: #24507f; }
 
 /* ═══ LOGIN VIEW ═══════════════════════════════════════════════════ */
 .login-bg { min-height: 100vh; background: var(--stone); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
@@ -504,7 +506,9 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="nouveau">Nouvelles</option>
             <option value="en_cours">En cours</option>
             <option value="devise">Devisées</option>
-            <option value="commande">Commandes</option>
+            <option value="commande">Commandes (toutes)</option>
+            <option value="a-commander">↳ À commander à l'usine</option>
+            <option value="usine">↳ Commandées usine</option>
             <option value="cloture">Clôturées</option>
             <option value="facture">Facturées</option>
           </select>
@@ -715,6 +719,12 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="search-bar-wrapper">
           <input type="text" id="pro-search" placeholder="Rechercher un devis (client, ville, matière, réf…)" oninput="filterProQuotes()">
         </div>
+        <select id="pro-status-filter" onchange="filterProQuotes()" style="width:auto;padding:9px 12px;font-size:.84rem;">
+          <option value="">Tous les statuts</option>
+          <option value="devise">Devisés</option>
+          <option value="commande">Commandés</option>
+          <option value="usine">Commandés usine</option>
+        </select>
       </div>
       <div style="font-size:.8rem;color:var(--stone-light);margin-bottom:14px;" id="pro-count-label"></div>
       <div id="pro-quotes-list"></div>
@@ -3045,9 +3055,11 @@ function renderQuotesTable() {
   let quotes = [...db.quotes];
   // Exclure devis particuliers (onglet dédié)
   quotes = quotes.filter(q => q.type !== 'direct' && q.proSociete);
-  if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
+  if (statusFilter === 'a-commander') quotes = quotes.filter(q => q.status === 'commande' && !q.commandeUsine);
+  else if (statusFilter === 'usine') quotes = quotes.filter(q => q.status === 'commande' && q.commandeUsine);
+  else if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
   // Tri : commandes par date d'installation croissante, sinon par date de création décroissante
-  if (statusFilter === 'commande') {
+  if (['commande', 'a-commander', 'usine'].includes(statusFilter)) {
     quotes.sort((a,b) => {
       const da = a.commande?.dateInstall ? new Date(a.commande.dateInstall) : new Date('9999-12-31');
       const db2 = b.commande?.dateInstall ? new Date(b.commande.dateInstall) : new Date('9999-12-31');
@@ -3142,7 +3154,7 @@ function renderQuotesTable() {
       })()}</td>
       <td class="secondary">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</td>
       <td class="secondary" style="font-weight:${q.commande?.dateInstall?'600':'400'};color:${q.commande?.dateInstall?'var(--stone)':'var(--stone-light)'};">${q.commande?.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}</td>
-      <td>${statusTag(q.status)}</td>
+      <td>${statusTag(q.status, q)}</td>
     </tr>`;
   }).join('');
 }
@@ -3672,8 +3684,28 @@ async function showQuoteDetail(id) {
           : `<em>${q.commande.devisFile}</em>`
       }</span></div>` : ''}
     </div>` : ''}
+    ${q.status === 'commande' ? `
+    <label style="margin-top:12px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:6px;cursor:pointer;background:${q.commandeUsine ? 'rgba(42,92,150,.18)' : 'rgba(255,255,255,.05)'};border:1px solid ${q.commandeUsine ? 'rgba(42,92,150,.5)' : 'rgba(255,255,255,.12)'};">
+      <input type="checkbox" ${q.commandeUsine ? 'checked' : ''} onchange="toggleCommandeUsine('${q.id}', this.checked)" style="width:18px;height:18px;accent-color:#24507f;">
+      <span style="font-size:.85rem;">🏭 <strong>Commande passée auprès de l'usine</strong>${q.commandeUsine ? ` <span style="color:#a89880;">— le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}</span>` : ' <span style="color:#a89880;">(après le métré)</span>'}</span>
+    </label>` : ''}
   </div>`);
 
+}
+
+async function toggleCommandeUsine(quoteId, coche) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const valeur = coche ? { date: new Date().toISOString() } : null;
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ commandeUsine: valeur });
+  } catch (e) { alert('Erreur lors de l\'enregistrement : ' + e.message); return; }
+  q.commandeUsine = valeur;
+  showToast(coche ? '✓ Commande passée auprès de l\'usine' : 'Commande usine décochée');
+  renderQuotesTable();
+  const drawer = document.getElementById('side-drawer');
+  if (drawer) delete drawer.dataset.openId;
+  showQuoteDetail(quoteId);
 }
 
 function updateQuoteStatus(id, status) {
@@ -3688,7 +3720,9 @@ function updateQuoteStatus(id, status) {
   }
 }
 
-function statusTag(status) {
+function statusTag(status, q) {
+  // Étape interne du statut « commandé » : la commande a été passée auprès de l'usine
+  if (status === 'commande' && q?.commandeUsine) return `<span class="tag tag-usine" title="Commande passée à l'usine le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}">Commandé usine</span>`;
   const labels = { nouveau:'Nouvelle', en_cours:'En cours', devise:'Devisée', cloture:'Clôturée', commande:'Commandé', facture:'Facturé' };
   return `<span class="tag tag-${status}">${labels[status]||status}</span>`;
 }
@@ -3799,7 +3833,7 @@ function renderDevisDirectTab() {
           <div style="font-size:.82rem;color:var(--stone-light);">${matLabel} · ${date} · ${prixHT}${typeof q.coeffDirect === 'number' ? ' · coeff × ' + fmt2(q.coeffDirect) : ''}</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;" onclick="event.stopPropagation()">
-          ${statusTag(q.status)}
+          ${statusTag(q.status, q)}
           ${q.status === 'commande' ? `<button class="btn btn-sm" style="background:var(--stone-light);color:#fff;border:none;" onclick="cloturerDevisDirect('${q.id}')">✓ Clôturer</button>` : ''}
           ${q.status === 'cloture' ? `<button class="btn btn-sm" style="background:var(--gold);color:#1a1814;border:none;" onclick="rebasculerDevisDirect('${q.id}')">↩ Commandé</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="editDirectQuote('${q.id}')">Modifier</button>
@@ -4354,13 +4388,18 @@ function renderProQuotes() {
   const db = getDB();
   allProQuotes = db.quotes.filter(q => q.proEmail === currentUser.email)
                           .sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
-  displayFilteredQuotes(allProQuotes);
+  filterProQuotes();
 }
 
 function filterProQuotes() {
   const term = (document.getElementById('pro-search').value || '').toLowerCase().trim();
-  if (!term) { displayFilteredQuotes(allProQuotes); return; }
+  const statut = document.getElementById('pro-status-filter')?.value || '';
   const filtered = allProQuotes.filter(q => {
+    // « Commandés » = commandes pas encore passées à l'usine ; « Commandés usine » = déjà passées
+    if (statut === 'devise' && q.status !== 'devise') return false;
+    if (statut === 'commande' && !(q.status === 'commande' && !q.commandeUsine)) return false;
+    if (statut === 'usine' && !(q.status === 'commande' && q.commandeUsine)) return false;
+    if (!term) return true;
     const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].join(' ').toLowerCase();
     return clientName.includes(term)
       || (q.client?.ville||'').toLowerCase().includes(term)
@@ -4442,7 +4481,7 @@ function displayFilteredQuotes(quotes) {
       <div>
         <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
         <div class="qc-client">${clientName} — ${q.client?.ville||''}${warningBadge}</div>
-        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status)}</div>
+        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status, q)}</div>
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
@@ -4517,6 +4556,7 @@ function showProQuoteDetail(id) {
   const commandeInfo = q.commande
     ? `<div style="margin-top:12px;padding:12px;background:rgba(45,122,79,.08);border-radius:4px;font-size:.82rem;">
          <strong style="color:#1a6640;">✓ Commande passée</strong> · Fin de pose : ${q.commande.dateInstall ? new Date(q.commande.dateInstall).toLocaleDateString('fr-FR') : '—'}
+         ${q.commandeUsine ? `<br><strong style="color:#24507f;">🏭 Commande passée à l'usine</strong> le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}` : ''}
          ${q.commande.notes ? `<br><span style="color:var(--stone-light);">Note : ${q.commande.notes}</span>` : ''}
          ${q.commande.planFile
            ? `<br>📐 Plan : ${(q.commande.planUrl || q.commande.planFileData)
@@ -4536,7 +4576,7 @@ function showProQuoteDetail(id) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div>
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);margin-bottom:3px;">${q.client?.ref||('Réf. '+q.id.slice(-6))}</div>
-        <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status)}
+        <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status, q)}
       </div>
       <button class="btn btn-sm btn-secondary" onclick="closeDrawer()">✕</button>
     </div>
