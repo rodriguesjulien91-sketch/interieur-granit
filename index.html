@@ -79,6 +79,8 @@ textarea { resize: vertical; min-height: 80px; }
 .tag-facture::before { background: #c9a84c; }
 .tag-usine { background: rgba(42,92,150,.15); color: #24507f; }
 .tag-usine::before { background: #24507f; }
+.tag-regle { background: rgba(45,122,79,.85); color: #fff; }
+.tag-regle::before { background: #fff; }
 
 /* ═══ LOGIN VIEW ═══════════════════════════════════════════════════ */
 .login-bg { min-height: 100vh; background: var(--stone); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
@@ -509,7 +511,9 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="commande">Commandes (toutes)</option>
             <option value="a-commander">↳ À commander à l'usine</option>
             <option value="usine">↳ Commandées usine</option>
-            <option value="cloture">Clôturées</option>
+            <option value="cloture">Clôturées (toutes)</option>
+            <option value="impaye">↳ En attente de règlement</option>
+            <option value="regle">↳ Réglées</option>
             <option value="facture">Facturées</option>
           </select>
           <select id="filter-pro" onchange="renderQuotesTable()" style="width:auto;padding:7px 12px;font-size:.8rem;">
@@ -3057,6 +3061,8 @@ function renderQuotesTable() {
   quotes = quotes.filter(q => q.type !== 'direct' && q.proSociete);
   if (statusFilter === 'a-commander') quotes = quotes.filter(q => q.status === 'commande' && !q.commandeUsine);
   else if (statusFilter === 'usine') quotes = quotes.filter(q => q.status === 'commande' && q.commandeUsine);
+  else if (statusFilter === 'impaye') quotes = quotes.filter(q => q.status === 'cloture' && !q.reglement);
+  else if (statusFilter === 'regle') quotes = quotes.filter(q => q.status === 'cloture' && q.reglement);
   else if (statusFilter) quotes = quotes.filter(q => q.status === statusFilter);
   // Tri : commandes par date d'installation croissante, sinon par date de création décroissante
   if (['commande', 'a-commander', 'usine'].includes(statusFilter)) {
@@ -3693,8 +3699,28 @@ async function showQuoteDetail(id) {
       <input type="checkbox" ${q.commandeUsine ? 'checked' : ''} onchange="toggleCommandeUsine('${q.id}', this.checked)" style="width:18px;height:18px;accent-color:#24507f;">
       <span style="font-size:.85rem;">🏭 <strong>Commande passée auprès de l'usine</strong>${q.commandeUsine ? ` <span style="color:#a89880;">— le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}</span>` : ' <span style="color:#a89880;">(après le métré)</span>'}</span>
     </label>` : ''}
+    ${q.status === 'cloture' ? `
+    <label style="margin-top:12px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:6px;cursor:pointer;background:${q.reglement ? 'rgba(45,122,79,.22)' : 'rgba(255,255,255,.05)'};border:1px solid ${q.reglement ? 'rgba(45,122,79,.6)' : 'rgba(255,255,255,.12)'};">
+      <input type="checkbox" ${q.reglement ? 'checked' : ''} onchange="toggleReglement('${q.id}', this.checked)" style="width:18px;height:18px;accent-color:#2d7a4f;">
+      <span style="font-size:.85rem;">💶 <strong>Règlement effectué</strong>${q.reglement ? ` <span style="color:#a89880;">— reçu le ${new Date(q.reglement.date).toLocaleDateString('fr-FR')}</span>` : ' <span style="color:#a89880;">(facture en attente de paiement)</span>'}</span>
+    </label>` : ''}
   </div>`);
 
+}
+
+async function toggleReglement(quoteId, coche) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const valeur = coche ? { date: new Date().toISOString() } : null;
+  try {
+    await fbDb.collection('quotes').doc(quoteId).update({ reglement: valeur });
+  } catch (e) { alert('Erreur lors de l\'enregistrement : ' + e.message); return; }
+  q.reglement = valeur;
+  showToast(coche ? '✓ Dossier réglé' : 'Règlement décoché');
+  renderQuotesTable();
+  const drawer = document.getElementById('side-drawer');
+  if (drawer) delete drawer.dataset.openId;
+  showQuoteDetail(quoteId);
 }
 
 async function toggleCommandeUsine(quoteId, coche) {
@@ -3724,6 +3750,8 @@ function updateQuoteStatus(id, status) {
       if (q.commande?.dateInstall) { q.commande.dateInstall = null; maj['commande.dateInstall'] = null; }
       if (q.commandeUsine) { q.commandeUsine = null; maj.commandeUsine = null; }
     }
+    // Le règlement ne vaut que pour un dossier clôturé (facture émise)
+    if (status !== 'cloture' && q.reglement) { q.reglement = null; maj.reglement = null; }
     saveDB(db);
     fbDb.collection('quotes').doc(id).update(maj).catch(console.error);
     renderQuotesTable();
@@ -3732,9 +3760,11 @@ function updateQuoteStatus(id, status) {
   }
 }
 
-function statusTag(status, q) {
+function statusTag(status, q, vueCuisiniste) {
   // Étape interne du statut « commandé » : la commande a été passée auprès de l'usine
   if (status === 'commande' && q?.commandeUsine) return `<span class="tag tag-usine" title="Commande passée à l'usine le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}">Commandé usine</span>`;
+  // Étape interne du statut « clôturé » (facture émise) : le règlement a été reçu
+  if (status === 'cloture' && q?.reglement && !vueCuisiniste) return `<span class="tag tag-regle" title="Règlement reçu le ${new Date(q.reglement.date).toLocaleDateString('fr-FR')}">Réglé</span>`;
   const labels = { nouveau:'Nouvelle', en_cours:'En cours', devise:'Devisée', cloture:'Clôturée', commande:'Commandé', facture:'Facturé' };
   return `<span class="tag tag-${status}">${labels[status]||status}</span>`;
 }
@@ -4493,7 +4523,7 @@ function displayFilteredQuotes(quotes) {
       <div>
         <div class="qc-ref">${q.client?.ref||('Réf. '+q.id.slice(-6))} · ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
         <div class="qc-client">${clientName} — ${q.client?.ville||''}${warningBadge}</div>
-        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status, q)}</div>
+        <div class="qc-meta">${q.materiauLabel||q.materiau} · ${surf} m² · ${statusTag(q.status, q, true)}</div>
         ${cmdBtn}
       </div>
       <div style="text-align:right;">
@@ -4588,7 +4618,7 @@ function showProQuoteDetail(id) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <div>
         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--stone-light);margin-bottom:3px;">${q.client?.ref||('Réf. '+q.id.slice(-6))}</div>
-        <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status, q)}
+        <strong style="font-size:1.05rem;">${clientName}</strong> &nbsp;${statusTag(q.status, q, true)}
       </div>
       <button class="btn btn-sm btn-secondary" onclick="closeDrawer()">✕</button>
     </div>
