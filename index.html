@@ -541,7 +541,9 @@ textarea { resize: vertical; min-height: 80px; }
             <select id="admin-direct-status-filter" onchange="renderDevisDirectTab()" style="padding:7px 8px;font-size:.78rem;border:none;border-left:1px solid var(--cream-dark);background:var(--white);color:var(--stone);cursor:pointer;outline:none;">
               <option value="all">Tous</option>
               <option value="devise">Devisé</option>
-              <option value="commande">Commandé</option>
+              <option value="commande">Commandé (tous)</option>
+              <option value="a-commander">↳ À commander à l'usine</option>
+              <option value="usine">↳ Commandé usine</option>
               <option value="facture">Facturé</option>
               <option value="cloture">Clôturé</option>
             </select>
@@ -3732,6 +3734,11 @@ async function toggleCommandeUsine(quoteId, coche) {
   } catch (e) { alert('Erreur lors de l\'enregistrement : ' + e.message); return; }
   q.commandeUsine = valeur;
   showToast(coche ? '✓ Commande passée auprès de l\'usine' : 'Commande usine décochée');
+  if (q.type === 'direct' || !q.proEmail) {
+    renderDevisDirectTab();
+    openDrawer(buildDirectQuoteDetail(quoteId));
+    return;
+  }
   renderQuotesTable();
   const drawer = document.getElementById('side-drawer');
   if (drawer) delete drawer.dataset.openId;
@@ -3840,9 +3847,9 @@ function renderDevisDirectTab() {
   directQuotes.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
   const searchTerm = (document.getElementById('admin-direct-search')?.value || '').toLowerCase().trim();
   const statusFilter = document.getElementById('admin-direct-status-filter')?.value || 'all';
-  if (statusFilter !== 'all') {
-    directQuotes = directQuotes.filter(q => q.status === statusFilter);
-  }
+  if (statusFilter === 'a-commander') directQuotes = directQuotes.filter(q => q.status === 'commande' && !q.commandeUsine);
+  else if (statusFilter === 'usine') directQuotes = directQuotes.filter(q => q.status === 'commande' && q.commandeUsine);
+  else if (statusFilter !== 'all') directQuotes = directQuotes.filter(q => q.status === statusFilter);
   if (searchTerm) {
     directQuotes = directQuotes.filter(q => {
       const clientName = [q.client?.prenom, q.client?.nom, q.client?.civilite].filter(Boolean).join(' ').toLowerCase();
@@ -4030,6 +4037,11 @@ function buildDirectQuoteDetail(quoteId) {
         <button class="btn btn-secondary btn-sm" onclick="closeDrawer()">× Fermer</button>
       </div>
     </div>
+    ${q.status === 'commande' ? `
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:18px;border-radius:6px;cursor:pointer;background:${q.commandeUsine ? 'rgba(42,92,150,.12)' : 'var(--cream)'};border:1px solid ${q.commandeUsine ? 'rgba(42,92,150,.45)' : 'var(--cream-dark)'};">
+      <input type="checkbox" ${q.commandeUsine ? 'checked' : ''} onchange="toggleCommandeUsine('${q.id}', this.checked)" style="width:18px;height:18px;accent-color:#24507f;">
+      <span style="font-size:.85rem;color:var(--stone);">🏭 <strong>Commande passée auprès de l'usine</strong>${q.commandeUsine ? ` <span style="color:var(--stone-light);">— le ${new Date(q.commandeUsine.date).toLocaleDateString('fr-FR')}</span>` : ' <span style="color:var(--stone-light);">(après le métré)</span>'}</span>
+    </label>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
       <div>
         <div class="direct-detail-section">
@@ -4414,8 +4426,11 @@ function updateDirectQuoteStatus(quoteId, newStatus) {
   const q = db.quotes.find(x => x.id === quoteId);
   if (q) {
     q.status = newStatus;
+    const maj = { status: newStatus };
+    // Hors statut « commandé », la commande usine ne vaut plus
+    if (newStatus !== 'commande' && q.commandeUsine) { q.commandeUsine = null; maj.commandeUsine = null; }
     saveDB(db);
-    fbDb.collection('quotes').doc(quoteId).update({ status: newStatus }).catch(console.error);
+    fbDb.collection('quotes').doc(quoteId).update(maj).catch(console.error);
     renderDevisDirectTab();
     setTimeout(() => openDrawer(buildDirectQuoteDetail(quoteId)), 50);
   }
