@@ -4647,7 +4647,14 @@ function showProQuoteDetail(id) {
       <div>
         <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;">${q.materiauLabel} — ${q.coloris||'—'}</div>
         ${previewLines}
-        <div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(totalHTDisplay)}</span></div>
+        ${(function(){
+          const remise = totalHTDisplay != null ? Math.round(computeRemiseAmount(totalHTDisplay, q.remise) * 100) / 100 : 0;
+          if (!(remise > 0)) return `<div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(totalHTDisplay)}</span></div>`;
+          const libelle = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)} %)` : 'Remise commerciale';
+          return `<div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key">Sous-total HT</span><span class="val">${fmtEUR(totalHTDisplay)}</span></div>
+            <div class="summary-row"><span class="key" style="color:var(--gold);">${libelle}</span><span class="val" style="color:var(--gold);">− ${fmtEUR(remise)}</span></div>
+            <div class="summary-row"><span class="key" style="font-weight:600;">Total HT remisé</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(Math.round((totalHTDisplay - remise) * 100) / 100)}</span></div>`;
+        })()}
       </div>
     </div>
     ${commandeInfo}
