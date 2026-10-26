@@ -5641,7 +5641,37 @@ function buildSummary() {
     <div class="summary-row"><span class="key">Accès chantier</span><span class="val">${livLabel}</span></div>
   `;
 
-  const { lines, totalHT, tva } = computePrice();
+  let { lines, totalHT, tva } = computePrice();
+  // Admin qui édite le devis d'un cuisiniste : afficher le calcul réellement enregistré
+  // (coefficient du cuisiniste, TVA appliquée), pas les prix catalogue de l'admin
+  const _orig = (currentUser?.role === 'admin' && quoteMode !== 'direct' && currentEditingQuoteId)
+    ? getDB().quotes.find(x => x.id === currentEditingQuoteId) : null;
+  if (_orig && totalHT !== null) {
+    const cp = computePrice();
+    const chantType = document.getElementById('chant').value;
+    const ebCred = document.getElementById('epaisseur-cred-block'), selCred = document.getElementById('epaisseur-cred');
+    const temp = {
+      ...(_orig), status: 'devise', totalHT: null,
+      materiau: mat, coloris: document.getElementById('coloris').value, finition: document.getElementById('finition').value,
+      epaisseur: document.getElementById('epaisseur').value,
+      epaisseurCred: (ebCred && ebCred.style.display !== 'none' && selCred) ? selCred.value : null,
+      plans: getPlansData(), credences: getCredencesData(), surfacePlans: cp.surfacePlans, surfaceCred: cp.surfaceCred,
+      chant: { type: chantType, longueur: parseFloat(document.getElementById('chant-longueur').value) || 0, pu: PRIX.chants?.[chantType] || 0 },
+      options: getCounters(),
+      // Mêmes prix d'options que ceux enregistrés à la sauvegarde (tarif du jour)
+      optionsPrix: (() => { const s = {}; Object.entries(PRIX.options || {}).forEach(([k, v]) => { if (v?.prix !== undefined) s[k] = v.prix; }); if (PRIX.options?.['coupe-onglet']?.prix !== undefined) s['coupe-onglet-ml'] = PRIX.options['coupe-onglet'].prix; return s; })(),
+      livraison: document.querySelector('input[name="livraison"]:checked')?.value,
+      tva: Math.round(tva * 100)
+    };
+    const proQ = getDB().users[_orig.proEmail] || {};
+    lines = lignesCuisiniste(temp, proQ).map(l => ({
+      cat: l.mat ? 'Matériaux' : (estLigneService(l) ? 'Services' : 'Façonnage & options'),
+      label: l.label + (l.unite ? ` — ${fmt2(l.qty)} ${l.unite} × ${fmtEUR(l.pu)}` : (l.qty > 1 ? ` × ${l.qty}` : '')),
+      ht: l.ht
+    }));
+    totalHT = Math.round(lines.reduce((t, l) => t + l.ht, 0) * 100) / 100;
+    tva = tvaPctQuote(temp) / 100;
+  }
   let rows = '';
   if (lines.length === 0) {
     rows = '<tr><td colspan="2" style="color:var(--stone-light);font-style:italic;padding:12px 0;">Aucune dimension saisie — le tarif sera communiqué après étude.</td></tr>';
