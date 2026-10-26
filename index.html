@@ -1019,9 +1019,8 @@ textarea { resize: vertical; min-height: 80px; }
         <h3>Type de chant</h3>
         <div class="form-grid">
           <div class="field">
-            <label>Type de chant</label>
+            <label>Type de chant *</label>
             <select id="chant">
-              <option value="">Sans chant particulier</option>
               <option value="Droit chanfreiné">Droit chanfreiné</option>
               <option value="Arrondi 1/4 de rond">Arrondi 1/4 de rond</option>
               <option value="Arrondi 1/2 rond">Arrondi 1/2 rond</option>
@@ -1032,7 +1031,7 @@ textarea { resize: vertical; min-height: 80px; }
             </select>
           </div>
           <div class="field">
-            <label>Longueur totale chant (mm)</label>
+            <label>Longueur totale chant (mm) *</label>
             <input type="number" id="chant-longueur" placeholder="3600" min="0">
           </div>
         </div>
@@ -3440,8 +3439,43 @@ function buildCoutsSection(q) {
   h += ln('Cout total fournisseurs', fmtEUR(coutTotal));
   h += '<div style="'+R+'"><span style="'+DK+'">Prix de vente HT'+rem+'</span><span style="'+DV+'">'+fmtEUR(pv)+'</span></div>';
   h += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:.85rem;"><span style="color:#1a1814;font-weight:600;">Marge brute</span><span style="font-weight:700;color:'+col+';">'+fmtEUR(marge)+' ('+pct.toFixed(1)+'%)</span></div>';
+  // Répartition : services (livraison, pose, prise de cote = 100 % marge) / produits (le reste, remise incluse)
+  const margeServ = Math.round(htServicesDevis(q) * 100) / 100;
+  if (margeServ > 0) {
+    const margeProd = Math.round((marge - margeServ) * 100) / 100;
+    const SUB = 'display:flex;justify-content:space-between;padding:3px 0 3px 14px;font-size:.8rem;';
+    h += '<div style="'+SUB+'"><span style="'+DK+'">↳ dont produits</span><span style="'+DV+'">'+fmtEUR(margeProd)+'</span></div>';
+    h += '<div style="'+SUB+'"><span style="'+DK+'">↳ dont services (livraison, pose, prise de cote)</span><span style="'+DV+'">'+fmtEUR(margeServ)+'</span></div>';
+  }
   h += '</div></div>';
   return h;
+}
+
+// Services = livraison, pose, prise de cote
+function estLigneService(l) {
+  const libServices = [PRIX.options['prise-de-cote']?.label, PRIX.options['pose-installation']?.label].filter(Boolean);
+  return !l.mat && (libServices.includes(l.label) || l.label.startsWith('Livraison'));
+}
+
+// Montant HT vendu en services : mêmes lignes que les documents du devis
+function htServicesDevis(q) {
+  const isDirect = !q.proEmail || q.type === 'direct';
+  const lignes = isDirect ? lignesParticulier(q) : lignesCuisiniste(q, getDB().users[q.proEmail] || {});
+  return lignes.filter(estLigneService).reduce((t, l) => t + l.ht, 0);
+}
+
+// Factures simplifiées : 3 postes (matériaux / façonnage / services), sans dimensions ni détail.
+// Les montants sont la somme exacte des lignes détaillées, donc le total ne change pas.
+function lignesFactureSimplifiees(lignes, matDesc) {
+  const r2 = v => Math.round(v * 100) / 100;
+  const postes = [
+    { label: 'Matériaux — ' + matDesc + ' (plans de travail et crédences)', test: l => l.mat },
+    { label: 'Façonnage (découpes, perçages, chants et finitions)', test: l => !l.mat && !l.custom && !estLigneService(l) },
+    { label: 'Services (livraison, prise de cote, pose)', test: estLigneService },
+    { label: 'Prestations complémentaires', test: l => l.custom }
+  ];
+  return postes.map(p => ({ label: p.label, ht: r2(lignes.filter(p.test).reduce((t, l) => t + l.ht, 0)) }))
+               .filter(p => p.ht !== 0);
 }
 
 
@@ -3638,6 +3672,7 @@ async function showQuoteDetail(id) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
       <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:300;color:var(--gold);margin:0;">Détail — ${clientName}</h3>
       <div style="display:flex;gap:12px;align-items:center;">
+        <button class="btn btn-gold btn-sm" title="Ajuster le devis du cuisiniste (après métré…) : il garde son statut, son cuisiniste et son coefficient" onclick="closeDrawer();loadQuoteIntoForm('${id}', false)">✏️ Éditer le devis</button>
         <select class="status-select" onchange="updateQuoteStatus('${id}',this.value)">
           <option value="nouveau" ${q.status==='nouveau'?'selected':''}>Nouvelle</option>
           <option value="en_cours" ${q.status==='en_cours'?'selected':''}>En cours</option>
@@ -4897,6 +4932,9 @@ function startNewQuote() {
   document.getElementById('banner-email').textContent = currentUser.email || '';
   showView('view-form');
   rebuildDevisFormOptions();
+  // Nouveau chiffrage cuisiniste : chant droit chanfreiné par défaut (évite un devis sans chant chiffré)
+  const chantSel = document.getElementById('chant');
+  if (chantSel && [...chantSel.options].some(o => o.value === 'Droit chanfreiné')) chantSel.value = 'Droit chanfreiné';
   initCounterPrices();
 }
 
@@ -4923,6 +4961,12 @@ function backFromForm() {
   if (quoteMode === 'direct') {
     showAdminView();
     switchTab('direct');
+    showView('view-admin');
+  } else if (currentUser?.role === 'admin') {
+    // Édition admin d'un devis cuisiniste : retour au tableau des chiffrages
+    currentEditingQuoteId = null;
+    showAdminView();
+    switchTab('quotes');
     showView('view-admin');
   } else {
     backToPro();
@@ -5019,14 +5063,21 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   document.getElementById('form-success').style.display = 'none';
   document.querySelector('#view-form .form-main').style.display = 'block';
   document.querySelector('#view-form .progress-wrapper').style.display = 'block';
-  document.getElementById('form-back-btn').textContent = quoteMode === 'direct' ? '← Devis particuliers' : '← Mes chiffrages';
+  // Remise commerciale (admin) : rechargée pour ne pas être perdue à l'enregistrement
+  setV('remise-type', q.remise?.type || 'none');
+  setV('remise-valeur', q.remise?.valeur || '');
+  if (typeof updateRemisePreview === 'function') updateRemisePreview();
+  // Admin qui édite le devis d'un cuisiniste : le bandeau affiche le cuisiniste, pas l'admin
+  const editeAdminPro = currentUser?.role === 'admin' && quoteMode !== 'direct';
+  const titulaire = editeAdminPro ? (db.users[q.proEmail] || { societe: q.proSociete, email: q.proEmail }) : currentUser;
+  document.getElementById('form-back-btn').textContent = quoteMode === 'direct' ? '← Devis particuliers' : (editeAdminPro ? '← Tous les chiffrages' : '← Mes chiffrages');
   if (quoteMode === 'direct') {
     document.getElementById('banner-societe').textContent = 'Intérieur Granit';
   } else {
-    document.getElementById('banner-societe').textContent = currentUser.societe || '';
+    document.getElementById('banner-societe').textContent = (editeAdminPro ? '✏️ Édition admin — ' : '') + (titulaire.societe || q.proSociete || '');
   }
-  document.getElementById('banner-contact').textContent = [currentUser.prenom, currentUser.nom].filter(Boolean).join(' ');
-  document.getElementById('banner-email').textContent = currentUser.email || '';
+  document.getElementById('banner-contact').textContent = [titulaire.prenom, titulaire.nom].filter(Boolean).join(' ');
+  document.getElementById('banner-email').textContent = titulaire.email || '';
   showView('view-form');
   rebuildDevisFormOptions();
   initCounterPrices();
@@ -5044,6 +5095,8 @@ function resetFormFields() {
    'materiau','coloris','finition','chant','chant-longueur','commentaire'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const chantReset = document.getElementById('chant');
+  if (chantReset) chantReset.value = 'Droit chanfreiné';
   // Réinitialiser le dropdown épaisseur au placeholder
   const epSel = document.getElementById('epaisseur');
   if (epSel) { epSel.innerHTML = '<option value="">— Sélectionnez d\'abord un matériau —</option>'; }
@@ -5082,6 +5135,10 @@ function validateFormStep(step) {
   }
   if (step === 2) {
     if (!document.getElementById('materiau').value) { alert('Veuillez sélectionner un matériau.'); return false; }
+  }
+  if (step === 3) {
+    if (!document.getElementById('chant').value) { alert('Veuillez choisir un type de chant.'); return false; }
+    if (!(parseFloat(document.getElementById('chant-longueur').value) > 0)) { alert('Veuillez renseigner la longueur totale du chant (en mm).'); return false; }
   }
   return true;
 }
@@ -5741,14 +5798,30 @@ function submitQuote(action) {
       acompte2: (isDirect && currentUser?.role === 'admin' && getReglementMode() === 'manuel') ? (parseFloat(document.getElementById('reglement-a2')?.value) || null) : null
     };
 
-    // Pour cuisiniste avec coeff : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
-    if (currentUser?.role === 'pro' && quoteData.totalHT !== null && quoteMode !== 'direct') {
+    // Édition d'un devis existant : il reste au cuisiniste qui l'a créé (même si c'est l'admin qui édite)
+    const original = isEdit ? db.quotes.find(x => x.id === currentEditingQuoteId) : null;
+    const isAdmin = currentUser?.role === 'admin';
+    if (original && !isDirect && original.proEmail) {
+      quoteData.proEmail = original.proEmail;
+      quoteData.proSociete = original.proSociete;
+    }
+    // Le cuisiniste ne voit pas la remise : il ne doit pas l'effacer en modifiant son devis
+    if (original && !isAdmin) quoteData.remise = original.remise ?? null;
+    // Admin qui ajuste un devis validé (après métré) : le statut reste celui de la commande
+    if (original && isAdmin && !isDirect && isValide(original) && action !== 'commande') quoteData.status = original.status;
+    // Prix calculé avec le coefficient du cuisiniste du devis, pas celui de la personne connectée
+    const proDuDevis = !isDirect ? (db.users[quoteData.proEmail] || currentUser) : null;
+    if (proDuDevis) quoteData.coeffPro = (proDuDevis.coeffVenteActif && proDuDevis.coeffVente > 1) ? proDuDevis.coeffVente : 1;
+
+    // Pour cuisiniste : aligner totalHT sur buildLignesCuisiniste (source de vérité PDF)
+    if (proDuDevis && quoteData.totalHT !== null && (currentUser?.role === 'pro' || isAdmin)) {
       // Calcul « non validé » : c'est ce calcul qui fixe le prix enregistré, même si on commande directement
-      const { htTotal: htFromLignes } = buildLignesCuisiniste({ ...quoteData, status: 'devise' }, currentUser);
+      const { htTotal: htFromLignes } = buildLignesCuisiniste({ ...quoteData, status: 'devise' }, proDuDevis);
       if (htFromLignes !== null) {
         quoteData.totalHT = Math.round(htFromLignes * 100) / 100;
         const htNetSave = quoteData.totalHT - computeRemiseAmount(quoteData.totalHT, quoteData.remise);
-        quoteData.totalTTC = Math.round(htNetSave * (1 + tva) * 100) / 100;
+        // TVA réellement appliquée (cuisiniste sans coeff = 20 % même si 10 % est coché)
+        quoteData.totalTTC = Math.round(htNetSave * (1 + tvaPctQuote(quoteData) / 100) * 100) / 100;
       }
     }
 
@@ -5910,7 +5983,7 @@ function lignesCuisiniste(q, pro) {
   // Lignes complémentaires avec coeff
   (q.lignesCustom || []).forEach(l => {
     const pu = parseFloat(l.pu) || 0;
-    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu: r2(pu * coeff), ht: r2(pu * coeff) });
+    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu: r2(pu * coeff), ht: r2(pu * coeff), custom: true });
   });
   return recalerSurTotalValide(q, lignes);
 }
@@ -6559,7 +6632,7 @@ function lignesParticulier(q) {
   if (livr) lignes.push({ label: q.livraison === 'etage' ? 'Livraison — Étage / Paris' : 'Livraison — Rez-de-chaussée', qty: 1, unite: '', pu: livr, ht: livr });
   (q.lignesCustom || []).forEach(l => {
     const pu = parseFloat(l.pu) || 0;
-    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu, ht: pu });
+    if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu, ht: pu, custom: true });
   });
   return recalerSurTotalValide(q, lignes);
 }
@@ -7101,18 +7174,15 @@ async function genererFacture(quoteId) {
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
 
   const _lignesFact = lignesCuisiniste(q, pro);
-  const _dimsFact = (items, prefix) => (items || []).filter(x => x.larg && x.long)
-    .map((x, i) => `<br><span class="li-detail" style="padding-left:10px;">↳ ${prefix}${i + 1} : ${x.larg} × ${x.long} mm · ${surfPiece(x.larg, x.long, isFige(q)).toFixed(2)} m²</span>`).join('');
-  _lignesFact.forEach(l => {
-    let desc = l.label;
-    if (l.mat) desc += ' — ' + matDesc + (l.label.startsWith('Plans') ? _dimsFact(q.plans, 'P') : _dimsFact(q.credences, 'C'));
-    htBrutFact += l.ht;
+  // Facture simplifiée : un poste matériaux, un poste façonnage, un poste services
+  lignesFactureSimplifiees(_lignesFact, matDesc).forEach(p => {
+    htBrutFact += p.ht;
     ligneNum++;
     lignesRows += `<tr>
-      <td class="li-desc">${desc}</td>
-      <td class="li-qty">${l.unite ? fmt2(l.qty) + ' ' + l.unite : l.qty}</td>
-      <td class="li-pu">${fmtEUR(l.pu)}</td>
-      <td class="li-total">${fmtEUR(l.ht)}</td>
+      <td class="li-desc">${p.label}</td>
+      <td class="li-qty">1</td>
+      <td class="li-pu">${fmtEUR(p.ht)}</td>
+      <td class="li-total">${fmtEUR(p.ht)}</td>
     </tr>`;
   });
 
@@ -7457,9 +7527,16 @@ async function _genererFactureDirecte(quoteId, acomptes) {
   const matDesc = `${matLabel} ${coloris} ${finition} ${ep ? ep + ' mm' : ''}`.trim();
   const epCred3 = q.epaisseurCred === '12' ? '12' : ep;
   const matDescCred3 = `${matLabel} ${coloris} ${finition} ${epCred3 ? epCred3+' mm' : ''}`.trim();
-  const _rf = rowsParticulier(q, matDesc, matDescCred3);
-  lignesRows = _rf.rows;
-  ligneNum = _rf.nb;
+  // Facture simplifiée : un poste matériaux, un poste façonnage, un poste services
+  const _postes = lignesFactureSimplifiees(lignesParticulier(q), matDesc);
+  const _rf = { ht: Math.round(_postes.reduce((t, p) => t + p.ht, 0) * 100) / 100 };
+  lignesRows = _postes.map(p => `<tr>
+      <td class="li-desc">${p.label}</td>
+      <td class="li-right">1</td>
+      <td class="li-right">${fmtEUR(p.ht)}</td>
+      <td class="li-right">${fmtEUR(p.ht)}</td>
+    </tr>`).join('');
+  ligneNum = _postes.length;
 
   // Fallback si aucune ligne construite
   if (ligneNum === 0) {
@@ -7725,7 +7802,7 @@ function rebuildDevisFormOptions() {
   const chantSelect = document.getElementById('chant');
   if (chantSelect) {
     const prevVal = chantSelect.value;
-    chantSelect.innerHTML = '<option value="">Sans chant particulier</option>';
+    chantSelect.innerHTML = '';
     for (const [key, label] of Object.entries(CHANT_KEY_TO_LABEL)) {
       if (deleted.has(key)) continue;
       const opt = document.createElement('option');
@@ -7741,6 +7818,8 @@ function rebuildDevisFormOptions() {
       chantSelect.appendChild(opt);
     }
     chantSelect.value = prevVal;
+    // Plus d'option « sans chant » : à défaut, droit chanfreiné
+    if (!chantSelect.value) chantSelect.value = 'Droit chanfreiné';
   }
 
   // Mettre à jour l'affichage des prix dans les compteurs
