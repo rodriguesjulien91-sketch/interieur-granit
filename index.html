@@ -2220,13 +2220,21 @@ function getColorisFinitionData(mat, coloris, finition) {
 }
 
 // Helper: prix par coloris+épaisseur (cherche dans toutes les finitions si besoin)
+// Compte dont le coefficient s'applique aux prix du formulaire : le cuisiniste connecté,
+// ou le cuisiniste dont l'admin édite le devis (pour voir exactement ses prix)
+let cuisinisteEdite = null;
+function coeffFormulaire() {
+  const compte = cuisinisteEdite || (currentUser?.role === 'pro' ? currentUser : null);
+  return (compte?.coeffVenteActif && compte?.coeffVente > 1) ? compte.coeffVente : 1;
+}
+
 function getColorisPrice(mat, coloris, ep, finition) {
   // 1. Chercher dans la finition sélectionnée
   const fd = getColorisFinitionData(mat, coloris, finition);
   if (fd && fd.e && fd.e[ep] !== undefined) {
     const base = fd.e[ep];
-    if (currentUser && currentUser.role === 'pro' && currentUser.coeffVenteActif && currentUser.coeffVente > 1) {
-      return Math.round(base * currentUser.coeffVente);
+    if (coeffFormulaire() > 1) {
+      return Math.round(base * coeffFormulaire());
     }
     return base;
   }
@@ -2235,8 +2243,8 @@ function getColorisPrice(mat, coloris, ep, finition) {
   for (const f of fins) {
     if (f.e && f.e[ep] !== undefined) {
       const base = f.e[ep];
-      if (currentUser && currentUser.role === 'pro' && currentUser.coeffVenteActif && currentUser.coeffVente > 1) {
-        return Math.round(base * currentUser.coeffVente);
+      if (coeffFormulaire() > 1) {
+        return Math.round(base * coeffFormulaire());
       }
       return base;
     }
@@ -2725,8 +2733,8 @@ let appCache = { users: {}, quotes: [] };
 // Retourne la grille de prix de base (cuisiniste)
 function getCurrentPrix() {
   // Si le cuisiniste a un coeff perso actif, on retourne une version modifiée de PRIX
-  if (currentUser && currentUser.role === 'pro' && currentUser.coeffVenteActif && currentUser.coeffVente > 1) {
-    const c = currentUser.coeffVente;
+  if (coeffFormulaire() > 1) {
+    const c = coeffFormulaire();
     const P = JSON.parse(JSON.stringify(PRIX)); // deep copy
     // Coeff sur matériaux
     for (const mat of Object.values(P.materiaux)) {
@@ -4918,6 +4926,7 @@ function removeFormCustomLine(idx) {
 
 function startNewQuote() {
   quoteMode = 'pro';
+  cuisinisteEdite = null;
   currentEditingQuoteId = null;
   resetFormFields();
   currentStep = 1;
@@ -4940,6 +4949,7 @@ function startNewQuote() {
 
 function startDirectQuote() {
   quoteMode = 'direct';
+  cuisinisteEdite = null;
   currentEditingQuoteId = null;
   resetFormFields();
   currentStep = 1;
@@ -4958,6 +4968,7 @@ function startDirectQuote() {
 }
 
 function backFromForm() {
+  cuisinisteEdite = null;
   if (quoteMode === 'direct') {
     showAdminView();
     switchTab('direct');
@@ -4979,6 +4990,9 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   if (!q) return;
   quoteMode = q.type === 'direct' ? 'direct' : 'pro';
   currentEditingQuoteId = isDuplicate ? null : quoteId;
+  // Admin qui édite le devis d'un cuisiniste : tous les prix du formulaire avec le coefficient de ce cuisiniste
+  cuisinisteEdite = (currentUser?.role === 'admin' && quoteMode === 'pro')
+    ? (db.users[q.proEmail] || null) : null;
   resetFormFields();
 
   // Étape 1 — Client
@@ -5876,6 +5890,7 @@ function submitQuote(action) {
     }
 
     currentEditingQuoteId = null;
+    cuisinisteEdite = null;
 
     // Naviguer vers la bonne vue
     if (isDirect) {
