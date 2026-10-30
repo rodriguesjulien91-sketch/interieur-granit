@@ -6160,9 +6160,11 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   <strong>Conditions de règlement :</strong><br>
   ${(()=>{
     const t1=Math.round(ttc*0.30); const t2=t1; const t3=Math.round((ttc-t1-t2)*100)/100;
-    return '• 30 % d\'acompte à la commande : <strong>'+t1+' €</strong><br>  • 30 % à la prise de côte : <strong>'+t2+' €</strong><br>  • 40 % le jour de la pose : <strong>'+fmtEUR(t3)+'</strong>';
+    return '• 30 % d\'acompte à l\'acceptation du devis : <strong>'+t1+' €</strong><br>  • 30 % à la prise de côte : <strong>'+t2+' €</strong><br>  • 40 % le jour de la pose : <strong>'+fmtEUR(t3)+'</strong>';
   })()}
 </div>
+
+<div style="margin-top:8px;font-size:10px;color:#3d3830;"><strong>Délai de réalisation :</strong> environ 6 semaines après validation du dossier complet.</div>
 
 <div class="sigs" style="grid-template-columns:1fr;max-width:360px;">
   <div class="sig-box">
