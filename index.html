@@ -6114,7 +6114,7 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
 .sig-date{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;}
 </style>
 ${cgvParticulierHtml()}
-<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv');if(c)c.style.display='none';var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';if(c)c.style.zoom=1/z;}if(c)c.style.display='';window.print();};<\/script>
+<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv'),l=document.getElementById('coloris-lightbox'),p=document.createElement('div');if(l)l.style.display='none';Array.prototype.slice.call(b.childNodes).forEach(function(n){if(n!==c&&n!==l&&n.nodeName!=='SCRIPT')p.appendChild(n);});b.insertBefore(p,c);p.style.pageBreakAfter='always';p.style.breakAfter='page';var h=p.scrollHeight,A4=1020;if(h>A4){p.style.zoom=Math.max(0.45,A4/h);}window.print();};<\/script>
 </head><body>
 <div class="header">
   <div style="display:flex;align-items:center;gap:16px;">
@@ -6710,7 +6710,7 @@ function rowsParticulier(q, matDesc, matDescCred) {
 // CGV particuliers : page annexée au devis (voir aussi le script de mise à l'échelle du devis)
 const CGV_MEDIATEUR = ''; // Nom, site et adresse du médiateur de la consommation, une fois désigné
 function cgvParticulierHtml() {
-  return `<div id="cgv" style="break-before:page;page-break-before:always;font-size:9px;line-height:1.35;color:#1a1814;text-align:justify;">
+  return `<div id="cgv" style="font-size:9px;line-height:1.35;color:#1a1814;text-align:justify;">
 <div style="font-family:'Cormorant Garamond',serif;font-size:17px;border-bottom:2px solid #c9a84c;padding-bottom:3px;margin-bottom:6px;">Conditions générales de vente — Clients particuliers</div>
 <div style="column-count:2;column-gap:16px;">
 <p><b>1. Vendeur.</b> SARL DR RENOV, exerçant sous le nom commercial Intérieur Granit, au capital de 1 500 €, RCS Évry, SIRET 938 950 508 00011, TVA FR54938950508, 340 Route d'Étampes, 91150 Brières-les-Scellés. Tél. : 07 81 22 71 23 / 06 98 02 22 29. contact@interieur-granit.fr.</p>
@@ -7034,7 +7034,7 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
 </div>
 ${cgvParticulierHtml()}
 
-<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv');c.style.display='none';var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';c.style.zoom=1/z;}c.style.display='';window.print();};<\/script>
+<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv'),l=document.getElementById('coloris-lightbox'),p=document.createElement('div');if(l)l.style.display='none';Array.prototype.slice.call(b.childNodes).forEach(function(n){if(n!==c&&n!==l&&n.nodeName!=='SCRIPT')p.appendChild(n);});b.insertBefore(p,c);p.style.pageBreakAfter='always';p.style.breakAfter='page';var h=p.scrollHeight,A4=1020;if(h>A4){p.style.zoom=Math.max(0.45,A4/h);}window.print();};<\/script>
 <div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
   <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
   <img id="coloris-lightbox-img" src="" alt="">
