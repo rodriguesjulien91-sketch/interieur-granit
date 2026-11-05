@@ -6113,7 +6113,8 @@ td { padding:8px 12px; border-bottom:1px solid #ede6d6; font-size:12px; }
 .sig-zone{height:52px;border-bottom:1px solid #1a1814;}
 .sig-date{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;}
 </style>
-<script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
+${cgvParticulierHtml()}
+<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv');if(c)c.style.display='none';var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';if(c)c.style.zoom=1/z;}if(c)c.style.display='';window.print();};<\/script>
 </head><body>
 <div class="header">
   <div style="display:flex;align-items:center;gap:16px;">
@@ -6179,7 +6180,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   })()}
 </div>
 
-<div style="margin-top:8px;font-size:10px;color:#3d3830;"><strong>Délai de réalisation :</strong> environ 6 semaines après validation du dossier complet.</div>
+<div style="margin-top:8px;font-size:10px;color:#3d3830;"><strong>Délai de réalisation :</strong> 6 à 8 semaines à compter de la prise de gabarit.</div>
 
 <div class="sigs" style="grid-template-columns:1fr;max-width:360px;">
   <div class="sig-box">
@@ -6196,6 +6197,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
   Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire.
 </div>
+<div style="margin-top:6px;font-size:8px;color:#5a5147;line-height:1.45;"><strong>Vendeur et facturation :</strong> SARL DR RENOV (Intérieur Granit). ${pro.raisonSociale || pro.societe || q.proSociete || 'Le cuisiniste'} intervient comme intermédiaire.<br>Le client reconnaît avoir pris connaissance des conditions générales de vente jointes au présent document et les accepter.</div>
 <div class="footer">Intérieur Granit · ${docType} · Réf. ${ref} · Émis le ${today}</div>
 </body></html>`;
 
@@ -6712,7 +6714,7 @@ function cgvParticulierHtml() {
 <div style="font-family:'Cormorant Garamond',serif;font-size:17px;border-bottom:2px solid #c9a84c;padding-bottom:3px;margin-bottom:6px;">Conditions générales de vente — Clients particuliers</div>
 <div style="column-count:2;column-gap:16px;">
 <p><b>1. Vendeur.</b> SARL DR RENOV, exerçant sous le nom commercial Intérieur Granit, au capital de 1 500 €, RCS Évry, SIRET 938 950 508 00011, TVA FR54938950508, 340 Route d'Étampes, 91150 Brières-les-Scellés. Tél. : 07 81 22 71 23 / 06 98 02 22 29. contact@interieur-granit.fr.</p>
-<p><b>2. Objet.</b> Les présentes conditions s'appliquent à la fourniture sur mesure de plans de travail, crédences et éléments en pierre ou matériaux similaires, ainsi qu'aux prestations de prise de gabarit, façonnage, livraison et pose, conclues avec un consommateur. Toute condition particulière écrite au devis prévaut.</p>
+<p><b>2. Objet.</b> Les présentes conditions s'appliquent à la fourniture sur mesure de plans de travail, crédences et éléments en pierre ou matériaux similaires, ainsi qu'aux prestations de prise de gabarit, façonnage, livraison et pose, conclues avec un consommateur. Lorsque la commande est transmise par un cuisiniste, celui-ci intervient comme intermédiaire : le vendeur et l'émetteur de la facture restent SARL DR RENOV. Toute condition particulière écrite au devis prévaut.</p>
 <p><b>3. Devis et commande.</b> Le devis est valable 30 jours. Il est établi d'après les dimensions et plans communiqués. La commande est formée par l'acceptation écrite du devis, datée et signée, et par le versement de l'acompte.</p>
 <p><b>4. Prise de gabarit et avenant.</b> Une prise de gabarit est réalisée sur place après la commande, meubles et supports posés. Elle fixe les dimensions de fabrication. Si elle, ou une demande du client, modifie le contenu ou le prix, un avenant indique le nouveau prix. Aucune hausse ne s'applique sans l'accord écrit du client et la fabrication ne commence qu'après cet accord. Si le client refuse l'avenant, chaque partie peut résoudre la commande par écrit : les sommes versées sont remboursées sous 14 jours, déduction faite de la prise de gabarit réalisée, au prix du devis.</p>
 <p><b>5. Prix et paiement.</b> Les prix sont en euros HT et TTC. Sauf autre échéancier au devis : 30 % à l'acceptation du devis, 30 % à la prise de gabarit, 40 % le jour de la pose. Le versement à la commande constitue un acompte, et non des arrhes : il engage fermement les deux parties. Le client qui bénéficie d'un taux réduit de TVA certifie, par la mention portée au devis ou à la facture, que les conditions sont remplies. Toute somme impayée peut, après mise en demeure, porter intérêt au taux légal.</p>
@@ -7054,6 +7056,8 @@ ${cgvParticulierHtml()}
 // Modèle commun facture / facture d'acompte cuisiniste (mêmes infos vendeur, société cliente et chantier)
 function factureProHtml(o) {
   const { q, pro, s, titre, numFac, today, echeance, condPay, lignesRows, totauxHtml } = o;
+  // Compte avec coeff : SARL DR RENOV facture le client final, le cuisiniste n'est qu'intermédiaire
+  const clientFinalAcheteur = pro.coeffVenteActif && pro.coeffVente > 1;
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const addrFact = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join('<br>');
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -7149,6 +7153,23 @@ function factureProHtml(o) {
       ${s.tvaIntra ? ' &nbsp;·&nbsp; TVA : ' + s.tvaIntra : ''}
     </div>
   </div>
+  ${clientFinalAcheteur ? `<div class="party">
+    <div class="p-label">Client (acheteur)</div>
+    <div class="p-name">${clientName}</div>
+    <div class="p-detail">
+      ${q.client?.tel || ''}${q.client?.tel && q.client?.email ? ' &nbsp;·&nbsp; ' : ''}${q.client?.email || ''}
+      ${q.client?.adresse ? '<br>' + q.client.adresse : ''}
+      ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
+    </div>
+  </div>
+  <div class="party">
+    <div class="p-label">Chantier</div>
+    <div class="p-detail">
+      ${q.client?.adresse ? q.client.adresse : ''}
+      ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
+    </div>
+    <div class="p-legal">Dossier suivi par ${pro.raisonSociale || pro.societe || q.proSociete || ''}</div>
+  </div>` : `
   <div class="party">
     <div class="p-label">Client (acheteur)</div>
     <div class="p-name">${pro.raisonSociale || pro.societe || q.proSociete}</div>
@@ -7172,6 +7193,7 @@ function factureProHtml(o) {
       ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
     </div>
   </div>
+  `}
 </div>
 
 <!-- TABLEAU PRESTATIONS -->
@@ -7201,7 +7223,7 @@ ${totauxHtml}
 </div>
 
 <div class="mentions">
-  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.
+  ${clientFinalAcheteur ? 'Toute somme impayée peut, après mise en demeure, porter intérêt au taux légal. Garantie légale de conformité de deux ans.' : "En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €."}
 </div>
 
 <div class="footer">
@@ -7238,7 +7260,7 @@ async function genererFacture(quoteId) {
   const numFac = await getNextFactureNum();
 
   // Calcul date d'échéance
-  const condPay = pro.conditionsPaiement || '30 jours net';
+  const condPay = factCoeff > 1 ? 'Comptant à réception de facture' : (pro.conditionsPaiement || '30 jours net');
   let echeance = '—';
   const daysMatch = condPay.match(/(\d+)\s*jours/);
   if (daysMatch) {
