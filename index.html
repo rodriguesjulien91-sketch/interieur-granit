@@ -6194,7 +6194,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
 
 <div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
   <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
-  Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire, le tribunal compétent étant celui du siège social d'Intérieur Granit.
+  Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire.
 </div>
 <div class="footer">Intérieur Granit · ${docType} · Réf. ${ref} · Émis le ${today}</div>
 </body></html>`;
@@ -6705,6 +6705,52 @@ function rowsParticulier(q, matDesc, matDescCred) {
   return { rows, ht: Math.round(lignes.reduce((s, l) => s + l.ht, 0) * 100) / 100, nb: lignes.length };
 }
 
+// CGV particuliers : page annexée au devis (voir aussi le script de mise à l'échelle du devis)
+const CGV_MEDIATEUR = ''; // Nom, site et adresse du médiateur de la consommation, une fois désigné
+function cgvParticulierHtml() {
+  return `<div id="cgv" style="break-before:page;page-break-before:always;font-size:9px;line-height:1.35;color:#1a1814;text-align:justify;">
+<div style="font-family:'Cormorant Garamond',serif;font-size:17px;border-bottom:2px solid #c9a84c;padding-bottom:3px;margin-bottom:6px;">Conditions générales de vente — Clients particuliers</div>
+<div style="column-count:2;column-gap:16px;">
+<p><b>1. Vendeur.</b> SARL DR RENOV, exerçant sous le nom commercial Intérieur Granit, au capital de 1 500 €, RCS Évry, SIRET 938 950 508 00011, TVA FR54938950508, 340 Route d'Étampes, 91150 Brières-les-Scellés. Tél. : 07 81 22 71 23 / 06 98 02 22 29. contact@interieur-granit.fr.</p>
+<p><b>2. Objet.</b> Les présentes conditions s'appliquent à la fourniture sur mesure de plans de travail, crédences et éléments en pierre ou matériaux similaires, ainsi qu'aux prestations de prise de gabarit, façonnage, livraison et pose, conclues avec un consommateur. Toute condition particulière écrite au devis prévaut.</p>
+<p><b>3. Devis et commande.</b> Le devis est valable 30 jours. Il est établi d'après les dimensions et plans communiqués. La commande est formée par l'acceptation écrite du devis, datée et signée, et par le versement de l'acompte.</p>
+<p><b>4. Prise de gabarit et avenant.</b> Une prise de gabarit est réalisée sur place après la commande, meubles et supports posés. Elle fixe les dimensions de fabrication. Si elle, ou une demande du client, modifie le contenu ou le prix, un avenant indique le nouveau prix. Aucune hausse ne s'applique sans l'accord écrit du client et la fabrication ne commence qu'après cet accord. Si le client refuse l'avenant, chaque partie peut résoudre la commande par écrit : les sommes versées sont remboursées sous 14 jours, déduction faite de la prise de gabarit réalisée, au prix du devis.</p>
+<p><b>5. Prix et paiement.</b> Les prix sont en euros HT et TTC. Sauf autre échéancier au devis : 30 % à l'acceptation du devis, 30 % à la prise de gabarit, 40 % le jour de la pose. Le versement à la commande constitue un acompte, et non des arrhes : il engage fermement les deux parties. Le client qui bénéficie d'un taux réduit de TVA certifie, par la mention portée au devis ou à la facture, que les conditions sont remplies. Toute somme impayée peut, après mise en demeure, porter intérêt au taux légal.</p>
+<p><b>6. Délai.</b> La pose intervient 6 à 8 semaines à compter de la prise de gabarit et, le cas échéant, de l'accord sur l'avenant. En cas de dépassement, le client peut, après avoir enjoint le vendeur par écrit de s'exécuter dans un délai raisonnable, résoudre le contrat si l'exécution n'intervient pas dans ce délai, dans les conditions du Code de la consommation. Le risque de perte ou d'endommagement passe au client lorsqu'il prend physiquement possession des biens.</p>
+<p><b>7. Conditions d'intervention.</b> Sauf mention au devis, à la prise de gabarit et à la pose, les meubles sont posés, de niveau et stables, les supports peuvent recevoir le poids des éléments et l'accès permet le passage des pièces. La plomberie, l'électricité et les raccordements ne sont pas inclus. Le client signale toute contrainte d'accès et tout réseau encastré. Si l'intervention est impossible pour une cause imputable au client, une nouvelle date est convenue et le déplacement supplémentaire peut être facturé au prix du devis.</p>
+<p><b>8. Matériaux.</b> Les matières naturelles (granit, marbre, pierre) présentent des variations de teinte, de veinage et de texture d'une tranche à l'autre. Les matériaux de synthèse (quartz, céramique) peuvent présenter de légères différences avec l'échantillon. Ces variations, inhérentes aux matériaux et sans incidence sur leur usage, ne constituent pas en elles-mêmes un défaut. Les visuels sont indicatifs. Des joints peuvent être nécessaires selon le format des tranches et des pièces.</p>
+<p><b>9. Réserve de propriété.</b> Les biens restent la propriété du vendeur jusqu'au paiement intégral du prix.</p>
+<p><b>10. Droit de rétractation.</b> Lorsque le contrat est conclu à distance ou hors établissement, le consommateur dispose en principe de 14 jours pour se rétracter. Ce droit ne peut pas être exercé pour les biens confectionnés selon ses spécifications ou nettement personnalisés (art. L221-28, 3° du Code de la consommation), ce qui est le cas des pièces fabriquées à ses dimensions.</p>
+<p><b>11. Force majeure.</b> Aucune partie n'est responsable d'un manquement dû à un cas de force majeure (art. 1218 du Code civil). Si l'empêchement dure plus de 60 jours, chaque partie peut résoudre la commande par écrit, les sommes correspondant aux prestations non réalisées étant remboursées.</p>
+<p><b>12. Assurance.</b> Assureur : BPCE IARD, Chaban, 79180 Chauray, BP 8410, 79024 Niort Cedex 9. Contrat n° 191090293. Couverture : France.</p>
+<p><b>13. Données personnelles.</b> Les données du client servent à gérer ses devis, commandes, factures et garanties, et sont conservées pendant la durée légale applicable. Il dispose de droits d'accès, de rectification, d'effacement, d'opposition et de limitation à contact@interieur-granit.fr et peut saisir la CNIL.</p>
+<p><b>14. Réclamations et litiges.</b> Les réclamations sont adressées à contact@interieur-granit.fr ou à l'adresse du vendeur.${CGV_MEDIATEUR ? ` En cas d'échec, le client peut recourir gratuitement au médiateur de la consommation : ${CGV_MEDIATEUR}.` : ''} Le droit français s'applique. Le consommateur peut saisir, à son choix, l'une des juridictions compétentes en vertu du Code de procédure civile ou celle du lieu où il demeurait au moment de la conclusion du contrat ou de la survenance du fait dommageable.</p>
+<p><b>15. Garanties légales.</b> Le client signale tout défaut par écrit, avec photos, dès que possible, et permet au vendeur de l'examiner sur place avant toute intervention d'un tiers. Ne constituent pas un défaut de conformité, sauf s'ils résultent d'un défaut du bien ou de la pose : l'usure normale, les chocs, rayures, éclats et chocs thermiques, les taches et dégradations dues à des produits agressifs ou à un défaut d'entretien, un usage anormal, les modifications ou réparations par un tiers, et les mouvements du support ou des meubles. Les garanties légales rappelées ci-dessous, dont le texte est fixé par la réglementation, restent applicables dans tous les cas.</p>
+<div style="border:1px solid #1a1814;padding:4px 5px;font-size:8.4px;">
+<p>Le consommateur dispose d'un délai de deux ans à compter de la délivrance du bien pour obtenir la mise en œuvre de la garantie légale de conformité en cas d'apparition d'un défaut de conformité. Durant ce délai, le consommateur n'est tenu d'établir que l'existence du défaut de conformité et non la date d'apparition de celui-ci.</p>
+<p>Lorsque le contrat de vente du bien prévoit la fourniture d'un contenu numérique ou d'un service numérique de manière continue pendant une durée supérieure à deux ans, la garantie légale est applicable à ce contenu numérique ou ce service numérique tout au long de la période de fourniture prévue. Durant ce délai, le consommateur n'est tenu d'établir que l'existence du défaut de conformité affectant le contenu numérique ou le service numérique et non la date d'apparition de celui-ci.</p>
+<p>La garantie légale de conformité emporte obligation pour le professionnel, le cas échéant, de fournir toutes les mises à jour nécessaires au maintien de la conformité du bien.</p>
+<p>La garantie légale de conformité donne au consommateur droit à la réparation ou au remplacement du bien dans un délai de trente jours suivant sa demande, sans frais et sans inconvénient majeur pour lui.</p>
+<p>Si le bien est réparé dans le cadre de la garantie légale de conformité, le consommateur bénéficie d'une extension de six mois de la garantie initiale.</p>
+<p>Si le consommateur demande la réparation du bien, mais que le vendeur impose le remplacement, la garantie légale de conformité est renouvelée pour une période de deux ans à compter de la date de remplacement du bien.</p>
+<p>Le consommateur peut obtenir une réduction du prix d'achat en conservant le bien ou mettre fin au contrat en se faisant rembourser intégralement contre restitution du bien, si :</p>
+<p>1° Le professionnel refuse de réparer ou de remplacer le bien ;</p>
+<p>2° La réparation ou le remplacement du bien intervient après un délai de trente jours ;</p>
+<p>3° La réparation ou le remplacement du bien occasionne un inconvénient majeur pour le consommateur, notamment lorsque le consommateur supporte définitivement les frais de reprise ou d'enlèvement du bien non conforme, ou s'il supporte les frais d'installation du bien réparé ou de remplacement ;</p>
+<p>4° La non-conformité du bien persiste en dépit de la tentative de mise en conformité du vendeur restée infructueuse.</p>
+<p>Le consommateur a également droit à une réduction du prix du bien ou à la résolution du contrat lorsque le défaut de conformité est si grave qu'il justifie que la réduction du prix ou la résolution du contrat soit immédiate. Le consommateur n'est alors pas tenu de demander la réparation ou le remplacement du bien au préalable.</p>
+<p>Le consommateur n'a pas droit à la résolution de la vente si le défaut de conformité est mineur.</p>
+<p>Toute période d'immobilisation du bien en vue de sa réparation ou de son remplacement suspend la garantie qui restait à courir jusqu'à la délivrance du bien remis en état.</p>
+<p>Les droits mentionnés ci-dessus résultent de l'application des articles L. 217-1 à L. 217-32 du code de la consommation.</p>
+<p>Le vendeur qui fait obstacle de mauvaise foi à la mise en œuvre de la garantie légale de conformité encourt une amende civile d'un montant maximal de 300 000 euros, qui peut être porté jusqu'à 10 % du chiffre d'affaires moyen annuel (article L. 241-5 du code de la consommation).</p>
+<p>Le consommateur bénéficie également de la garantie légale des vices cachés en application des articles 1641 à 1649 du code civil, pendant une durée de deux ans à compter de la découverte du défaut. Cette garantie donne droit à une réduction de prix si le bien est conservé ou à un remboursement intégral contre restitution du bien.</p>
+</div>
+</div>
+<div style="border:1px solid #1a1814;padding:8px 10px;margin-top:10px;break-inside:avoid;font-size:10px;"><div style="font-weight:600;margin-bottom:4px;">Acceptation des conditions générales de vente</div><div style="color:#5a5147;margin-bottom:8px;">Le client écrit à la main la mention « Lu et approuvé », puis date et signe.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;"><div>Mention « Lu et approuvé » :<div style="height:38px;border-bottom:1px solid #1a1814;"></div></div><div>Signature du client :<div style="height:38px;border-bottom:1px solid #1a1814;"></div></div></div><div style="margin-top:8px;">Date : ____ / ____ / ________</div></div>
+<style>#cgv p{margin:0 0 2.4px;}</style>
+</div>`;
+}
+
 async function exportDevisParticulier(quoteId) {
   await vLoad();
   const db = getDB();
@@ -6941,7 +6987,7 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
 </div>` : ''}
 
 <div class="mention-box">
-  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Le prix définitif sera confirmé après prise de côte sur place. Délai de réalisation : environ 6 semaines après validation du dossier complet.
+  <strong>Validité du devis :</strong> 30 jours à compter de la date d'émission. Ce devis est établi sur la base des dimensions communiquées. Après la prise de gabarit, toute modification de prix fait l'objet d'un avenant écrit soumis à l'accord du client. Délai de pose : 6 à 8 semaines à compter de la prise de gabarit.
 </div>
 
 <div class="mention-box" style="margin-top:10px;">
@@ -6952,13 +6998,13 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
       const a2 = q.acompte2 || 0;
       const sol = Math.round((totalTTC - a1 - a2) * 100) / 100;
       let lines = '';
-      if (a1) lines += `• Acompte à la commande : <strong>${fmtEUR(a1)}</strong><br>  `;
-      if (a2) lines += `• Acompte à la prise de côte : <strong>${fmtEUR(a2)}</strong><br>  `;
+      if (a1) lines += `• Acompte à l'acceptation du devis : <strong>${fmtEUR(a1)}</strong><br>  `;
+      if (a2) lines += `• Acompte à la prise de gabarit : <strong>${fmtEUR(a2)}</strong><br>  `;
       lines += `• Solde le jour de la pose : <strong>${fmtEUR(sol)}</strong>`;
       return lines;
     }
     const t1=Math.round(totalTTC*0.30); const t2=t1; const t3=Math.round((totalTTC-t1-t2)*100)/100;
-    return `• 30 % d'acompte à la commande : <strong>${t1} €</strong><br>  • 30 % à la prise de côte : <strong>${t2} €</strong><br>  • 40 % le jour de la pose : <strong>${fmtEUR(t3)}</strong>`;
+    return `• 30 % d'acompte à l'acceptation du devis : <strong>${t1} €</strong><br>  • 30 % à la prise de gabarit : <strong>${t2} €</strong><br>  • 40 % le jour de la pose : <strong>${fmtEUR(t3)}</strong>`;
   })()}
 </div>
 
@@ -6977,15 +7023,16 @@ ${(s.iban || s.bic || s.banque) ? `<div class="rib-box">
   </div>
 </div>
 
-<div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:7px;color:#7a6f62;line-height:1.45;">
-  <strong style="font-size:7.5px;color:#5a5147;">Mentions légales —</strong>
-  Conformément à l'article L221-18 du Code de la consommation, le client particulier dispose d'un délai de 14 jours à compter de la signature du présent devis pour exercer son droit de rétractation. Les matériaux livrés et posés restent la propriété d'Intérieur Granit jusqu'au paiement intégral du prix convenu. Les matières naturelles (granit, marbre, pierre) présentent des variations inhérentes de teinte, de veinage et de texture d'une dalle à l'autre ; ces caractéristiques constituent la nature même du matériau et ne sauraient être considérées comme un défaut. Pour les matières non naturelles (quartz, céramique, Dekton, Laminam, Xtone…), de légères différences de teinte ou de texture peuvent exister entre l'échantillon présenté et le matériau posé, en raison des conditions de fabrication. En cas de litige, une solution amiable sera recherchée préalablement à tout recours judiciaire, le tribunal compétent étant celui du siège social d'Intérieur Granit.
+<div style="margin-top:8px;padding:5px 7px;border-top:1px solid #d4cdc4;font-size:8px;color:#5a5147;line-height:1.45;">
+  Le client reconnaît avoir pris connaissance des conditions générales de vente jointes au présent devis et les accepter.
+  ${(q.tva || 10) === 10 ? '<br>Le client certifie que les travaux portent sur un logement achevé depuis plus de deux ans et remplissent les conditions du taux réduit de TVA de 10 %.' : ''}
 </div>
 <div class="footer">
   ${socFooter}
 </div>
+${cgvParticulierHtml()}
 
-<script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
+<script>window.onload=function(){var b=document.body,c=document.getElementById('cgv');c.style.display='none';var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';c.style.zoom=1/z;}c.style.display='';window.print();};<\/script>
 <div class="coloris-lightbox" id="coloris-lightbox" onclick="closeLightbox()">
   <span class="coloris-lightbox-close" onclick="closeLightbox()">✕</span>
   <img id="coloris-lightbox-img" src="" alt="">
@@ -7154,8 +7201,7 @@ ${totauxHtml}
 </div>
 
 <div class="mentions">
-  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.<br>
-  TVA non applicable, art. 293 B du CGI — <em>à adapter selon votre régime TVA</em>.
+  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.
 </div>
 
 <div class="footer">
@@ -7712,7 +7758,7 @@ ${(s.iban||s.bic||s.banque)?`<div class="rib-box">
   ${s.banque?`<div class="rib-item"><span class="lbl">Banque</span>${s.banque}</div>`:''}
 </div>`:''}
 <div class="mentions">
-  En cas de retard de paiement, des pénalités de retard au taux légal en vigueur sont applicables de plein droit, ainsi qu'une indemnité forfaitaire de recouvrement de 40 €.
+  Toute somme impayée peut, après mise en demeure, porter intérêt au taux légal. Garantie légale de conformité de deux ans.
 </div>
 <div class="footer">${socFooter}</div>
 <script>window.onload=function(){var b=document.body;var h=b.scrollHeight;var A4=1020;if(h>A4){var z=Math.max(0.45,A4/h);b.style.zoom=z;b.style.transformOrigin='top center';}window.print();};<\/script>
