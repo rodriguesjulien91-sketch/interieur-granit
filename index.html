@@ -79,6 +79,8 @@ textarea { resize: vertical; min-height: 80px; }
 .tag-facture::before { background: #c9a84c; }
 .tag-usine { background: rgba(42,92,150,.15); color: #24507f; }
 .tag-usine::before { background: #24507f; }
+.tag-revente { background: rgba(130,80,170,.14); color: #5b3a80; }
+.tag-revente::before { background: #5b3a80; }
 .tag-regle { background: rgba(45,122,79,.85); color: #fff; }
 .tag-regle::before { background: #fff; }
 
@@ -1327,6 +1329,17 @@ textarea { resize: vertical; min-height: 80px; }
       <div class="field"><label>Site web</label><input type="text" id="pp-web" placeholder="www.cuisines-co.fr"></div>
     </div>
 
+    <div id="pp-revente-block" style="display:none;">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Devis pour vos clients</div>
+      <div class="form-grid">
+        <div class="field"><label>Coefficient de revente par défaut</label><input type="text" inputmode="decimal" id="pp-coeff-revente" placeholder="ex : 1,40">
+          <span class="field-hint">Appliqué aux matériaux. Laissez vide pour ne pas chiffrer de devis client par défaut.</span></div>
+        <div class="field"><label>Logo (devis client)</label>
+          <input type="file" id="pp-logo-file" accept="image/*" onchange="handleLogoUpload(this,'pp-logo-preview','pp-logo-data')">
+          <input type="hidden" id="pp-logo-data"><div id="pp-logo-preview" style="margin-top:6px;"></div></div>
+      </div>
+    </div>
+
     <div id="pp-error" style="color:#c0392b;font-size:.82rem;margin-top:12px;display:none;"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeProProfilModal()">Annuler</button>
@@ -1454,13 +1467,13 @@ textarea { resize: vertical; min-height: 80px; }
     </div>
 
     <!-- Coefficient de vente personnalisé -->
-    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Coefficient de vente personnalisé</div>
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;">Rétrocommission</div>
     <div class="form-grid">
       <div class="field">
         <label>Activer un coefficient perso</label>
         <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
           <label style="display:flex;align-items:center;gap:6px;font-size:.85rem;cursor:pointer;">
-            <input type="checkbox" id="edit-coeff-actif" onchange="toggleCoeffInput()"> Activer
+            <input type="checkbox" id="edit-coeff-actif" onchange="exclusifCoeff('retro');toggleCoeffInput()"> Activer
           </label>
         </div>
         <span class="field-hint">Si activé, les prix matériau + façonnage seront multipliés par ce coefficient dans les devis de ce cuisiniste.</span>
@@ -1472,6 +1485,13 @@ textarea { resize: vertical; min-height: 80px; }
         <span class="field-hint">Ex: 1.15 = +15% sur matériau et façonnage</span>
       </div>
     </div>
+
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#24507f;margin:18px 0 10px;">Coefficient de revente (sans rétrocom)</div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;">
+      <input type="checkbox" id="edit-mode-revente" onchange="exclusifCoeff('revente')"> Activer
+    </label>
+    <span class="field-hint">Le cuisiniste applique sa propre marge sur les matériaux et sort un devis à son nom pour son client. Vous le facturez toujours au prix d'achat, sans commission.</span>
+    <div id="edit-coeff-exclusif-msg" style="color:#b87333;font-size:.8rem;margin-top:6px;display:none;"></div>
 
     <div id="modal-edit-error" style="color:#c0392b;font-size:.82rem;margin-top:12px;display:none;"></div>
     <div class="modal-footer">
@@ -2331,6 +2351,12 @@ function openProProfilModal() {
   setV('pp-ville', u.ville || u.villeFact || '');
   setV('pp-siret', u.siret || '');
   setV('pp-web', u.web || '');
+  const rb = document.getElementById('pp-revente-block');
+  if (rb) rb.style.display = u.modeCoeffRevente ? '' : 'none';
+  setV('pp-coeff-revente', u.coeffReventeDefaut ? String(u.coeffReventeDefaut).replace('.', ',') : '');
+  setV('pp-logo-data', u.logo || '');
+  const lf = document.getElementById('pp-logo-file'); if (lf) lf.value = '';
+  setLogoPreview('pp-logo-preview', u.logo || '');
   document.getElementById('pp-error').style.display = 'none';
   document.getElementById('modal-pro-profil').classList.add('active');
 }
@@ -2349,6 +2375,16 @@ function saveProProfilModal() {
   const db = getDB();
   const u = db.users[currentUser.email];
   if (!u) return;
+  let coeffDefaut = null;
+  if (u.modeCoeffRevente && getV('pp-coeff-revente')) {
+    coeffDefaut = lireCoeffRevente(getV('pp-coeff-revente'));
+    if (coeffDefaut === null) {
+      const err = document.getElementById('pp-error');
+      err.textContent = 'Le coefficient doit être un nombre entre 1,00 et 5,00.';
+      err.style.display = 'block';
+      return;
+    }
+  }
   u.societe  = societe;
   u.prenom   = getV('pp-prenom');
   u.nom      = getV('pp-nom');
@@ -2359,9 +2395,16 @@ function saveProProfilModal() {
   u.ville    = getV('pp-ville');
   u.siret    = getV('pp-siret');
   u.web      = getV('pp-web');
+  if (u.modeCoeffRevente) {
+    u.coeffReventeDefaut = coeffDefaut;
+    u.logo = getV('pp-logo-data');
+  }
   saveDB(db);
-  // Persister dans Firestore
-  fbDb.collection('users').doc(currentUser.email).update(u).catch(console.error);
+  // Persister dans Firestore (champs du profil uniquement : les options de compte restent réservées à l'admin)
+  const champsProfil = ['societe','prenom','nom','tel','email','adresse','cp','ville','siret','web'];
+  if (u.modeCoeffRevente) champsProfil.push('coeffReventeDefaut', 'logo');
+  const majProfil = {}; champsProfil.forEach(k => { majProfil[k] = u[k] ?? null; });
+  fbDb.collection('users').doc(currentUser.email).update(majProfil).catch(console.error);
   // Mettre à jour currentUser en mémoire
   currentUser = { ...currentUser, ...u };
   // Rafraîchir le nom affiché dans le header
@@ -2780,15 +2823,20 @@ function genId(prefix) {
 }
 
 // ─── Chargement initial depuis Firestore ───────────────────────
+const ADMIN_EMAIL = 'admin@interieur-granit.fr';
 async function loadAppData() {
+  // Un cuisiniste ne charge que son compte et ses devis (imposé aussi par les règles Firestore)
+  const moi = (fbAuth.currentUser?.email || '').toLowerCase();
+  const estAdmin = moi === ADMIN_EMAIL;
   const [usersSnap, quotesSnap, settSnap] = await Promise.all([
-    fbDb.collection('users').get(),
-    fbDb.collection('quotes').get(),
+    estAdmin ? fbDb.collection('users').get() : fbDb.collection('users').doc(moi).get(),
+    estAdmin ? fbDb.collection('quotes').get() : fbDb.collection('quotes').where('proEmail', '==', moi).get(),
     fbDb.collection('settings').doc('app').get()
   ]);
 
   const users = {};
-  usersSnap.forEach(doc => { const key = doc.id.toLowerCase(); users[key] = { ...doc.data(), email: key }; });
+  if (estAdmin) usersSnap.forEach(doc => { const key = doc.id.toLowerCase(); users[key] = { ...doc.data(), email: key }; });
+  else if (usersSnap.exists) users[moi] = { ...usersSnap.data(), email: moi };
 
   const quotes = [];
   quotesSnap.forEach(doc => { quotes.push({ id: doc.id, ...doc.data() }); });
@@ -2816,7 +2864,9 @@ async function loadAppData() {
 let unsubQuotes = null;
 function setupRealtimeListeners() {
   if (unsubQuotes) unsubQuotes();
-  unsubQuotes = fbDb.collection('quotes').onSnapshot(snap => {
+  const moi = (fbAuth.currentUser?.email || '').toLowerCase();
+  const source = moi === ADMIN_EMAIL ? fbDb.collection('quotes') : fbDb.collection('quotes').where('proEmail', '==', moi);
+  unsubQuotes = source.onSnapshot(snap => {
     const quotes = [];
     snap.forEach(doc => quotes.push({ id: doc.id, ...doc.data() }));
     quotes.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -3173,7 +3223,7 @@ function renderQuotesTable() {
         const d = isValide(q) ? q.commande?.dateInstall : null;
         return `<td class="secondary" style="font-weight:${d?'600':'400'};color:${d?'var(--stone)':'var(--stone-light)'};">${d ? new Date(d).toLocaleDateString('fr-FR') : '—'}</td>`;
       })()}
-      <td>${statusTag(q.status, q)}</td>
+      <td>${statusTag(q.status, q)}${badgeRevente(q)}</td>
     </tr>`;
   }).join('');
 }
@@ -3681,6 +3731,7 @@ async function showQuoteDetail(id) {
       <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:300;color:var(--gold);margin:0;">Détail — ${clientName}</h3>
       <div style="display:flex;gap:12px;align-items:center;">
         <button class="btn btn-gold btn-sm" title="Ajuster le devis du cuisiniste (après métré…) : il garde son statut, son cuisiniste et son coefficient" onclick="closeDrawer();loadQuoteIntoForm('${id}', false)">✏️ Éditer le devis</button>
+        ${badgeRevente(q)}
         <select class="status-select" onchange="updateQuoteStatus('${id}',this.value)">
           <option value="nouveau" ${q.status==='nouveau'?'selected':''}>Nouvelle</option>
           <option value="en_cours" ${q.status==='en_cours'?'selected':''}>En cours</option>
@@ -4370,9 +4421,24 @@ function openEditClientModal(email) {
   const coeffValEl   = document.getElementById('edit-coeff-valeur');
   if (coeffActifEl) coeffActifEl.checked = !!u.coeffVenteActif;
   if (coeffValEl)   coeffValEl.value     = u.coeffVente || 1.00;
+  const reventeEl = document.getElementById('edit-mode-revente');
+  if (reventeEl) reventeEl.checked = !!u.modeCoeffRevente;
+  document.getElementById('edit-coeff-exclusif-msg').style.display = 'none';
   toggleCoeffInput();
   document.getElementById('modal-edit-error').style.display = 'none';
   document.getElementById('modal-edit-client').classList.add('active');
+}
+
+// Rétrocommission et coefficient de revente ne peuvent pas être actifs ensemble
+function exclusifCoeff(source) {
+  const retro = document.getElementById('edit-coeff-actif'), rev = document.getElementById('edit-mode-revente');
+  const msg = document.getElementById('edit-coeff-exclusif-msg');
+  if (!retro || !rev || !retro.checked || !rev.checked) return;
+  if (source === 'retro') rev.checked = false; else { retro.checked = false; toggleCoeffInput(); }
+  msg.textContent = source === 'retro'
+    ? 'Coefficient de revente désactivé : un compte ne peut pas avoir les deux options.'
+    : 'Rétrocommission désactivée : un compte ne peut pas avoir les deux options.';
+  msg.style.display = 'block';
 }
 
 function closeEditModal() {
@@ -4412,7 +4478,8 @@ function saveEditClient() {
   const coeffVente = parseFloat(document.getElementById('edit-coeff-valeur')?.value) || 1.00;
   const updated = { ...existing, societe, nom, prenom, tel, email: newEmail,
     raisonSociale, siret, tvaIntra, adresseFact, cpFact, villeFact, conditionsPaiement, logo,
-    coeffVenteActif: coeffActif, coeffVente: coeffActif ? coeffVente : 1.00 };
+    coeffVenteActif: coeffActif, coeffVente: coeffActif ? coeffVente : 1.00,
+    modeCoeffRevente: !coeffActif && !!document.getElementById('edit-mode-revente')?.checked };
   if (newPwd) updated.password = newPwd;
 
   // Si email changé : re-clé + MAJ des devis
@@ -4597,6 +4664,83 @@ function displayFilteredQuotes(quotes) {
   }).join('');
 }
 
+function blocReventeDetail(q) {
+  const pro = currentUser || {};
+  if (!pro.modeCoeffRevente || (pro.coeffVenteActif && pro.coeffVente > 1)) return '';
+  const actif = reventeActive(q, pro);
+  const d = actif ? devisRevente(q, pro) : null;
+  return `<div style="margin-top:14px;padding:14px 16px;border:1px solid #c9b9dd;border-radius:4px;background:#f6f1fb;">
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#5b3a80;font-weight:600;margin-bottom:8px;">Devis pour votre client</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field" style="margin:0;"><label>Coefficient (matériaux)</label><input type="text" inputmode="decimal" id="rv-coeff-${q.id}" value="${q.coeffRevente ? String(q.coeffRevente).replace('.', ',') : ''}" placeholder="vide = aucun" style="width:120px;"></div>
+      <div class="field" style="margin:0;"><label>TVA client</label><select id="rv-tva-${q.id}"><option value="10" ${q.tvaRevente !== 20 ? 'selected' : ''}>10 %</option><option value="20" ${q.tvaRevente === 20 ? 'selected' : ''}>20 %</option></select></div>
+      <button class="btn btn-secondary btn-sm" onclick="saveCoeffRevente('${q.id}')">Enregistrer</button>
+      ${actif ? `<button class="btn btn-gold btn-sm" onclick="exportDevisClientRevente('${q.id}')">📄 Devis client</button>` : ''}
+    </div>
+    ${d ? `<div style="margin-top:10px;font-size:.84rem;display:grid;grid-template-columns:1fr auto auto;gap:4px 18px;">
+      <span style="color:var(--stone-light);"></span><span style="color:var(--stone-light);">Prix d'achat</span><span style="color:var(--stone-light);">Prix client</span>
+      ${d.lignes.map(l => `<span>${l.label}</span><span style="text-align:right;">${fmtEUR(l.ht)}</span><span style="text-align:right;">${fmtEUR(l.htVente)}</span>`).join('')}
+      <strong>Total HT</strong><strong style="text-align:right;">${fmtEUR(d.htAchat)}</strong><strong style="text-align:right;">${fmtEUR(d.htVente)}</strong>
+      <span>TVA client ${d.tva} %</span><span></span><span style="text-align:right;">${fmtEUR(d.tvaAmt)}</span>
+      <strong>Total TTC client</strong><span></span><strong style="text-align:right;">${fmtEUR(d.ttc)}</strong>
+    </div>` : ''}
+    <div id="rv-err-${q.id}" style="color:#c0392b;font-size:.8rem;margin-top:6px;"></div>
+  </div>`;
+}
+
+async function saveCoeffRevente(quoteId) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q) return;
+  const brut = document.getElementById('rv-coeff-' + quoteId).value.trim();
+  const coeff = brut ? lireCoeffRevente(brut) : null;
+  if (brut && coeff === null) { document.getElementById('rv-err-' + quoteId).textContent = 'Le coefficient doit être compris entre 1,00 et 5,00.'; return; }
+  const tva = document.getElementById('rv-tva-' + quoteId).value === '20' ? 20 : 10;
+  try { await fbDb.collection('quotes').doc(quoteId).update({ coeffRevente: coeff, tvaRevente: tva }); }
+  catch (e) { alert('Erreur lors de l\'enregistrement : ' + e.message); return; }
+  q.coeffRevente = coeff; q.tvaRevente = tva;
+  showToast('✓ Devis client mis à jour');
+  const drawer = document.getElementById('side-drawer'); if (drawer) delete drawer.dataset.openId;
+  showProQuoteDetail(quoteId);
+}
+
+// Devis client du cuisiniste : à son nom, au prix de vente, sans prix d'achat, coefficient ni mention d'Intérieur Granit
+function exportDevisClientRevente(quoteId) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  const pro = getDB().users[q?.proEmail] || currentUser || {};
+  if (!q || !reventeActive(q, pro)) return;
+  const d = devisRevente(q, pro);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const ref = esc(q.client?.ref || ('DEV-' + q.id.slice(-6).toUpperCase()));
+  const clientName = esc([q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' '));
+  const matDesc = esc([q.materiauLabel || q.materiau, q.coloris, q.finition, q.epaisseur ? q.epaisseur + ' mm' : ''].filter(Boolean).join(' · '));
+  const lignes = d.lignes.map(l => `<tr><td>${esc(l.label)}${l.mat ? '<br><span class="det">' + matDesc + '</span>' : ''}</td>
+    <td class="r">${l.unite ? fmt2(l.qty) + ' ' + l.unite : l.qty}</td><td class="r">${fmtEUR(l.puVente)}</td><td class="r">${fmtEUR(l.htVente)}</td></tr>`).join('');
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Devis ${ref}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1814;padding:28px 32px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1814;padding-bottom:14px;margin-bottom:18px}
+.soc{display:flex;gap:14px;align-items:flex-start}.soc img{max-height:70px;max-width:150px;object-fit:contain}.soc .n{font-size:16px;font-weight:700}.soc .d{color:#555;line-height:1.6;margin-top:3px}
+.titre{text-align:right}.titre .t{font-size:24px;letter-spacing:.2em}.titre .m{color:#555;margin-top:4px}
+.box{border:1px solid #ccc;padding:10px 12px;margin-bottom:16px;line-height:1.6}.lbl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#777}
+table{width:100%;border-collapse:collapse}th{background:#1a1814;color:#fff;text-align:left;padding:7px 8px;font-size:9.5px;text-transform:uppercase}
+td{padding:7px 8px;border-bottom:1px solid #e5e5e5}.r{text-align:right;white-space:nowrap}.det{color:#777;font-size:10px}
+.tot{width:260px;margin:14px 0 0 auto}.tot td{border:none;padding:4px 8px}.tot .ttc td{background:#1a1814;color:#fff;font-weight:700;font-size:12px}
+.sig{border:1px solid #ccc;margin-top:24px;padding:10px 12px;width:300px;height:90px}
+@media print{body{padding:10mm 12mm}@page{margin:0;size:A4}}</style></head><body>
+<div class="head"><div class="soc">${pro.logo ? '<img src="' + esc(pro.logo) + '" alt="">' : ''}<div><div class="n">${esc(pro.raisonSociale || pro.societe)}</div>
+<div class="d">${esc(pro.adresse || pro.adresseFact || '')}${(pro.cp || pro.ville) ? '<br>' + esc([pro.cp || pro.cpFact, pro.ville || pro.villeFact].filter(Boolean).join(' ')) : ''}
+${pro.tel ? '<br>' + esc(pro.tel) : ''}${pro.email ? ' · ' + esc(pro.email) : ''}${pro.siret ? '<br>SIRET : ' + esc(pro.siret) : ''}${pro.tvaIntra ? ' · TVA : ' + esc(pro.tvaIntra) : ''}${pro.web ? '<br>' + esc(pro.web) : ''}</div></div></div>
+<div class="titre"><div class="t">DEVIS</div><div class="m">Réf. ${ref}<br>Émis le ${today}</div></div></div>
+<div class="box"><div class="lbl">Client</div><strong>${clientName}</strong><br>${esc(q.client?.adresse || '')} ${esc([q.client?.cp, q.client?.ville].filter(Boolean).join(' '))}
+${q.client?.tel ? '<br>' + esc(q.client.tel) : ''}${q.client?.email ? ' · ' + esc(q.client.email) : ''}</div>
+<table><thead><tr><th>Désignation</th><th class="r">Qté</th><th class="r">PU HT</th><th class="r">Total HT</th></tr></thead><tbody>${lignes}</tbody></table>
+<table class="tot"><tr><td>Total HT</td><td class="r">${fmtEUR(d.htVente)}</td></tr><tr><td>TVA ${d.tva} %</td><td class="r">${fmtEUR(d.tvaAmt)}</td></tr>
+<tr class="ttc"><td>Total TTC</td><td class="r">${fmtEUR(d.ttc)}</td></tr></table>
+<div class="sig"><div class="lbl">Bon pour accord — date et signature du client</div></div>
+<script>window.onload=function(){window.print();};<\/script></body></html>`;
+  ouvrirDocumentPdf(html);
+}
+
 // Correction d'adresse seule : ne touche ni au statut ni au prix (utilisable même sur un devis commandé)
 function buildAdresseEditor(q) {
   const esc = s => String(s||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -4701,6 +4845,7 @@ function showProQuoteDetail(id) {
       </div>
     </div>
     ${commandeInfo}
+    ${blocReventeDetail(q)}
     ${buildAdresseEditor(q)}
     <div class="pro-detail-actions">
       <button class="btn btn-primary btn-sm" onclick="loadQuoteIntoForm('${id}', false)">✏️ Modifier</button>
@@ -4927,6 +5072,7 @@ function removeFormCustomLine(idx) {
 function startNewQuote() {
   quoteMode = 'pro';
   cuisinisteEdite = null;
+  setTimeout(() => { majBlocRevente(); const e = document.getElementById('revente-coeff'); if (e) e.value = currentUser?.coeffReventeDefaut ? String(currentUser.coeffReventeDefaut).replace('.', ',') : ''; const t = document.getElementById('revente-tva'); if (t) t.value = '10'; }, 0);
   currentEditingQuoteId = null;
   resetFormFields();
   currentStep = 1;
@@ -5077,6 +5223,9 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   document.getElementById('form-success').style.display = 'none';
   document.querySelector('#view-form .form-main').style.display = 'block';
   document.querySelector('#view-form .progress-wrapper').style.display = 'block';
+  majBlocRevente();
+  const _rc = document.getElementById('revente-coeff'); if (_rc) _rc.value = q.coeffRevente ? String(q.coeffRevente).replace('.', ',') : '';
+  const _rt = document.getElementById('revente-tva'); if (_rt) _rt.value = q.tvaRevente === 20 ? '20' : '10';
   // Remise commerciale (admin) : rechargée pour ne pas être perdue à l'enregistrement
   setV('remise-type', q.remise?.type || 'none');
   setV('remise-valeur', q.remise?.valeur || '');
@@ -5135,7 +5284,7 @@ function goToStep(n) { if (n > currentStep) return; currentStep = n; renderStep(
 function nextStep(from) {
   if (!validateFormStep(from)) return;
   currentStep = from + 1;
-  if (currentStep === 5) { buildSummary(); renderFormCustomLines(); }
+  if (currentStep === 5) { majBlocRevente(); buildSummary(); renderFormCustomLines(); }
   renderStep();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -5155,6 +5304,27 @@ function validateFormStep(step) {
     if (!(parseFloat(document.getElementById('chant-longueur').value) > 0)) { alert('Veuillez renseigner la longueur totale du chant (en mm).'); return false; }
   }
   return true;
+}
+
+// Champ « coefficient de revente » du formulaire (cuisiniste ayant l'option)
+function majBlocRevente() {
+  const pro = quoteMode === 'pro' ? (cuisinisteEdite || (currentUser?.role === 'pro' ? currentUser : null)) : null;
+  const actif = !!(pro?.modeCoeffRevente && !(pro.coeffVenteActif && pro.coeffVente > 1));
+  let bloc = document.getElementById('revente-block');
+  const cible = document.getElementById('price-breakdown');
+  if (!bloc && cible) {
+    bloc = document.createElement('div');
+    bloc.id = 'revente-block';
+    bloc.style.cssText = 'margin-bottom:16px;padding:14px 16px;border:1px solid #c9b9dd;border-radius:4px;background:#f6f1fb;';
+    bloc.innerHTML = '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#5b3a80;font-weight:600;margin-bottom:8px;">Devis pour votre client</div>'
+      + '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">'
+      + '<div class="field" style="margin:0;"><label>Coefficient de revente (matériaux)</label><input type="text" inputmode="decimal" id="revente-coeff" placeholder="vide = pas de devis client" style="width:200px;" oninput="buildSummary()"></div>'
+      + '<div class="field" style="margin:0;"><label>TVA du devis client</label><select id="revente-tva" onchange="buildSummary()"><option value="10">10 %</option><option value="20">20 %</option></select></div>'
+      + '</div><div id="revente-erreur" style="color:#c0392b;font-size:.8rem;margin-top:6px;"></div>';
+    cible.parentNode.insertBefore(bloc, cible);
+  }
+  if (bloc) bloc.style.display = actif ? '' : 'none';
+  return actif;
 }
 
 function renderStep() {
@@ -5277,7 +5447,9 @@ function updatePriceBadge() {
         ? getColorisPrixDirect(mat, coloris, ep, finition)
         : getColorisPrice(mat, coloris, ep, finition);
     }
-    const prixTxt = prix !== null ? `${fmt2(prix)} €/m² HT` : 'sélectionnez un coloris';
+    const _cAp = quoteMode === 'pro' ? coeffApercuRevente() : 1;
+    if (prix !== null && _cAp > 1) prix = Math.round(prix * _cAp * 100) / 100;
+    const prixTxt = prix !== null ? `${fmt2(prix)} €/m² HT${_cAp > 1 ? ' (prix client)' : ''}` : 'sélectionnez un coloris';
     const epTxt = ep ? ` — ${ep} mm` : '';
     document.getElementById('price-badge-text').textContent = `${label}${epTxt} : ${prixTxt}`;
   } else { badge.style.display = 'none'; }
@@ -5686,6 +5858,30 @@ function buildSummary() {
     totalHT = Math.round(lines.reduce((t, l) => t + l.ht, 0) * 100) / 100;
     tva = tvaPctQuote(temp) / 100;
   }
+  // Coefficient de revente : prix d'achat ET prix de vente, par ligne et en total
+  const _proRev = quoteMode === 'pro' ? (cuisinisteEdite || (currentUser?.role === 'pro' ? currentUser : null)) : null;
+  const _coeffSaisi = (_proRev && majBlocRevente()) ? document.getElementById('revente-coeff')?.value : '';
+  const _errRev = document.getElementById('revente-erreur');
+  if (_errRev) _errRev.textContent = (_coeffSaisi && !lireCoeffRevente(_coeffSaisi)) ? 'Le coefficient doit être compris entre 1,00 et 5,00.' : '';
+  if (_proRev && lireCoeffRevente(_coeffSaisi) && totalHT !== null) {
+    const cp = computePrice();
+    const ct = document.getElementById('chant').value;
+    const temp = { status: 'devise', materiau: mat, coloris: document.getElementById('coloris').value, finition: document.getElementById('finition').value,
+      epaisseur: document.getElementById('epaisseur').value, plans: getPlansData(), credences: getCredencesData(),
+      surfacePlans: cp.surfacePlans, surfaceCred: cp.surfaceCred,
+      chant: { type: ct, longueur: parseFloat(document.getElementById('chant-longueur').value) || 0, pu: PRIX.chants?.[ct] || 0 },
+      options: getCounters(), livraison: document.querySelector('input[name="livraison"]:checked')?.value,
+      coeffRevente: _coeffSaisi, tvaRevente: parseInt(document.getElementById('revente-tva').value, 10) };
+    const d = devisRevente(temp, _proRev);
+    let r = '<tr class="group-header"><td>Ligne</td><td style="text-align:right;">Votre prix d\'achat</td><td style="text-align:right;">Prix client</td></tr>';
+    d.lignes.forEach(l => { r += `<tr><td style="padding-left:12px;">${l.label}${l.unite ? ' — ' + fmt2(l.qty) + ' ' + l.unite : (l.qty > 1 ? ' × ' + l.qty : '')}</td><td style="text-align:right;">${fmtEUR(l.ht)}</td><td style="text-align:right;">${fmtEUR(l.htVente)}</td></tr>`; });
+    r += `<tr class="total-ht" style="border-top:1px solid rgba(255,255,255,.2);"><td>Total HT</td><td style="text-align:right;">${fmtEUR(d.htAchat)}</td><td style="text-align:right;">${fmtEUR(d.htVente)}</td></tr>
+      <tr class="tva-row"><td>TVA client ${d.tva} %</td><td></td><td style="text-align:right;">${fmtEUR(d.tvaAmt)}</td></tr>
+      <tr class="total-ttc" style="border-top:1px solid rgba(201,168,76,.3);"><td>Total TTC client</td><td></td><td style="text-align:right;">${fmtEUR(d.ttc)}</td></tr>`;
+    document.getElementById('price-breakdown').innerHTML = `<h3>Décomposition tarifaire</h3><table class="price-table">${r}</table>
+      <p style="font-size:.76rem;color:var(--stone-light);font-style:italic;margin-top:12px;">Vous êtes facturé au prix d'achat (${fmtEUR(d.htAchat)} HT). Le prix client ne concerne que votre devis client.</p>`;
+    return;
+  }
   let rows = '';
   if (lines.length === 0) {
     rows = '<tr><td colspan="2" style="color:var(--stone-light);font-style:italic;padding:12px 0;">Aucune dimension saisie — le tarif sera communiqué après étude.</td></tr>';
@@ -5829,6 +6025,9 @@ function submitQuote(action) {
       totalTTC: totalTTC !== null ? totalTTC : null,
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       coeffDirect: isDirect ? getCoeffDirect() : null,
+      // Coefficient de revente (sans rétrocom) : n'affecte ni totalHT ni la facturation
+      coeffRevente: (!isDirect && document.getElementById('revente-block')?.style.display !== 'none') ? lireCoeffRevente(document.getElementById('revente-coeff')?.value) : null,
+      tvaRevente: (!isDirect && document.getElementById('revente-block')?.style.display !== 'none') ? (document.getElementById('revente-tva')?.value === '20' ? 20 : 10) : null,
       // Prix figés au moment de l'enregistrement : utilisés tels quels une fois le devis validé
       prixMatBase: isDirect ? null : (getColorisPriceBase(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) || null),
       coeffPro: isDirect ? null : ((currentUser?.coeffVenteActif && currentUser?.coeffVente > 1) ? currentUser.coeffVente : 1),
@@ -6031,6 +6230,43 @@ function lignesCuisiniste(q, pro) {
     if (pu) lignes.push({ label: l.label || 'Prestation complémentaire', qty: 1, unite: '', pu: r2(pu * coeff), ht: r2(pu * coeff), custom: true });
   });
   return recalerSurTotalValide(q, lignes);
+}
+
+// ─── Coefficient de revente (sans rétrocom) ──────────────────
+// Indépendant de la rétrocommission : ne modifie aucun prix d'achat ni montant facturé.
+function lireCoeffRevente(v) {
+  const n = parseFloat(String(v ?? '').trim().replace(',', '.'));
+  return (n >= 1 && n <= 5) ? Math.round(n * 100) / 100 : null;
+}
+function reventeActive(q, pro) {
+  return !!(pro?.modeCoeffRevente && !(pro.coeffVenteActif && pro.coeffVente > 1) && lireCoeffRevente(q?.coeffRevente));
+}
+// Lignes au prix d'achat + prix de vente (matériaux × coeff), et totaux du devis client
+function devisRevente(q, pro) {
+  const coeff = lireCoeffRevente(q.coeffRevente);
+  const r2 = v => Math.round(v * 100) / 100;
+  const lignes = lignesCuisiniste(q, pro).map(l => {
+    const puVente = l.mat ? r2(l.pu * coeff) : l.pu;
+    return { ...l, puVente, htVente: l.mat ? r2(l.qty * puVente) : l.ht };
+  });
+  const htAchat = r2(lignes.reduce((t, l) => t + l.ht, 0));
+  const htVente = r2(lignes.reduce((t, l) => t + l.htVente, 0));
+  const tva = q.tvaRevente === 20 ? 20 : 10;
+  const tvaAmt = r2(htVente * tva / 100);
+  return { coeff, lignes, htAchat, htVente, tva, tvaAmt, ttc: r2(htVente + tvaAmt) };
+}
+// Aperçu des prix au m² côté cuisiniste : coefficient saisi sur le devis, sinon coefficient par défaut du profil
+function coeffApercuRevente() {
+  const u = currentUser;
+  if (u?.role !== 'pro' || !u.modeCoeffRevente || (u.coeffVenteActif && u.coeffVente > 1)) return 1;
+  const champ = document.getElementById('revente-coeff');
+  const saisi = champ ? champ.value.trim() : '';
+  return lireCoeffRevente(saisi) || (saisi ? 1 : (lireCoeffRevente(u.coeffReventeDefaut) || 1));
+}
+
+function badgeRevente(q) {
+  const pro = getDB().users?.[q.proEmail] || {};
+  return reventeActive(q, pro) ? ` <span class="tag tag-revente" title="Coefficient de revente appliqué par le cuisiniste (aucune rétrocommission)">Coeff revente ×${fmt2(lireCoeffRevente(q.coeffRevente))}</span>` : '';
 }
 
 function buildLignesCuisiniste(q, pro) {
@@ -9655,7 +9891,7 @@ async function renderProCatalogue() {
       .filter(e => epFilter === 'all' || e.ep === epFilter)
       .map(({ ep, prix }) => {
         const hl = epFilter !== 'all' ? 'font-weight:700;color:var(--gold);' : '';
-        return `<div class="biblio-prix-row"><span class="biblio-prix-ep" style="${hl}">${ep} mm</span><span class="biblio-prix-val" style="${hl}">${fmtEUR(prix)}/m²</span></div>`;
+        return `<div class="biblio-prix-row"><span class="biblio-prix-ep" style="${hl}">${ep} mm</span><span class="biblio-prix-val" style="${hl}">${fmtEUR(Math.round(prix * coeffApercuRevente() * 100) / 100)}/m²</span></div>`;
       }).join('');
     return `<div class="biblio-card">
       ${imgTag}
