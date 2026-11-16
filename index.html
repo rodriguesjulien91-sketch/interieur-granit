@@ -3768,6 +3768,7 @@ async function showQuoteDetail(id) {
         <div class="detail-row"><span class="dk">Accès</span><span class="dv">${q.livraison==='etage'?'Étage':'Rez-de-chaussée'}</span></div>
         ${optLines?`<div style="margin-top:16px;" class="detail-section-title">Options</div>${optLines}`:''}
         ${q.totalHT ? buildPrixLignesAdmin(q) : '<div class="detail-row"><span class="dk">Total HT</span><span class="dv">—</span></div>'}
+        ${tableauReventeAdmin(q)}
       </div>
     </div>
     ${buildCoutsSection(q)}
@@ -4662,6 +4663,25 @@ function displayFilteredQuotes(quotes) {
       </div>
     </div>`;
   }).join('');
+}
+
+// Vue admin : prix d'achat (facturé au cuisiniste) et prix de vente de son devis client, en lecture seule
+function tableauReventeAdmin(q) {
+  const pro = getDB().users?.[q.proEmail] || {};
+  if (!reventeActive(q, pro)) return '';
+  const d = devisRevente(q, pro);
+  const cell = 'padding:5px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:.82rem;';
+  return `<div style="margin-top:16px;background:rgba(130,80,170,.12);border-radius:4px;border:1px solid rgba(160,120,200,.4);overflow:hidden;">
+    <div style="padding:8px 14px;background:rgba(130,80,170,.18);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#d9c4f0;font-weight:600;">Devis client du cuisiniste — coeff revente ×${fmt2(d.coeff)}</div>
+    <div style="padding:4px 14px 10px;display:grid;grid-template-columns:1fr auto auto;column-gap:16px;">
+      <span style="${cell}color:#a89880;"></span><span style="${cell}color:#a89880;text-align:right;">Prix d'achat</span><span style="${cell}color:#a89880;text-align:right;">Prix client</span>
+      ${d.lignes.map(l => `<span style="${cell}color:#fdfaf5;">${l.label}</span><span style="${cell}color:#fdfaf5;text-align:right;">${fmtEUR(l.ht)}</span><span style="${cell}color:#fdfaf5;text-align:right;">${fmtEUR(l.htVente)}</span>`).join('')}
+      <strong style="${cell}color:#fdfaf5;">Total HT</strong><strong style="${cell}color:#fdfaf5;text-align:right;">${fmtEUR(d.htAchat)}</strong><strong style="${cell}color:#fdfaf5;text-align:right;">${fmtEUR(d.htVente)}</strong>
+      <span style="${cell}color:#a89880;">TVA client ${d.tva} %</span><span style="${cell}"></span><span style="${cell}color:#fdfaf5;text-align:right;">${fmtEUR(d.tvaAmt)}</span>
+      <strong style="${cell}color:#fdfaf5;border:none;">Total TTC client</strong><span></span><strong style="${cell}color:#c9a84c;text-align:right;border:none;">${fmtEUR(d.ttc)}</strong>
+    </div>
+    <div style="padding:0 14px 10px;font-size:.74rem;color:#a89880;">Vous facturez le cuisiniste au prix d'achat (${fmtEUR(d.htAchat)} HT, TVA 20 %), sans rétrocommission.</div>
+  </div>`;
 }
 
 function blocReventeDetail(q) {
@@ -6190,7 +6210,8 @@ function recalerSurTotalValide(q, lignes) {
 function lignesCuisiniste(q, pro) {
   const valide = isValide(q);
   const coeffActuel = (pro.coeffVenteActif && pro.coeffVente > 1) ? pro.coeffVente : 1;
-  const coeff = (valide && q.coeffPro > 0) ? q.coeffPro : coeffActuel;
+  // Compte en coefficient de revente : toujours facturé au prix d'achat (jamais de coeff rétrocom, même ancien)
+  const coeff = pro.modeCoeffRevente ? 1 : ((valide && q.coeffPro > 0) ? q.coeffPro : coeffActuel);
   const r2 = v => Math.round(v * 100) / 100;
   const lignes = [];
   const surfPlans = surfPlansQ(q), surfCred = surfCredQ(q);
@@ -7374,6 +7395,7 @@ function factureProHtml(o) {
   <div class="doc-meta">
     <div class="doc-title"${titre.length > 10 ? ' style="font-size:22px;letter-spacing:.12em;"' : ''}>${titre}</div>
     <div class="doc-num">${numFac}</div>
+    ${q.client?.ref ? `<div class="doc-date" style="margin-top:3px;color:#1a1814;font-weight:500;">Réf. chantier : ${String(q.client.ref).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>` : ''}
     <div class="doc-date">Émise le ${today}</div>
     <div class="doc-date" style="margin-top:3px;color:#c0392b;font-weight:500;">Échéance : ${echeance}</div>
   </div>
