@@ -7315,6 +7315,7 @@ function factureProHtml(o) {
   const { q, pro, s, titre, numFac, today, echeance, condPay, lignesRows, totauxHtml } = o;
   // Compte avec coeff : SARL DR RENOV facture le client final, le cuisiniste n'est qu'intermédiaire
   const clientFinalAcheteur = pro.coeffVenteActif && pro.coeffVente > 1;
+  const refChantier = q.client?.ref ? `<div class="p-legal" style="color:#1a1814;font-weight:500;">Réf. chantier : ${String(q.client.ref).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>` : '';
   const clientName = [q.client?.civilite, q.client?.prenom, q.client?.nom].filter(Boolean).join(' ') || '—';
   const addrFact = [pro.adresseFact || '', [pro.cpFact||'', pro.villeFact||''].filter(Boolean).join(' ')].filter(Boolean).join('<br>');
   const socAddr = [s.adresse, [s.cp, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -7395,7 +7396,6 @@ function factureProHtml(o) {
   <div class="doc-meta">
     <div class="doc-title"${titre.length > 10 ? ' style="font-size:22px;letter-spacing:.12em;"' : ''}>${titre}</div>
     <div class="doc-num">${numFac}</div>
-    ${q.client?.ref ? `<div class="doc-date" style="margin-top:3px;color:#1a1814;font-weight:500;">Réf. chantier : ${String(q.client.ref).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</div>` : ''}
     <div class="doc-date">Émise le ${today}</div>
     <div class="doc-date" style="margin-top:3px;color:#c0392b;font-weight:500;">Échéance : ${echeance}</div>
   </div>
@@ -7427,6 +7427,7 @@ function factureProHtml(o) {
       ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
     </div>
     <div class="p-legal">Dossier suivi par ${pro.raisonSociale || pro.societe || q.proSociete || ''}</div>
+    ${refChantier}
   </div>` : `
   <div class="party">
     <div class="p-label">Client (acheteur)</div>
@@ -7450,6 +7451,7 @@ function factureProHtml(o) {
       ${q.client?.adresse ? '<br>' + q.client.adresse : ''}
       ${(q.client?.cp || q.client?.ville) ? '<br>' + [q.client.cp, q.client.ville].filter(Boolean).join(' ') : ''}
     </div>
+    ${refChantier}
   </div>
   `}
 </div>
