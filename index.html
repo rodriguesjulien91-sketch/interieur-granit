@@ -3394,13 +3394,14 @@ function servicesHtDevis(q) {
 function calcRemisePrixPro(q, pro) {
   if (!pro?.coeffVenteActif || !(pro.coeffVente > 1)) return null;
   const r2 = v => Math.round(v * 100) / 100;
-  const htBrut = r2(q.totalHT || 0);
+  // Recalcul des lignes avec le coefficient actuel (comme le panneau) : le total enregistré peut être périmé
+  const htBrut = r2(buildLignesCuisiniste({ ...q, status: 'devise' }, pro).htTotal);
   const baseCoeff = r2(htBrut - servicesHtDevis(q));
   const retro = r2(baseCoeff - r2(baseCoeff / pro.coeffVente));
   const cf = calcCoutsFournisseurs(q);
   // Prix d'achat inconnu : pas de plafond calculable, la remise vaut la rétrocommission (marge identique au cas rétrocom)
   const plafond = cf ? r2(baseCoeff - cf.coutTotal) : retro;
-  return { remise: r2(Math.max(0, Math.min(retro, plafond))), retro, plafond };
+  return { remise: r2(Math.max(0, Math.min(retro, plafond))), retro, plafond, htBrut };
 }
 function libelleRemise(q, defaut) {
   return q.remise?.source === 'prixPro' ? 'Remise' : defaut;
