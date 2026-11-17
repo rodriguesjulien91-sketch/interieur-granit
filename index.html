@@ -3340,6 +3340,16 @@ function buildCommissionSection(q) {
   const db = getDB();
   const pro = db.users[q.proEmail];
   if (!pro || !pro.coeffVenteActif || !pro.coeffVente || pro.coeffVente <= 1) return '';
+  if (q.prixPro) {
+    const enCours = q.remise?.source !== 'prixPro';
+    const calc = calcRemisePrixPro(q, pro);
+    return `<div style="margin-top:12px;padding:14px 16px;background:#1a1814;border-radius:4px;border:1px solid var(--gold);">
+      <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;font-weight:600;">Prix pro — aucune rétrocommission</div>
+      <div style="font-size:.84rem;color:#fdfaf5;line-height:1.7;">
+        ${enCours ? 'Remise en cours de calcul…' : 'Remise accordée au client : <strong>' + fmtEUR(q.remise.valeur) + '</strong>'}<br>
+        ${calc ? '<span style="color:#a89880;">Rétrocommission évitée : ' + fmtEUR(calc.retro) + ' · plafond marge produit 0 € : ' + fmtEUR(calc.plafond) + '</span>' : ''}
+      </div></div>`;
+  }
 
   const coeff = pro.coeffVente;
 
@@ -3372,6 +3382,30 @@ function buildCommissionSection(q) {
   return h;
 }
 
+// Prix pro (comptes en rétrocommission) : le client paie le prix sans coeff, sans rétrocommission.
+// Remise = rétrocommission du devis, plafonnée pour que la marge produit reste >= 0 €.
+// Calculée par la fonction serveur (qui seule lit les prix d'achat), affichée partout via q.remise.
+function servicesHtDevis(q) {
+  const livrHT = (q.livraison === 'rdc' ? PRIX.pose?.rdc : q.livraison === 'etage' ? PRIX.pose?.etage : 0) || 0;
+  return livrHT
+    + (q.options?.['prise-de-cote'] > 0 ? (PRIX.options['prise-de-cote']?.prix || 0) : 0)
+    + (q.options?.['pose-installation'] > 0 ? (PRIX.options['pose-installation']?.prix || 0) : 0);
+}
+function calcRemisePrixPro(q, pro) {
+  if (!pro?.coeffVenteActif || !(pro.coeffVente > 1)) return null;
+  const r2 = v => Math.round(v * 100) / 100;
+  const htBrut = r2(q.totalHT || 0);
+  const baseCoeff = r2(htBrut - servicesHtDevis(q));
+  const retro = r2(baseCoeff - r2(baseCoeff / pro.coeffVente));
+  const cf = calcCoutsFournisseurs(q);
+  // Prix d'achat inconnu : pas de plafond calculable, la remise vaut la rétrocommission (marge identique au cas rétrocom)
+  const plafond = cf ? r2(baseCoeff - cf.coutTotal) : retro;
+  return { remise: r2(Math.max(0, Math.min(retro, plafond))), retro, plafond };
+}
+function libelleRemise(q, defaut) {
+  return q.remise?.source === 'prixPro' ? 'Remise' : defaut;
+}
+
 function getCurrentPrixSansCoeff(coeff, q) {
   // Retourne les prix de pose/livraison sans coeff pour le calcul commission
   return PRIX;
@@ -3379,10 +3413,10 @@ function getCurrentPrixSansCoeff(coeff, q) {
 
 
 // ═══ ANALYSE COÛTS FOURNISSEURS ════════════════════════════════
-function buildCoutsSection(q) {
-  if (!(currentUser && currentUser.role === 'admin')) return '';
+// Coût d'achat fournisseurs d'un devis (matière avec chutes, façonnage, chant, lignes complémentaires)
+function calcCoutsFournisseurs(q) {
   const pa = aGetPrix(q.materiau, q.coloris, q.finition, q.epaisseur);
-  if (!pa) return '';
+  if (!pa) return null;
   const surfPlans = surfPlansQ(q);
   const surfCred  = surfCredQ(q);
   const surf = surfPlans + surfCred;
@@ -3435,6 +3469,14 @@ function buildCoutsSection(q) {
   const coutFac = lignes.reduce((s, l) => s + (l.cout||0), 0);
   const coutCustom = (q.lignesCustom||[]).reduce((s, l) => s + (parseFloat(l.pa)||0), 0);
   const coutTotal = coutMat + coutFac + coutCustom;
+  return { pa, surfPlans, surfCred, surf, isGC, ti, paCred12, coutMat, nbTranches, chute, lignes, coutFac, coutCustom, coutTotal };
+}
+
+function buildCoutsSection(q) {
+  if (!(currentUser && currentUser.role === 'admin')) return '';
+  const cf = calcCoutsFournisseurs(q);
+  if (!cf) return '';
+  const { pa, surfPlans, surfCred, surf, isGC, ti, paCred12, coutMat, nbTranches, chute, lignes, coutTotal } = cf;
   const t = computeQuoteTotals(q);
   const pv = t.htNet || 0;
   if (!pv) return '';
@@ -4684,6 +4726,33 @@ function tableauReventeAdmin(q) {
   </div>`;
 }
 
+function blocPrixProDetail(q) {
+  const pro = currentUser || {};
+  if (!(pro.coeffVenteActif && pro.coeffVente > 1)) return '';
+  const fige = isValide(q);
+  const etat = !q.prixPro ? '' : (q.remise?.source === 'prixPro'
+    ? `Remise accordée à votre client : <strong>${fmtEUR(q.remise.valeur)} HT</strong>`
+    : 'Remise en cours de calcul… rouvrez le devis dans quelques secondes.');
+  return `<div style="margin-top:14px;padding:12px 16px;border:1px solid var(--cream-dark);border-radius:4px;background:var(--cream);">
+    <label style="display:flex;align-items:center;gap:10px;cursor:${fige ? 'default' : 'pointer'};font-size:.88rem;">
+      <input type="checkbox" ${q.prixPro ? 'checked' : ''} ${fige ? 'disabled' : ''} onchange="togglePrixPro('${q.id}', this.checked)" style="width:18px;height:18px;">
+      <span><strong>Prix pro</strong> — votre client paie le prix sans votre coefficient, sans rétrocommission${fige ? ' (figé depuis la commande)' : ''}.</span>
+    </label>
+    ${etat ? `<div style="margin-top:8px;font-size:.84rem;color:var(--stone);">${etat}</div>` : ''}
+  </div>`;
+}
+
+async function togglePrixPro(quoteId, coche) {
+  const q = getDB().quotes.find(x => x.id === quoteId);
+  if (!q || isValide(q)) return;
+  try { await fbDb.collection('quotes').doc(quoteId).update({ prixPro: !!coche }); }
+  catch (e) { alert('Erreur lors de l\'enregistrement : ' + e.message); return; }
+  q.prixPro = !!coche;
+  showToast(coche ? '✓ Prix pro activé, remise en cours de calcul' : 'Prix pro désactivé');
+  const drawer = document.getElementById('side-drawer'); if (drawer) delete drawer.dataset.openId;
+  showProQuoteDetail(quoteId);
+}
+
 function blocReventeDetail(q) {
   const pro = currentUser || {};
   if (!pro.modeCoeffRevente || (pro.coeffVenteActif && pro.coeffVente > 1)) return '';
@@ -4857,7 +4926,7 @@ function showProQuoteDetail(id) {
         ${(function(){
           const remise = totalHTDisplay != null ? Math.round(computeRemiseAmount(totalHTDisplay, q.remise) * 100) / 100 : 0;
           if (!(remise > 0)) return `<div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key" style="font-weight:600;">Total HT</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(totalHTDisplay)}</span></div>`;
-          const libelle = q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)} %)` : 'Remise commerciale';
+          const libelle = q.remise?.source === 'prixPro' ? 'Remise prix pro' : (q.remise?.type === 'pct' ? `Remise (${fmt2(q.remise.valeur)} %)` : 'Remise commerciale');
           return `<div class="summary-row" style="margin-top:8px;border-top:1px solid rgba(200,185,160,.3);padding-top:8px;"><span class="key">Sous-total HT</span><span class="val">${fmtEUR(totalHTDisplay)}</span></div>
             <div class="summary-row"><span class="key" style="color:var(--gold);">${libelle}</span><span class="val" style="color:var(--gold);">− ${fmtEUR(remise)}</span></div>
             <div class="summary-row"><span class="key" style="font-weight:600;">Total HT remisé</span><span class="val" style="font-weight:700;font-size:1rem;">${fmtEUR(Math.round((totalHTDisplay - remise) * 100) / 100)}</span></div>`;
@@ -4865,6 +4934,7 @@ function showProQuoteDetail(id) {
       </div>
     </div>
     ${commandeInfo}
+    ${blocPrixProDetail(q)}
     ${blocReventeDetail(q)}
     ${buildAdresseEditor(q)}
     <div class="pro-detail-actions">
@@ -5092,6 +5162,7 @@ function removeFormCustomLine(idx) {
 function startNewQuote() {
   quoteMode = 'pro';
   cuisinisteEdite = null;
+  setTimeout(() => { majBlocPrixPro(); const p = document.getElementById('prixpro-check'); if (p) { p.checked = false; p.disabled = false; } }, 0);
   setTimeout(() => { majBlocRevente(); const e = document.getElementById('revente-coeff'); if (e) e.value = currentUser?.coeffReventeDefaut ? String(currentUser.coeffReventeDefaut).replace('.', ',') : ''; const t = document.getElementById('revente-tva'); if (t) t.value = '10'; }, 0);
   currentEditingQuoteId = null;
   resetFormFields();
@@ -5244,6 +5315,8 @@ function loadQuoteIntoForm(quoteId, isDuplicate) {
   document.querySelector('#view-form .form-main').style.display = 'block';
   document.querySelector('#view-form .progress-wrapper').style.display = 'block';
   majBlocRevente();
+  majBlocPrixPro();
+  const _pp = document.getElementById('prixpro-check'); if (_pp) { _pp.checked = !!q.prixPro; _pp.disabled = isValide(q) && currentUser?.role !== 'admin'; }
   const _rc = document.getElementById('revente-coeff'); if (_rc) _rc.value = q.coeffRevente ? String(q.coeffRevente).replace('.', ',') : '';
   const _rt = document.getElementById('revente-tva'); if (_rt) _rt.value = q.tvaRevente === 20 ? '20' : '10';
   // Remise commerciale (admin) : rechargée pour ne pas être perdue à l'enregistrement
@@ -5304,7 +5377,7 @@ function goToStep(n) { if (n > currentStep) return; currentStep = n; renderStep(
 function nextStep(from) {
   if (!validateFormStep(from)) return;
   currentStep = from + 1;
-  if (currentStep === 5) { majBlocRevente(); buildSummary(); renderFormCustomLines(); }
+  if (currentStep === 5) { majBlocRevente(); majBlocPrixPro(); buildSummary(); renderFormCustomLines(); }
   renderStep();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -5341,6 +5414,26 @@ function majBlocRevente() {
       + '<div class="field" style="margin:0;"><label>Coefficient de revente (matériaux)</label><input type="text" inputmode="decimal" id="revente-coeff" placeholder="vide = pas de devis client" style="width:200px;" oninput="buildSummary()"></div>'
       + '<div class="field" style="margin:0;"><label>TVA du devis client</label><select id="revente-tva" onchange="buildSummary()"><option value="10">10 %</option><option value="20">20 %</option></select></div>'
       + '</div><div id="revente-erreur" style="color:#c0392b;font-size:.8rem;margin-top:6px;"></div>';
+    cible.parentNode.insertBefore(bloc, cible);
+  }
+  if (bloc) bloc.style.display = actif ? '' : 'none';
+  return actif;
+}
+
+function reventeRetroActif() {
+  const pro = quoteMode === 'pro' ? (cuisinisteEdite || (currentUser?.role === 'pro' ? currentUser : null)) : null;
+  return !!(pro?.coeffVenteActif && pro.coeffVente > 1);
+}
+function majBlocPrixPro() {
+  const actif = reventeRetroActif();
+  let bloc = document.getElementById('prixpro-block');
+  const cible = document.getElementById('price-breakdown');
+  if (!bloc && cible) {
+    bloc = document.createElement('div');
+    bloc.id = 'prixpro-block';
+    bloc.style.cssText = 'margin-bottom:16px;padding:12px 16px;border:1px solid var(--cream-dark);border-radius:4px;background:var(--cream);';
+    bloc.innerHTML = '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;"><input type="checkbox" id="prixpro-check" style="width:18px;height:18px;">'
+      + '<span><strong>Prix pro</strong> — votre client paie le prix sans votre coefficient (pas de rétrocommission sur ce devis). La remise correspondante apparaît sur le devis après enregistrement.</span></label>';
     cible.parentNode.insertBefore(bloc, cible);
   }
   if (bloc) bloc.style.display = actif ? '' : 'none';
@@ -6045,6 +6138,8 @@ function submitQuote(action) {
       totalTTC: totalTTC !== null ? totalTTC : null,
       prixMatVente: isDirect ? getColorisPrixDirect(mat, document.getElementById('coloris').value, document.getElementById('epaisseur').value, document.getElementById('finition').value) : null,
       coeffDirect: isDirect ? getCoeffDirect() : null,
+      // Prix pro (compte en rétrocommission) : la remise est calculée ensuite par le serveur
+      prixPro: (!isDirect && document.getElementById('prixpro-block')?.style.display !== 'none') ? !!document.getElementById('prixpro-check')?.checked : false,
       // Coefficient de revente (sans rétrocom) : n'affecte ni totalHT ni la facturation
       coeffRevente: (!isDirect && document.getElementById('revente-block')?.style.display !== 'none') ? lireCoeffRevente(document.getElementById('revente-coeff')?.value) : null,
       tvaRevente: (!isDirect && document.getElementById('revente-block')?.style.display !== 'none') ? (document.getElementById('revente-tva')?.value === '20' ? 20 : 10) : null,
@@ -6321,7 +6416,7 @@ function exportBonDeCommandeDetaille(q, pro, withSignature = true) {
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
   const remiseLigne = remiseAmt > 0
-    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">Remise ${q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale'}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
+    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">${q.remise?.source === 'prixPro' ? 'Remise' : 'Remise ' + (q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale')}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
 
   // Lignes détail dimensions plans + crédences
   let dimDetailRows = '';
@@ -6486,7 +6581,7 @@ function exportDevisCuisiniste(q, pro) {
   const tvaAmt = Math.round(htNet * tvaRate * 100) / 100;
   const ttc = Math.round((htNet + tvaAmt) * 100) / 100;
   const remiseLigne = remiseAmt > 0
-    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">Remise ${q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale'}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
+    ? `<tr><td style="color:#7a6f62;">Sous-total HT</td><td style="text-align:right;color:#7a6f62;">${fmtEUR(htTotal)}</td></tr><tr><td style="color:#c9a84c;">${q.remise?.source === 'prixPro' ? 'Remise' : 'Remise ' + (q.remise?.type==='pct'?'('+fmt2(q.remise.valeur)+'%)':'commerciale')}</td><td style="text-align:right;color:#c9a84c;">− ${fmtEUR(remiseAmt)}</td></tr>` : '';
 
   let dimDetailRows = '';
   if (q.plans?.filter(p=>p.larg&&p.long).length > 0) {
@@ -7231,7 +7326,7 @@ async function exportDevisParticulier(quoteId) {
 ${htBrut > 0 ? `<div class="totaux">
   <table>
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
-    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>${q.remise?.source === 'prixPro' ? 'Remise' : 'Remise ' + (q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale')}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(htNet)}</td></tr>` : ''}
     <tr class="row-tva"><td>TVA ${tvaLabel}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
@@ -7593,7 +7688,7 @@ async function genererFacture(quoteId) {
   const totauxHtml = `<div class="totaux">
   <table>
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
-    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>${q.remise?.source === 'prixPro' ? 'Remise' : 'Remise ' + (q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale')}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
     <tr class="row-tva"><td>TVA ${tvaPct}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="${acomptesFA.length ? '' : 'row-ttc'}"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
@@ -8025,7 +8120,7 @@ async function _genererFactureDirecte(quoteId, acomptes) {
 <div class="totaux">
   <table>
     <tr><td>Sous-total HT</td><td>${fmtEUR(htBrut)}</td></tr>
-    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>Remise ${q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale'}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
+    ${remiseAmt > 0 ? `<tr style="color:#c9a84c;"><td>${q.remise?.source === 'prixPro' ? 'Remise' : 'Remise ' + (q.remise && q.remise.type === 'pct' ? '('+fmt2(q.remise.valeur)+'%)' : 'commerciale')}</td><td>− ${fmtEUR(remiseAmt)}</td></tr>
     <tr><td>Total HT net</td><td>${fmtEUR(totalHT)}</td></tr>` : ''}
     <tr class="row-tva"><td>TVA ${q.tva||20}%</td><td>${fmtEUR(tvaAmt)}</td></tr>
     <tr class="row-ttc"><td>Total TTC</td><td>${fmtEUR(totalTTC)}</td></tr>
